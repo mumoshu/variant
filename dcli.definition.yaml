@@ -1,0 +1,22 @@
+inputs:
+- name: env
+targets:
+- name: web
+  description: web関連のコマンド
+  targets:
+  - name: deploy
+    description: webをデプロイする
+    inputs:
+    - name: mysql.host
+      description: Webサーバの接続先となるMySQLホスト
+    script: |
+      echo deploy"(mysql_host={{.mysql.host}})"
+      echo {{index .args 0 }}
+      echo err message 1>&2
+      echo {{.env}}
+      MYSQL_HOST={{.mysql.host}} sh -c 'export | grep MYSQL_HOST'
+- name: mysql
+  targets:
+  - name: host
+    script: |
+      echo mysql
