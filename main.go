@@ -40,6 +40,52 @@ type Target struct {
 	Targets     []*Target `yaml:"targets,omitempty"`
 	Script      string    `yaml:"script,omitempty"`
 	Autoenv     bool      `yaml:"autoenv,omitempty"`
+	Autodir     bool      `yaml:"autodir,omitempty"`
+}
+
+type Target_ struct {
+	Name        string    `yaml:"name,omitempty"`
+	Description string    `yaml:"description,omitempty"`
+	Inputs      []*Input  `yaml:"inputs,omitempty"`
+	Targets     []*Target `yaml:"targets,omitempty"`
+	Script      string    `yaml:"script,omitempty"`
+	Autoenv     bool      `yaml:"autoenv,omitempty"`
+	Autodir     bool      `yaml:"autodir,omitempty"`
+}
+
+func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	data := Target_{
+		Autoenv: true,
+		Autodir: true,
+		Inputs:  []*Input{},
+		Targets: []*Target{},
+	}
+	err := unmarshal(&data)
+
+	t.Name = data.Name
+	t.Description = data.Description
+	t.Inputs = data.Inputs
+	t.Targets = data.Targets
+	t.Script = data.Script
+	t.Autoenv = data.Autoenv
+	t.Autodir = data.Autodir
+
+	return err
+}
+
+func newDefaultProjectConfig() *ProjectConfig {
+	return &ProjectConfig{
+		Inputs:  []*Input{},
+		Targets: []*Target{},
+	}
+}
+
+func newDefaultTargetConfig() *Target {
+	return &Target{
+		Inputs:  []*Input{},
+		Targets: []*Target{},
+		Autoenv: true,
+	}
 }
 
 type ProjectConfig struct {
@@ -55,6 +101,7 @@ type TaskDef struct {
 	Template *template.Template
 	Inputs   []*Input
 	Autoenv  bool
+	Autodir  bool
 }
 
 type Task struct {
@@ -62,6 +109,7 @@ type Task struct {
 	Template *template.Template
 	Vars     map[string]interface{}
 	Autoenv  bool
+	Autodir  bool
 }
 
 type TaskKey struct {
@@ -80,20 +128,6 @@ type T struct {
 	B struct {
 		RenamedC int   `yaml:"c"`
 		D        []int `yaml:",flow"`
-	}
-}
-
-func newDefaultProjectConfig() *ProjectConfig {
-	return &ProjectConfig{
-		Inputs:  []*Input{},
-		Targets: []*Target{},
-	}
-}
-
-func newDefaultTargetConfig() *Target {
-	return &Target{
-		Inputs:  []*Input{},
-		Targets: []*Target{},
 	}
 }
 
@@ -158,17 +192,20 @@ func (t Task) runCommand(command string) (string, error) {
 	log.Debugf("running command: %s", command)
 	log.Debugf("shelling out: %v", append([]string{c}, args...))
 
+	l := log.WithFields(log.Fields{"command": command})
+
 	cmd := exec.Command(c, args...)
 
 	mergedEnv := map[string]string{}
 
 	for _, pair := range os.Environ() {
-		splits := strings.Split(pair, "=")
+		splits := strings.SplitN(pair, "=", 2)
 		key, value := splits[0], splits[1]
 		mergedEnv[key] = value
 	}
 
 	if t.Autoenv {
+		l.Debugf("Autoenv is enabled")
 		autoEnv, err := t.GenerateAutoenv()
 		if err != nil {
 			log.Errorf("Failed to generate autoenv: %v", err)
@@ -176,7 +213,6 @@ func (t Task) runCommand(command string) (string, error) {
 		for name, value := range autoEnv {
 			mergedEnv[name] = value
 		}
-	}
 
 	cmdEnv := []string{}
 	for name, value := range mergedEnv {
@@ -184,6 +220,11 @@ func (t Task) runCommand(command string) (string, error) {
 	}
 
 	cmd.Env = cmdEnv
+
+	} else {
+		l.Debugf("Autoenv is disabled")
+	}
+
 
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -196,7 +237,7 @@ func (t Task) runCommand(command string) (string, error) {
 	go func() {
 		for scanner.Scan() {
 			text := scanner.Text()
-			log.WithFields(log.Fields{"stream": "stdout", "command": command}).Printf("%s", text)
+			l.WithFields(log.Fields{"stream": "stdout"}).Printf("%s", text)
 			output += text
 		}
 	}()
@@ -210,7 +251,7 @@ func (t Task) runCommand(command string) (string, error) {
 	go func() {
 		for errScanner.Scan() {
 			text := errScanner.Text()
-			log.WithFields(log.Fields{"stream": "stderr", "command": command}).Errorf("%s", text)
+			l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
 		}
 	}()
 
@@ -222,7 +263,7 @@ func (t Task) runCommand(command string) (string, error) {
 
 	var waitStatus syscall.WaitStatus
 	if err := cmd.Wait(); err != nil {
-		log.Fatalf("%v", err)
+		l.Fatalf("%v", err)
 		// Did the command fail because of an unsuccessful exit code
 		if exitError, ok := err.(*exec.ExitError); ok {
 			waitStatus = exitError.Sys().(syscall.WaitStatus)
@@ -231,7 +272,7 @@ func (t Task) runCommand(command string) (string, error) {
 	} else {
 		// Command was successful
 		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
-		log.WithFields(log.Fields{"command": command}).Debugf("exit status: %d", waitStatus.ExitStatus())
+		l.Debugf("exit status: %d", waitStatus.ExitStatus())
 	}
 
 	return strings.Trim(output, "\n "), nil
@@ -285,6 +326,8 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 		Vars:     vars,
 		Autoenv:  t.Autoenv,
 	}
+
+	log.Debugf("Task: %v", task)
 
 	output, error := task.Run()
 	return output, error
@@ -344,6 +387,9 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap) (AnyMap, e
 
 func FetchCache(cache map[string]interface{}, keyComponents []string) (interface{}, error) {
 	k, rest := keyComponents[0], keyComponents[1:]
+
+	k = strings.Replace(k, "-", "_", -1)
+
 	if len(rest) == 0 {
 		return cache[k], nil
 	} else {
@@ -364,6 +410,9 @@ func FetchCache(cache map[string]interface{}, keyComponents []string) (interface
 
 func PopulateCache(cache map[string]interface{}, keyComponents []string, value interface{}) error {
 	k, rest := keyComponents[0], keyComponents[1:]
+
+	k = strings.Replace(k, "-", "_", -1)
+
 	if len(rest) == 0 {
 		cache[k] = value
 	} else {
@@ -502,6 +551,7 @@ func main() {
 		log.Fatalf("failed to parse project: %v", err)
 	}
 	//spew.Printf("ProjectConfig: %#+v", c)
+	fmt.Printf("Target: %v", c)
 
 	c.Name = commandName
 
