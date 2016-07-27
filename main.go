@@ -131,12 +131,12 @@ type T struct {
 	}
 }
 
-func (t Task) runScript(script string) (string, error) {
+func (t Task) RunScript(script string) (string, error) {
 	commands := strings.Split(script, "\n")
 	var lastOutput string
 	for _, command := range commands {
 		if command != "" {
-			output, err := t.runCommand(command)
+			output, err := t.RunCommand(command)
 			if err != nil {
 				return output, err
 			}
@@ -186,7 +186,7 @@ func (t Task) GenerateAutoenvRecursively(path string, env map[string]interface{}
 	return result, nil
 }
 
-func (t Task) runCommand(command string) (string, error) {
+func (t Task) RunCommand(command string) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
 	log.Debugf("running command: %s", command)
@@ -444,7 +444,7 @@ func (t Task) Run() (string, error) {
 
 	script := buff.String()
 
-	output, err := t.runScript(script)
+	output, err := t.RunScript(script)
 
 	return output, err
 }
