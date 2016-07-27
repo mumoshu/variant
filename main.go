@@ -14,6 +14,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/juju/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
@@ -70,7 +71,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	t.Autoenv = data.Autoenv
 	t.Autodir = data.Autodir
 
-	return err
+	return errors.Trace(err)
 }
 
 func newDefaultProjectConfig() *ProjectConfig {
@@ -102,6 +103,7 @@ type TaskDef struct {
 	Inputs   []*Input
 	Autoenv  bool
 	Autodir  bool
+	Target   *Target
 }
 
 type Task struct {
@@ -110,6 +112,7 @@ type Task struct {
 	Vars     map[string]interface{}
 	Autoenv  bool
 	Autodir  bool
+	TaskDef  *TaskDef
 }
 
 type TaskKey struct {
@@ -178,7 +181,7 @@ func (t Task) GenerateAutoenvRecursively(path string, env map[string]interface{}
 			if stringV, ok := v.(string); ok {
 				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = stringV
 			} else {
-				return nil, fmt.Errorf("The value for the key %s was neither a `map[string]interface{}` nor a `string`: %v", k, v)
+				return nil, errors.Errorf("The value for the key %s was neither a `map[string]interface{}` nor a `string`: %v", k, v)
 			}
 		}
 	}
@@ -214,17 +217,24 @@ func (t Task) RunCommand(command string) (string, error) {
 			mergedEnv[name] = value
 		}
 
-	cmdEnv := []string{}
-	for name, value := range mergedEnv {
-		cmdEnv = append(cmdEnv, fmt.Sprintf("%s=%s", name, value))
-	}
+		cmdEnv := []string{}
+		for name, value := range mergedEnv {
+			cmdEnv = append(cmdEnv, fmt.Sprintf("%s=%s", name, value))
+		}
 
-	cmd.Env = cmdEnv
+		cmd.Env = cmdEnv
 
 	} else {
 		l.Debugf("Autoenv is disabled")
 	}
 
+	invocation := struct {
+		Stdout chan bool
+		Stderr chan bool
+	}{
+		Stdout: make(chan bool),
+		Stderr: make(chan bool),
+	}
 
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -235,6 +245,9 @@ func (t Task) RunCommand(command string) (string, error) {
 	scanner := bufio.NewScanner(cmdReader)
 	var output string
 	go func() {
+		defer func() {
+			invocation.Stdout <- true
+		}()
 		for scanner.Scan() {
 			text := scanner.Text()
 			l.WithFields(log.Fields{"stream": "stdout"}).Printf("%s", text)
@@ -249,6 +262,9 @@ func (t Task) RunCommand(command string) (string, error) {
 	}
 	errScanner := bufio.NewScanner(errReader)
 	go func() {
+		defer func() {
+			invocation.Stderr <- true
+		}()
 		for errScanner.Scan() {
 			text := errScanner.Text()
 			l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
@@ -262,7 +278,12 @@ func (t Task) RunCommand(command string) (string, error) {
 	}
 
 	var waitStatus syscall.WaitStatus
-	if err := cmd.Wait(); err != nil {
+	err = cmd.Wait()
+
+	<-invocation.Stdout
+	<-invocation.Stderr
+
+	if err != nil {
 		l.Fatalf("%v", err)
 		// Did the command fail because of an unsuccessful exit code
 		if exitError, ok := err.(*exec.ExitError); ok {
@@ -302,12 +323,16 @@ func (t TaskKey) Parent() (*TaskKey, error) {
 	if len(t.Components) > 1 {
 		return &TaskKey{Components: t.Components[:len(t.Components)-1]}, nil
 	} else {
-		return nil, fmt.Errorf("TaskKey %v doesn't have a parent", t)
+		return nil, errors.Errorf("TaskKey %v doesn't have a parent", t)
 	}
 }
 
 func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []string) (string, error) {
-	t := p.FindTask(taskKey)
+	t, err := p.FindTask(taskKey)
+
+	if err != nil {
+		return "", errors.Annotate(err, "RunTaskError")
+	}
 
 	vars := map[string](interface{}){}
 	vars["mysql"] = map[string]string{"host": "mysql2"}
@@ -317,7 +342,12 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 	log.Debugf("TaskKey: %s", spew.Sdump(taskKey))
 	log.Debugf("TaskDef: %s", spew.Sdump(t))
 
-	inputs, _ := p.AggregateInputsFor(taskKey)
+	inputs, err := p.AggregateInputsFor(taskKey)
+
+	if err != nil {
+		return "", errors.Annotatef(err, "Task `%s` failed", taskKey.String())
+	}
+
 	for k, v := range inputs {
 		vars[k] = v
 	}
@@ -327,37 +357,55 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 		Template: t.Template,
 		Vars:     vars,
 		Autoenv:  t.Autoenv,
+		TaskDef:  t,
 	}
 
 	log.Debugf("Task: %v", task)
 
 	output, error := task.Run()
+
+	if error != nil {
+		error = errors.Annotatef(error, "Task `%s` failed", taskKey.String())
+	}
+
 	return output, error
 }
 
 func (p Project) AggregateInputsFor(taskKey TaskKey) (map[string]interface{}, error) {
 	//	task := p.FindTask(taskKey)
 	aggregated := map[string]interface{}{}
-	p.CollectInputsFor(taskKey, aggregated)
-	p.AggregateInputsForParent(taskKey, aggregated)
+	if err := p.CollectInputsFor(taskKey, aggregated); err != nil {
+		return nil, errors.Annotatef(err, "AggregateInputsFor(%s) failed", taskKey.String())
+	}
+	if err := p.AggregateInputsForParent(taskKey, aggregated); err != nil {
+		return nil, errors.Annotatef(err, "AggregateInputsFor(%s) failed", taskKey.String())
+	}
 	return aggregated, nil
 }
 
 type AnyMap map[string]interface{}
 
-func (p Project) AggregateInputsForParent(taskKey TaskKey, aggregated AnyMap) {
+func (p Project) AggregateInputsForParent(taskKey TaskKey, aggregated AnyMap) error {
 	parentKey, err := taskKey.Parent()
 	if err != nil {
 		log.Debug("%v", err)
 	} else {
-		p.CollectInputsFor(*parentKey, aggregated)
-		p.AggregateInputsForParent(*parentKey, aggregated)
+		if err := p.CollectInputsFor(*parentKey, aggregated); err != nil {
+			return errors.Annotatef(err, "AggregateInputsForParent(%s) failed", taskKey.String())
+		}
+		if err := p.AggregateInputsForParent(*parentKey, aggregated); err != nil {
+			return errors.Annotatef(err, "AggregateInputsForParent(%s) failed", taskKey.String())
+		}
 	}
+	return nil
 }
 
-func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap) (AnyMap, error) {
+func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap) error {
 	log.Debugf("Collecting inputs for the task `%v`", taskKey.String())
-	task := p.FindTask(taskKey)
+	task, err := p.FindTask(taskKey)
+	if err != nil {
+		return errors.Trace(err)
+	}
 	for _, input := range task.Inputs {
 		log.Debugf("Task `%v` depends on the input `%v`", taskKey.String(), input.Name)
 
@@ -372,11 +420,14 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap) (AnyMap, e
 			var output interface{}
 			var err error
 			if output, err = FetchCache(p.CachedTaskOutputs, components); output == nil {
-				output, _ = p.RunTask(p.CreateTaskKeyFromInputName(k), map[string]string{}, []string{})
+				output, err = p.RunTask(p.CreateTaskKeyFromInputName(k), map[string]string{}, []string{})
+				if err != nil {
+					return errors.Annotatef(err, "Input `%s` failed", k)
+				}
 				PopulateCache(p.CachedTaskOutputs, components, output)
 			}
 			if err != nil {
-				return nil, err
+				return errors.Trace(err)
 			}
 			PopulateCache(aggregated, components, output)
 		} else {
@@ -384,7 +435,7 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap) (AnyMap, e
 		}
 
 	}
-	return aggregated, nil
+	return nil
 }
 
 func FetchCache(cache map[string]interface{}, keyComponents []string) (interface{}, error) {
@@ -403,7 +454,7 @@ func FetchCache(cache map[string]interface{}, keyComponents []string) (interface
 			}
 			return v, nil
 		} else if cache[k] != nil {
-			return nil, fmt.Errorf("%s is not a map[string]interface{}", k)
+			return nil, errors.Errorf("%s is not a map[string]interface{}", k)
 		} else {
 			return nil, nil
 		}
@@ -420,7 +471,7 @@ func PopulateCache(cache map[string]interface{}, keyComponents []string, value i
 	} else {
 		_, ok := cache[k].(map[string]interface{})
 		if !ok && cache[k] != nil {
-			return fmt.Errorf("%s is not an map[string]interface{}", k)
+			return errors.Errorf("%s is not an map[string]interface{}", k)
 		}
 		if cache[k] == nil {
 			cache[k] = map[string]interface{}{}
@@ -430,8 +481,14 @@ func PopulateCache(cache map[string]interface{}, keyComponents []string, value i
 	return nil
 }
 
-func (p *Project) FindTask(taskKey TaskKey) *TaskDef {
-	return p.Tasks[taskKey.String()]
+func (p *Project) FindTask(taskKey TaskKey) (*TaskDef, error) {
+	t := p.Tasks[taskKey.String()]
+
+	if t == nil {
+		return nil, errors.Errorf("No TaskDef exists for the task key `%s`", taskKey.String())
+	}
+
+	return t, nil
 }
 
 func (p *Project) RegisterTask(taskKey TaskKey, task *TaskDef) {
@@ -441,12 +498,16 @@ func (p *Project) RegisterTask(taskKey TaskKey, task *TaskDef) {
 func (t Task) Run() (string, error) {
 	var buff bytes.Buffer
 	if err := t.Template.Execute(&buff, t.Vars); err != nil {
-		log.Panicf("Error: %v", err)
+		return "", errors.Annotatef(err, "Template execution failed.\n\nScript:\n%s\n\nVars:\n%v", t.TaskDef.Target.Script, t.Vars)
 	}
 
 	script := buff.String()
 
 	output, err := t.RunScript(script)
+
+	if err != nil {
+		err = errors.Annotate(err, "Task#Run failed while running a script")
+	}
 
 	return output, err
 }
@@ -468,6 +529,7 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 		Key:     taskKey,
 		Inputs:  target.Inputs,
 		Autoenv: target.Autoenv,
+		Target:  target,
 	}
 	p.RegisterTask(taskKey, task)
 
@@ -496,9 +558,11 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 
 			err := viper.ReadInConfig() // Find and read the config file
 			if err != nil {             // Handle errors reading the config file
-				panic(fmt.Errorf("Fatal error config file: %s \n", err))
+				panic(errors.Errorf("Fatal error config file: %s \n", err))
 			}
-			p.RunTask(taskKey, options, args)
+			if _, err := p.RunTask(taskKey, options, args); err != nil {
+				log.Panicf("Command failed: %v", errors.ErrorStack(err))
+			}
 		}
 	}
 
@@ -549,7 +613,7 @@ func main() {
 	c := newDefaultTargetConfig()
 	//	if err := yaml.Unmarshal([]byte(data), c); err != nil {
 	if err := yaml.Unmarshal(yamlBytes, c); err != nil {
-		//return nil, fmt.Errorf("failed to parse cluster: %v", err)
+		//return nil, errors.Errorf("failed to parse cluster: %v", err)
 		log.Fatalf("failed to parse project: %v", err)
 	}
 	//spew.Printf("ProjectConfig: %#+v", c)

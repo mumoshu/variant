@@ -1,6 +1,12 @@
 inputs:
 - name: env
 targets:
+- name: all
+  inputs:
+    - name: web.deploy
+    - name: job.deploy
+  script: |
+    echo all {{.web.deploy}} {{.job.deploy}}
 - name: web
   description: web関連のコマンド
   targets:
@@ -14,6 +20,7 @@ targets:
       echo {{index .args 0 }}
       echo err message 1>&2
       echo {{.env}}
+      export 
       MYSQL_HOST={{.mysql.host}} sh -c 'export | grep MYSQL_HOST'
     autoenv: true
 - name: job
