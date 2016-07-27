@@ -5,5 +5,8 @@ gofmt:
 build:
 	go build .
 
-smoketest: build
+smoke1: build
 	./dcli -v web deploy foo
+
+smoke2: build
+	./dcli web deploy foo

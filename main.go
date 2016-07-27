@@ -13,7 +13,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	//	"github.com/davecgh/go-spew/spew"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
@@ -313,7 +313,9 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 	vars["mysql"] = map[string]string{"host": "mysql2"}
 	vars["args"] = args
 
-	log.Errorf("p=%v, taskKey=%v, t=%v", p, taskKey, t)
+	log.Debugf("Project: %s", spew.Sdump(p))
+	log.Debugf("TaskKey: %s", spew.Sdump(taskKey))
+	log.Debugf("TaskDef: %s", spew.Sdump(t))
 
 	inputs, _ := p.AggregateInputsFor(taskKey)
 	for k, v := range inputs {
@@ -551,7 +553,7 @@ func main() {
 		log.Fatalf("failed to parse project: %v", err)
 	}
 	//spew.Printf("ProjectConfig: %#+v", c)
-	fmt.Printf("Target: %v", c)
+	//fmt.Printf("Target: %v", c)
 
 	c.Name = commandName
 
