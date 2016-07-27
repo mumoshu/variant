@@ -39,6 +39,7 @@ type Target struct {
 	Inputs      []*Input  `yaml:"inputs,omitempty"`
 	Targets     []*Target `yaml:"targets,omitempty"`
 	Script      string    `yaml:"script,omitempty"`
+	Autoenv     bool      `yaml:"autoenv,omitempty"`
 }
 
 type ProjectConfig struct {
@@ -49,10 +50,18 @@ type ProjectConfig struct {
 	Script      string    `yaml:"script,omitempty"`
 }
 
-type Task struct {
+type TaskDef struct {
 	Key      TaskKey
 	Template *template.Template
 	Inputs   []*Input
+	Autoenv  bool
+}
+
+type Task struct {
+	Key      TaskKey
+	Template *template.Template
+	Vars     map[string]interface{}
+	Autoenv  bool
 }
 
 type TaskKey struct {
@@ -61,7 +70,7 @@ type TaskKey struct {
 
 type Project struct {
 	Name              string
-	Tasks             map[string]*Task
+	Tasks             map[string]*TaskDef
 	CachedTaskOutputs map[string]interface{}
 	Verbose           bool
 }
@@ -88,12 +97,12 @@ func newDefaultTargetConfig() *Target {
 	}
 }
 
-func runScript(script string) (string, error) {
+func (t Task) runScript(script string) (string, error) {
 	commands := strings.Split(script, "\n")
 	var lastOutput string
 	for _, command := range commands {
 		if command != "" {
-			output, err := runCommand(command)
+			output, err := t.runCommand(command)
 			if err != nil {
 				return output, err
 			}
@@ -103,12 +112,79 @@ func runScript(script string) (string, error) {
 	return lastOutput, nil
 }
 
-func runCommand(command string) (string, error) {
+func (t Task) GenerateAutoenv() (map[string]string, error) {
+	replacer := strings.NewReplacer("-", "_", ".", "_")
+	toEnvName := func(parName string) string {
+		return strings.ToUpper(replacer.Replace(parName))
+	}
+	return t.GenerateAutoenvRecursively("", t.Vars, toEnvName)
+}
+
+func (t Task) GenerateAutoenvRecursively(path string, env map[string]interface{}, toEnvName func(string) string) (map[string]string, error) {
+	logger := log.WithFields(log.Fields{"path": path})
+	result := map[string]string{}
+	for k, v := range env {
+		if nestedEnv, ok := v.(map[string]interface{}); ok {
+			nestedResult, err := t.GenerateAutoenvRecursively(fmt.Sprintf("%s.", k), nestedEnv, toEnvName)
+			if err != nil {
+				logger.Errorf("Error while recursiong: %v", err)
+			}
+			for k, v := range nestedResult {
+				result[k] = v
+			}
+		} else if nestedEnv, ok := v.(map[string]string); ok {
+			for k2, v := range nestedEnv {
+				result[toEnvName(fmt.Sprintf("%s%s.%s", path, k, k2))] = v
+			}
+		} else if ary, ok := v.([]string); ok {
+			for i, v := range ary {
+				result[toEnvName(fmt.Sprintf("%s%s.%d", path, k, i))] = v
+			}
+		} else {
+			if stringV, ok := v.(string); ok {
+				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = stringV
+			} else {
+				return nil, fmt.Errorf("The value for the key %s was neither a `map[string]interface{}` nor a `string`: %v", k, v)
+			}
+		}
+	}
+	logger.Debugf("Generated autoenv: %v", result)
+	return result, nil
+}
+
+func (t Task) runCommand(command string) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
 	log.Debugf("running command: %s", command)
 	log.Debugf("shelling out: %v", append([]string{c}, args...))
+
 	cmd := exec.Command(c, args...)
+
+	mergedEnv := map[string]string{}
+
+	for _, pair := range os.Environ() {
+		splits := strings.Split(pair, "=")
+		key, value := splits[0], splits[1]
+		mergedEnv[key] = value
+	}
+
+	if t.Autoenv {
+		autoEnv, err := t.GenerateAutoenv()
+		if err != nil {
+			log.Errorf("Failed to generate autoenv: %v", err)
+		}
+		for name, value := range autoEnv {
+			mergedEnv[name] = value
+		}
+	}
+
+	cmdEnv := []string{}
+	for name, value := range mergedEnv {
+		cmdEnv = append(cmdEnv, fmt.Sprintf("%s=%s", name, value))
+	}
+
+	cmd.Env = cmdEnv
+
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error creating StdoutPipe for Cmd", err)
@@ -203,7 +279,14 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 		vars[k] = v
 	}
 
-	output, error := t.Run(vars)
+	task := &Task{
+		Key:      taskKey,
+		Template: t.Template,
+		Vars:     vars,
+		Autoenv:  t.Autoenv,
+	}
+
+	output, error := task.Run()
 	return output, error
 }
 
@@ -296,23 +379,23 @@ func PopulateCache(cache map[string]interface{}, keyComponents []string, value i
 	return nil
 }
 
-func (p *Project) FindTask(taskKey TaskKey) *Task {
+func (p *Project) FindTask(taskKey TaskKey) *TaskDef {
 	return p.Tasks[taskKey.String()]
 }
 
-func (p *Project) RegisterTask(taskKey TaskKey, task *Task) {
+func (p *Project) RegisterTask(taskKey TaskKey, task *TaskDef) {
 	p.Tasks[taskKey.String()] = task
 }
 
-func (t Task) Run(vars map[string]interface{}) (string, error) {
+func (t Task) Run() (string, error) {
 	var buff bytes.Buffer
-	if err := t.Template.Execute(&buff, vars); err != nil {
+	if err := t.Template.Execute(&buff, t.Vars); err != nil {
 		log.Panicf("Error: %v", err)
 	}
 
 	script := buff.String()
 
-	output, err := runScript(script)
+	output, err := t.runScript(script)
 
 	return output, err
 }
@@ -330,9 +413,10 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 
 	tk := strings.Join(append(parentTaskKey, target.Name), ".")
 	taskKey := p.CreateTaskKey(tk)
-	task := &Task{
-		Key:    taskKey,
-		Inputs: target.Inputs,
+	task := &TaskDef{
+		Key:     taskKey,
+		Inputs:  target.Inputs,
+		Autoenv: target.Autoenv,
 	}
 	p.RegisterTask(taskKey, task)
 
@@ -437,7 +521,7 @@ func main() {
 
 	p := &Project{
 		Name:              c.Name,
-		Tasks:             map[string]*Task{},
+		Tasks:             map[string]*TaskDef{},
 		CachedTaskOutputs: map[string]interface{}{},
 		Verbose:           false,
 	}

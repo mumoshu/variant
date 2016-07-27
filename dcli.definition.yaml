@@ -15,6 +15,15 @@ targets:
       echo err message 1>&2
       echo {{.env}}
       MYSQL_HOST={{.mysql.host}} sh -c 'export | grep MYSQL_HOST'
+- name: job
+  targets:
+  - name: deploy
+    inputs:
+    - name: job-id
+      description: 実行対象のジョブID
+    script: |
+      export | grep JOB_ID
+    autoenv: true
 - name: mysql
   targets:
   - name: host
