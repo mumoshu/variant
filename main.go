@@ -19,31 +19,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var data = `
-inputs:
-- name: env
-targets:
-- name: web
-  description: web関連のコマンド
-  targets:
-  - name: deploy
-    description: webをデプロイする
-    inputs:
-    - name: mysql.host
-      description: Webサーバの接続先となるMySQLホスト
-    script: |
-      echo deploy"(mysql_host={{.mysql.host}})"
-      echo {{index .args 0 }}
-      echo err message 1>&2
-      echo {{.env}}
-      MYSQL_HOST={{.mysql.host}} sh -c 'export | grep MYSQL_HOST'
-- name: mysql
-  targets:
-  - name: host
-    script: |
-      echo mysql
-`
-
 type Parameter struct {
 	Name     string `yaml:"name,omitempty"`
 	Value    string `yaml:"value,omitempty"`
@@ -454,7 +429,7 @@ func main() {
 	viper.SetEnvPrefix(strings.ToUpper(commandName))
 	viper.AutomaticEnv()
 
-	//Substitute the . and - to _, 
+	//Substitute the . and - to _,
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	viper.SetEnvKeyReplacer(replacer)
 
