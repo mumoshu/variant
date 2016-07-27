@@ -450,6 +450,14 @@ func main() {
 	viper.SetConfigName(c.Name)
 	viper.AddConfigPath(".")
 
+	//Set the environment prefix as app name
+	viper.SetEnvPrefix(strings.ToUpper(commandName))
+	viper.AutomaticEnv()
+
+	//Substitute the . and - to _, 
+	replacer := strings.NewReplacer(".", "_", "-", "_")
+	viper.SetEnvKeyReplacer(replacer)
+
 	//	var rootCmd = &cobra.Command{Use: c.Name}
 
 	p := &Project{
