@@ -16,3 +16,6 @@ smoke3: build
 
 smoke4: build
 	./dcli -v all
+
+smoke5: build
+	./dcli add 1 2

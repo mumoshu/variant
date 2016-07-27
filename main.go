@@ -336,13 +336,12 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 
 	vars := map[string](interface{}){}
 	vars["mysql"] = map[string]string{"host": "mysql2"}
-	vars["args"] = args
 
 	log.Debugf("Project: %s", spew.Sdump(p))
 	log.Debugf("TaskKey: %s", spew.Sdump(taskKey))
 	log.Debugf("TaskDef: %s", spew.Sdump(t))
 
-	inputs, err := p.AggregateInputsFor(taskKey)
+	inputs, err := p.AggregateInputsFor(taskKey, args)
 
 	if err != nil {
 		return "", errors.Annotatef(err, "Task `%s` failed", taskKey.String())
@@ -371,10 +370,10 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 	return output, error
 }
 
-func (p Project) AggregateInputsFor(taskKey TaskKey) (map[string]interface{}, error) {
+func (p Project) AggregateInputsFor(taskKey TaskKey, args []string) (map[string]interface{}, error) {
 	//	task := p.FindTask(taskKey)
 	aggregated := map[string]interface{}{}
-	if err := p.CollectInputsFor(taskKey, aggregated); err != nil {
+	if err := p.CollectInputsFor(taskKey, aggregated, args); err != nil {
 		return nil, errors.Annotatef(err, "AggregateInputsFor(%s) failed", taskKey.String())
 	}
 	if err := p.AggregateInputsForParent(taskKey, aggregated); err != nil {
@@ -390,7 +389,7 @@ func (p Project) AggregateInputsForParent(taskKey TaskKey, aggregated AnyMap) er
 	if err != nil {
 		log.Debug("%v", err)
 	} else {
-		if err := p.CollectInputsFor(*parentKey, aggregated); err != nil {
+		if err := p.CollectInputsFor(*parentKey, aggregated, []string{}); err != nil {
 			return errors.Annotatef(err, "AggregateInputsForParent(%s) failed", taskKey.String())
 		}
 		if err := p.AggregateInputsForParent(*parentKey, aggregated); err != nil {
@@ -400,23 +399,35 @@ func (p Project) AggregateInputsForParent(taskKey TaskKey, aggregated AnyMap) er
 	return nil
 }
 
-func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap) error {
+func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap, args []string) error {
 	log.Debugf("Collecting inputs for the task `%v`", taskKey.String())
 	task, err := p.FindTask(taskKey)
 	if err != nil {
 		return errors.Trace(err)
 	}
-	for _, input := range task.Inputs {
+	for i, input := range task.Inputs {
 		log.Debugf("Task `%v` depends on the input `%v`", taskKey.String(), input.Name)
 
 		k := input.Name
 		components := strings.Split(k, ".")
 
+		var arg *string
+		if len(args) >= i+1 {
+			log.Debugf("Positional arguments provided: %s=%s", k, args[i])
+			arg = &args[i]
+		}
+
 		provided := viper.GetString(k)
 
-		log.Debugf("viper provided: %v for %v", provided, k)
+		if provided != "" {
+			log.Debugf("viper provided: %v for %v", provided, k)
+		} else {
+			log.Debugf("viper provided no value for %v", k)
+		}
 
-		if provided == "" {
+		if arg != nil {
+			PopulateCache(aggregated, components, *arg)
+		} else if provided == "" {
 			var output interface{}
 			var err error
 			if output, err = FetchCache(p.CachedTaskOutputs, components); output == nil {

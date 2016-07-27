@@ -13,11 +13,12 @@ targets:
   - name: deploy
     description: webをデプロイする
     inputs:
+    - name: target
     - name: mysql.host
       description: Webサーバの接続先となるMySQLホスト
     script: |
       echo deploy"(mysql_host={{.mysql.host}})"
-      echo {{index .args 0 }}
+      echo {{.target}}
       echo err message 1>&2
       echo {{.env}}
       export 
@@ -38,3 +39,9 @@ targets:
   - name: host
     script: |
       echo mysql
+- name: add
+  inputs:
+  - name: left
+  - name: right
+  script: |
+    echo $(( {{.left}} + {{.right}} ))
