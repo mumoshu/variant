@@ -12,6 +12,7 @@ import (
 	"text/template"
 
 	log "github.com/Sirupsen/logrus"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/juju/errors"
@@ -19,6 +20,21 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
+
+func init() {
+	log.SetFormatter(new(prefixed.TextFormatter))
+
+	verbose := false
+	for _, e := range os.Environ() {
+		if strings.Contains(e, "VERBOSE=") {
+			verbose = true
+			break
+		}
+	}
+	if verbose {
+		log.SetLevel(log.DebugLevel)
+	}
+}
 
 type Parameter struct {
 	Name     string `yaml:"name,omitempty"`
@@ -32,6 +48,20 @@ type Input struct {
 	Description string               `yaml:"description,omitempty"`
 	Candidates  []string             `yaml:"candidates,omitempty"`
 	Complete    string               `yaml:"complete,omitempty"`
+}
+
+type Variable struct {
+	TaskKey     TaskKey
+	FullName    string
+	Name        string
+	Parameters  map[string]Parameter
+	Description string
+	Candidates  []string
+	Complete    string
+}
+
+func (v *Variable) ShortName() string {
+	return strings.SplitN(v.FullName, ".", 2)[1]
 }
 
 type Target struct {
@@ -74,6 +104,55 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return errors.Trace(err)
 }
 
+func (p *Project) AllVariables(taskDef *TaskDef) []*Variable {
+	return p.CollectVariablesRecursively(taskDef.Key, "")
+}
+
+func (p *Project) CollectVariablesRecursively(currentTaskKey TaskKey, path string) []*Variable {
+	result := []*Variable{}
+
+	ctx := log.WithFields(log.Fields{"prefix": fmt.Sprintf("%s", currentTaskKey.String())})
+
+	currentTaskDef, err := p.FindTask(currentTaskKey)
+
+	if err != nil {
+		tasks := []string{}
+		for _, t := range p.Tasks {
+			tasks = append(tasks, t.Key.String())
+		}
+		ctx.Debugf("is not a task in: %v", tasks)
+		return []*Variable{}
+	}
+
+	for _, input := range currentTaskDef.Inputs {
+		childKey := p.CreateTaskKeyFromInput(input)
+
+		ctx.Debugf("depends on %s", childKey.String())
+
+		vars := p.CollectVariablesRecursively(childKey, fmt.Sprintf("%s.", currentTaskKey.String()))
+
+		for _, v := range vars {
+			result = append(result, v)
+		}
+
+		variable := &Variable{
+			TaskKey:     currentTaskKey,
+			FullName:    fmt.Sprintf("%s.%s", currentTaskKey.String(), input.Name),
+			Name:        input.Name,
+			Parameters:  input.Parameters,
+			Description: input.Description,
+			Candidates:  input.Candidates,
+			Complete:    input.Complete,
+		}
+
+		ctx.WithFields(log.Fields{"full": variable.FullName, "task": variable.TaskKey.String()}).Debugf("has var %s", variable.Name)
+
+		result = append(result, variable)
+	}
+
+	return result
+}
+
 func newDefaultProjectConfig() *ProjectConfig {
 	return &ProjectConfig{
 		Inputs:  []*Input{},
@@ -98,12 +177,14 @@ type ProjectConfig struct {
 }
 
 type TaskDef struct {
-	Key      TaskKey
-	Template *template.Template
-	Inputs   []*Input
-	Autoenv  bool
-	Autodir  bool
-	Target   *Target
+	Key       TaskKey
+	Template  *template.Template
+	Inputs    []*Input
+	Variables []*Variable
+	Autoenv   bool
+	Autodir   bool
+	Target    *Target
+	Command   *cobra.Command
 }
 
 type Task struct {
@@ -310,6 +391,14 @@ func (p Project) CreateTaskKey(taskKeyStr string) TaskKey {
 	return TaskKey{Components: c}
 }
 
+func (p Project) CreateTaskKeyFromVariable(variable *Variable) TaskKey {
+	return p.CreateTaskKeyFromInputName(variable.Name)
+}
+
+func (p Project) CreateTaskKeyFromInput(input *Input) TaskKey {
+	return p.CreateTaskKeyFromInputName(input.Name)
+}
+
 func (p Project) CreateTaskKeyFromInputName(inputName string) TaskKey {
 	c := strings.Split(p.Name+"."+inputName, ".")
 	return TaskKey{Components: c}
@@ -405,25 +494,35 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap, args []str
 	if err != nil {
 		return errors.Trace(err)
 	}
-	for i, input := range task.Inputs {
-		log.Debugf("Task `%v` depends on the input `%v`", taskKey.String(), input.Name)
-
-		k := input.Name
-		components := strings.Split(k, ".")
+	for i, input := range task.Variables {
+		log.Debugf("Task `%v` depends on the input `%s`", taskKey.String(), input.ShortName())
+		ctx := log.WithFields(log.Fields{"prefix": input.Name})
 
 		var arg *string
 		if len(args) >= i+1 {
-			log.Debugf("Positional arguments provided: %s=%s", k, args[i])
+			ctx.Debugf("positional argument provided: %s", args[i])
 			arg = &args[i]
 		}
 
+		k := input.ShortName()
 		provided := viper.GetString(k)
 
 		if provided != "" {
-			log.Debugf("viper provided: %v for %v", provided, k)
+			ctx.Debugf("a command-line option or a configuration value provided: %s=%s", k, provided)
 		} else {
-			log.Debugf("viper provided no value for %v", k)
+			ctx.Debugf("no command-line option or config value provided: %s", k)
+
+			k = input.Name
+			provided = viper.GetString(k)
+
+			if provided != "" {
+				ctx.Debugf("a command-line option or a configuration value provided: %s=%s", k, provided)
+			} else {
+				ctx.Debugf("no command-line option or config value provided: %s", k)
+			}
 		}
+
+		components := strings.Split(input.Name, ".")
 
 		if arg != nil {
 			PopulateCache(aggregated, components, *arg)
@@ -431,9 +530,10 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap, args []str
 			var output interface{}
 			var err error
 			if output, err = FetchCache(p.CachedTaskOutputs, components); output == nil {
-				output, err = p.RunTask(p.CreateTaskKeyFromInputName(k), map[string]string{}, []string{})
+				output, err = p.RunTask(p.CreateTaskKeyFromVariable(input), map[string]string{}, []string{})
 				if err != nil {
-					return errors.Annotatef(err, "Input `%s` failed", k)
+					log.Errorf("`%s` required by `%s` is not provided. You have to provided it via a command line option or a positional argument!", k, taskKey.String())
+					return errors.Annotatef(err, "Task `%s` failed. No command line options or positional arguments provided for the input `%s`.", k, k)
 				}
 				PopulateCache(p.CachedTaskOutputs, components, output)
 			}
@@ -524,8 +624,21 @@ func (t Task) Run() (string, error) {
 }
 
 func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, parentTaskKey []string) (*cobra.Command, error) {
+	positionalArgs := ""
+	for i, input := range target.Inputs {
+		if i != len(target.Inputs)-1 {
+			positionalArgs += fmt.Sprintf("[%s ", input.Name)
+		} else {
+			positionalArgs += fmt.Sprintf("[%s", input.Name)
+		}
+	}
+	for i := 0; i < len(target.Inputs); i++ {
+		positionalArgs += "]"
+	}
+
 	var cmd = &cobra.Command{
-		Use: fmt.Sprintf("%s", target.Name),
+
+		Use: fmt.Sprintf("%s %s", target.Name, positionalArgs),
 	}
 	if target.Description != "" {
 		cmd.Short = target.Description
@@ -541,6 +654,7 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 		Inputs:  target.Inputs,
 		Autoenv: target.Autoenv,
 		Target:  target,
+		Command: cmd,
 	}
 	p.RegisterTask(taskKey, task)
 
@@ -558,13 +672,13 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 				name := strings.Replace(input.Name, ".", "-", -1)
 
 				log.Debugf("BindPFlag(name=%v)", name)
-				if len(target.Targets) == 0 {
-					viper.BindPFlag(input.Name, cmd.Flags().Lookup(name))
-					log.Debugf("Looked up %v: %v", name, cmd.Flags().Lookup(name))
-				} else {
-					viper.BindPFlag(input.Name, cmd.PersistentFlags().Lookup(name))
-					log.Debugf("Looked up %v: %v", name, cmd.PersistentFlags().Lookup(name))
-				}
+				//				if len(target.Targets) == 0 {
+				//					viper.BindPFlag(input.Name, cmd.Flags().Lookup(name))
+				//					log.Debugf("Looked up %v: %v", name, cmd.Flags().Lookup(name))
+				//				} else {
+				//					viper.BindPFlag(input.Name, cmd.PersistentFlags().Lookup(name))
+				//					log.Debugf("Looked up %v: %v", name, cmd.PersistentFlags().Lookup(name))
+				//				}
 			}
 
 			err := viper.ReadInConfig() // Find and read the config file
@@ -572,26 +686,10 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 				panic(errors.Errorf("Fatal error config file: %s \n", err))
 			}
 			if _, err := p.RunTask(taskKey, options, args); err != nil {
-				log.Panicf("Command failed: %v", errors.ErrorStack(err))
+				log.Errorf("%s failed.", taskKey.String())
+				log.Debugf("Stack:\n%v", errors.ErrorStack(errors.Trace(err)))
+				os.Exit(1)
 			}
-		}
-	}
-
-	for _, input := range target.Inputs {
-		var description string
-		if input.Description != "" {
-			description = input.Description
-		} else {
-			description = input.Name
-		}
-		name := strings.Replace(input.Name, ".", "-", -1)
-
-		if len(target.Targets) == 0 {
-			cmd.Flags().StringP(name, string(input.Name[0]), "", description)
-			viper.BindPFlag(name, cmd.Flags().Lookup(name))
-		} else {
-			cmd.PersistentFlags().StringP(name, string(input.Name[0]), "", description)
-			viper.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
 		}
 	}
 
@@ -599,7 +697,29 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 		rootCommand.AddCommand(cmd)
 	}
 
+	log.WithFields(log.Fields{"prefix": taskKey.String()}).Debug("is a task")
+
 	p.GenerateCommands(target.Targets, cmd, append(parentTaskKey, target.Name))
+
+	// After all the commands and tasks are generated...
+
+	//	for _, input := range target.Inputs {
+	//		var description string
+	//		if input.Description != "" {
+	//			description = input.Description
+	//		} else {
+	//			description = input.Name
+	//		}
+	//		name := strings.Replace(input.Name, ".", "-", -1)
+	//
+	//		if len(target.Targets) == 0 {
+	//			cmd.Flags().StringP(name, string(input.Name[0]), "", description)
+	//			viper.BindPFlag(name, cmd.Flags().Lookup(name))
+	//		} else {
+	//			cmd.PersistentFlags().StringP(name, string(input.Name[0]), "", description)
+	//			viper.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
+	//		}
+	//	}
 
 	return cmd, nil
 }
@@ -610,6 +730,41 @@ func (p *Project) GenerateCommands(targets []*Target, rootCommand *cobra.Command
 	}
 
 	return rootCommand, nil
+}
+
+func (p *Project) GenerateAllFlags() {
+	for _, taskDef := range p.Tasks {
+		taskDef.Variables = p.AllVariables(taskDef)
+		for _, input := range taskDef.Variables {
+			log.Debugf("%s -> %s", taskDef.Key.String(), input.Name)
+
+			target := taskDef.Target
+			cmd := taskDef.Command
+			var description string
+			if input.Description != "" {
+				description = input.Description
+			} else {
+				description = input.Name
+			}
+
+			var name string
+			if input.TaskKey.String() == taskDef.Key.String() {
+				name = input.Name
+			} else {
+				name = input.ShortName()
+			}
+
+			flagName := strings.Replace(name, ".", "-", -1)
+
+			if len(target.Targets) == 0 {
+				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
+				viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
+			} else {
+				cmd.PersistentFlags().StringP(name, string(input.Name[0]), "", description)
+				viper.BindPFlag(name, cmd.PersistentFlags().Lookup(flagName))
+			}
+		}
+	}
 }
 
 func main() {
@@ -654,6 +809,8 @@ func main() {
 	}
 
 	rootCmd, err := p.GenerateCommand(c, nil, []string{})
+
+	p.GenerateAllFlags()
 
 	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")
 

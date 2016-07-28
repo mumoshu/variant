@@ -12,10 +12,10 @@ smoke2: build
 	./dcli web deploy foo
 
 smoke3: build
-	./dcli -v web deploy
+	./dcli -v web deploy --target foo
 
 smoke4: build
-	./dcli -v all
+	./dcli -v add 1 2
 
 smoke5: build
-	./dcli add 1 2
+	./dcli all -v --web-deploy-target tar --job-deploy-job-id jobid

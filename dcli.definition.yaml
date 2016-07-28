@@ -45,3 +45,14 @@ targets:
   - name: right
   script: |
     echo $(( {{.left}} + {{.right}} ))
+- name: test
+  inputs:
+  - name: foo
+  - name: bar
+  - name: baz
+  - name: mysql.host
+  script: |
+    echo {{.foo}} {{.bar}} {{.baz}}
+    echo $FOO $BAR $BAZ
+    echo {{.mysql.host}}
+    echo $MYSQL_HOST
