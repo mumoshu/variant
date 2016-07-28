@@ -31,6 +31,7 @@ func init() {
 			break
 		}
 	}
+
 	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -74,7 +75,7 @@ type Target struct {
 	Autodir     bool      `yaml:"autodir,omitempty"`
 }
 
-type Target_ struct {
+type TargetV1 struct {
 	Name        string    `yaml:"name,omitempty"`
 	Description string    `yaml:"description,omitempty"`
 	Inputs      []*Input  `yaml:"inputs,omitempty"`
@@ -84,24 +85,82 @@ type Target_ struct {
 	Autodir     bool      `yaml:"autodir,omitempty"`
 }
 
+type TargetV2 struct {
+	Description string             `yaml:"description,omitempty"`
+	Inputs      []*Input           `yaml:"inputs,omitempty"`
+	Targets     map[string]*Target `yaml:"targets,omitempty"`
+	Script      string             `yaml:"script,omitempty"`
+	Autoenv     bool               `yaml:"autoenv,omitempty"`
+	Autodir     bool               `yaml:"autodir,omitempty"`
+}
+
 func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	data := Target_{
+	v1 := TargetV1{
 		Autoenv: true,
 		Autodir: true,
 		Inputs:  []*Input{},
 		Targets: []*Target{},
 	}
-	err := unmarshal(&data)
 
-	t.Name = data.Name
-	t.Description = data.Description
-	t.Inputs = data.Inputs
-	t.Targets = data.Targets
-	t.Script = data.Script
-	t.Autoenv = data.Autoenv
-	t.Autodir = data.Autodir
+	err := unmarshal(&v1)
+
+	if err == nil {
+		t.Name = v1.Name
+		t.Description = v1.Description
+		t.Inputs = v1.Inputs
+		t.Targets = v1.Targets
+		t.Script = v1.Script
+		t.Autoenv = v1.Autoenv
+		t.Autodir = v1.Autodir
+		return nil
+	}
+
+	var v2 *TargetV2
+
+	if err != nil {
+		v2 = &TargetV2{
+			Autoenv: true,
+			Autodir: true,
+			Inputs:  []*Input{},
+			Targets: map[string]*Target{},
+		}
+
+		err = unmarshal(&v2)
+
+		if err == nil {
+			t.Description = v2.Description
+			t.Inputs = v2.Inputs
+			t.Targets = ReadV2Targets(v2.Targets)
+			t.Script = v2.Script
+			t.Autoenv = v2.Autoenv
+			t.Autodir = v2.Autodir
+		}
+
+	}
 
 	return errors.Trace(err)
+}
+
+func (t *Target) CopyTo(other *Target) {
+	other.Description = t.Description
+	other.Inputs = t.Inputs
+	other.Targets = t.Targets
+	other.Script = t.Script
+	other.Autoenv = t.Autoenv
+	other.Autodir = t.Autodir
+}
+
+func ReadV2Targets(v2 map[string]*Target) []*Target {
+	result := []*Target{}
+	for name, t2 := range v2 {
+		t := &Target{}
+
+		t.Name = name
+		t2.CopyTo(t)
+
+		result = append(result, t)
+	}
+	return result
 }
 
 func (p *Project) AllVariables(taskDef *TaskDef) []*Variable {

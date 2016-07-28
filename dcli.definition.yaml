@@ -6,7 +6,7 @@ targets:
     - name: web.deploy
     - name: job.deploy
   script: |
-    echo all {{.web.deploy}} {{.job.deploy}}
+    echo all
 - name: web
   description: web関連のコマンド
   targets:

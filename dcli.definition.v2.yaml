@@ -1,0 +1,67 @@
+inputs:
+- name: env
+targets:
+  all:
+    inputs:
+    - name: web.deploy
+    - name: job.deploy
+    script: |
+      echo all
+  web:
+    description: web関連のコマンド
+    targets:
+      deploy:
+        description: webをデプロイする
+        inputs:
+        - name: target
+        - name: mysql.host
+          description: Webサーバの接続先となるMySQLホスト
+        script: |
+          echo deploy"(mysql_host={{.mysql.host}})"
+          echo {{.target}}
+          echo err message 1>&2
+          echo {{.env}}
+          export
+          MYSQL_HOST={{.mysql.host}} sh -c 'export | grep MYSQL_HOST'
+        autoenv: true
+  job:
+    targets:
+      deploy:
+        inputs:
+        - name: job-id
+          description: 実行対象のジョブID
+        script: |
+          echo {{.job_id}}
+          export | grep JOB_ID
+        autoenv: true
+  mysql:
+    targets:
+      host:
+        script: |
+          echo mysql
+  add:
+    inputs:
+    - name: left
+    - name: right
+    script: |
+      echo $(( {{.left}} + {{.right}} ))
+  test:
+    inputs:
+    - name: foo
+    - name: bar
+    - name: baz
+    - name: mysql.host
+    script: |
+      echo {{.foo}} {{.bar}} {{.baz}}
+      echo $FOO $BAR $BAZ
+      echo {{.mysql.host}}
+      echo $MYSQL_HOST
+  tests:
+    targets:
+      run:
+        inputs:
+        - name: a
+        - name: b
+        - name: mysql.host
+        script: |
+          echo $(pwd) $A $B $MYSQL_HOST {{.a}} {{.b}} {{.mysql.host}}
