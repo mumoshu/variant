@@ -19,3 +19,6 @@ smoke4: build
 
 smoke5: build
 	./dcli all -v --web-deploy-target tar --job-deploy-job-id jobid
+
+test:
+	make smoke{1,2,3,4,5}
