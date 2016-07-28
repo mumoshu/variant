@@ -309,6 +309,25 @@ func (t Task) RunCommand(command string) (string, error) {
 		l.Debugf("Autoenv is disabled")
 	}
 
+	if t.Autodir {
+		l.Debugf("Autodir is enabled")
+		parentKey, err := t.Key.Parent()
+		l.Debugf("full: %s", parentKey.String())
+		shortKey := parentKey.ShortString()
+		l.Debugf("short: %s", shortKey)
+		path := strings.Replace(shortKey, ".", "/", -1)
+		l.Debugf("Dir: %s", path)
+		if err != nil {
+			l.Debugf("%s does not have parent", t.Key.String())
+		} else {
+			if _, err := os.Stat(path); err == nil {
+				cmd.Dir = path
+			}
+		}
+	} else {
+		l.Debugf("Autodir is disabled")
+	}
+
 	invocation := struct {
 		Stdout chan bool
 		Stderr chan bool
@@ -408,6 +427,10 @@ func (t TaskKey) String() string {
 	return strings.Join(t.Components, ".")
 }
 
+func (t TaskKey) ShortString() string {
+	return strings.Join(t.Components[1:], ".")
+}
+
 func (t TaskKey) Parent() (*TaskKey, error) {
 	if len(t.Components) > 1 {
 		return &TaskKey{Components: t.Components[:len(t.Components)-1]}, nil
@@ -445,6 +468,7 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 		Template: t.Template,
 		Vars:     vars,
 		Autoenv:  t.Autoenv,
+		Autodir:  t.Autodir,
 		TaskDef:  t,
 	}
 
@@ -653,6 +677,7 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 		Key:     taskKey,
 		Inputs:  target.Inputs,
 		Autoenv: target.Autoenv,
+		Autodir: target.Autodir,
 		Target:  target,
 		Command: cmd,
 	}

@@ -56,3 +56,12 @@ targets:
     echo $FOO $BAR $BAZ
     echo {{.mysql.host}}
     echo $MYSQL_HOST
+- name: tests
+  targets:
+  - name: run
+    inputs:
+    - name: a
+    - name: b
+    - name: mysql.host
+    script: |
+      echo $(pwd) $A $B $MYSQL_HOST {{.a}} {{.b}} {{.mysql.host}}
