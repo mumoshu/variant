@@ -3,16 +3,25 @@ GITHUB_USER ?= mumoshu
 GITHUB_REPO ?= variant
 VERSION ?= v0.0.1
 
+define GO_FMT
+test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -d {} + | tee /dev/stderr)" || \
+test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -w {} + | tee /dev/stderr)"
+endef
+
+install-local: /usr/local/bin/var
+
+/usr/local/bin/var: dist/$(VERSION)
+	cp dist/$(VERSION)/var /usr/local/bin/var
+
 gofmt:	
-	test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -d {} + | tee /dev/stderr)" || \
-	test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -w {} + | tee /dev/stderr)"
+	$(call GO_FMT)
 
-build: gofmt
-	go build -o $(CMD) .
+build: dist/$(VERSION)
 
-dist/$(VERSION): build
+dist/$(VERSION):
+	$(call GO_FMT)
 	mkdir -p dist/$(VERSION)
-	cp $(CMD) dist/$(VERSION)/
+	go build -o dist/$(VERSION)/var
 
 release: dist/$(VERSION)
 	ghr -u $(GITHUB_USER) -r $(GITHUB_REPO) -c master --prerelease $(VERSION) dist/$(VERSION)
