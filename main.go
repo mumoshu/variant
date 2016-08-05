@@ -986,7 +986,7 @@ func (p *Project) GenerateAllFlags() {
 				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
 				viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
 			} else {
-				cmd.PersistentFlags().StringP(name, string(input.Name[0]), "", description)
+				cmd.PersistentFlags().StringP(flagName, "" /*string(input.Name[0])*/, "" /*default*/, description)
 				viper.BindPFlag(name, cmd.PersistentFlags().Lookup(flagName))
 			}
 		}
