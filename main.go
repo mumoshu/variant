@@ -26,6 +26,8 @@ import (
 func init() {
 	log.SetFormatter(new(prefixed.TextFormatter))
 
+	log.SetOutput(os.Stderr)
+
 	verbose := false
 	for _, e := range os.Environ() {
 		if strings.Contains(e, "VERBOSE=") {
@@ -504,12 +506,16 @@ func (t Task) RunCommand(command string) (string, error) {
 		l.Debugf("Autodir is disabled")
 	}
 
-	invocation := struct {
-		Stdout chan bool
-		Stderr chan bool
+	channels := struct {
+		EndOfStdout chan bool
+		EndOfStderr chan bool
+		Stdout      chan string
+		Stderr      chan string
 	}{
-		Stdout: make(chan bool),
-		Stderr: make(chan bool),
+		EndOfStdout: make(chan bool),
+		EndOfStderr: make(chan bool),
+		Stdout:      make(chan string),
+		Stderr:      make(chan string),
 	}
 
 	cmdReader, err := cmd.StdoutPipe()
@@ -522,11 +528,11 @@ func (t Task) RunCommand(command string) (string, error) {
 	var output string
 	go func() {
 		defer func() {
-			invocation.Stdout <- true
+			channels.EndOfStdout <- true
 		}()
 		for scanner.Scan() {
 			text := scanner.Text()
-			l.WithFields(log.Fields{"stream": "stdout"}).Printf("%s", text)
+			channels.Stdout <- text
 			output += text
 		}
 	}()
@@ -539,11 +545,11 @@ func (t Task) RunCommand(command string) (string, error) {
 	errScanner := bufio.NewScanner(errReader)
 	go func() {
 		defer func() {
-			invocation.Stderr <- true
+			channels.EndOfStderr <- true
 		}()
 		for errScanner.Scan() {
 			text := errScanner.Text()
-			l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
+			channels.Stderr <- text
 		}
 	}()
 
@@ -556,8 +562,24 @@ func (t Task) RunCommand(command string) (string, error) {
 	var waitStatus syscall.WaitStatus
 	err = cmd.Wait()
 
-	<-invocation.Stdout
-	<-invocation.Stderr
+	stdoutEnds := false
+	stderrEnds := false
+
+	// Coordinating stdout/stderr in this single place to not screw up message ordering
+	for {
+		select {
+		case stdoutEnds = <-channels.EndOfStdout:
+		case stderrEnds = <-channels.EndOfStderr:
+		case text := <-channels.Stdout:
+			fmt.Println(text)
+		case text := <-channels.Stderr:
+			l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
+
+		}
+		if stdoutEnds && stderrEnds {
+			break
+		}
+	}
 
 	if err != nil {
 		l.Fatalf("%v", err)
