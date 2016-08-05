@@ -1,4 +1,4 @@
-CMD ?= ./var
+CMD ?= dist/$(VERSION)/var
 GITHUB_USER ?= mumoshu
 GITHUB_REPO ?= variant
 VERSION ?= v0.0.1
@@ -15,6 +15,9 @@ install-local: /usr/local/bin/var
 
 gofmt:	
 	$(call GO_FMT)
+
+clean:
+	rm -Rf dist/$(VERSION)
 
 build: dist/$(VERSION)
 
@@ -43,6 +46,9 @@ smoke4: build
 
 smoke5: build
 	$(CMD) all -v --web-deploy-target tar --job-deploy-job-id jobid
+
+smoke6: build
+	VARFILE=var.definition.v3.yaml dist/v0.0.1/var foo bar --message foo
 
 test:
 	make smoke{1,2,3,4,5}

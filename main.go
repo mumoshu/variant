@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
+	"reflect"
 	"strings"
 	"syscall"
 	"text/template"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/juju/errors"
+	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
@@ -35,6 +38,18 @@ func init() {
 	if verbose {
 		log.SetLevel(log.DebugLevel)
 	}
+}
+
+func ParseEnviron() map[string]string {
+	mergedEnv := map[string]string{}
+
+	for _, pair := range os.Environ() {
+		splits := strings.SplitN(pair, "=", 2)
+		key, value := splits[0], splits[1]
+		mergedEnv[key] = value
+	}
+
+	return mergedEnv
 }
 
 type Parameter struct {
@@ -69,7 +84,7 @@ type Target struct {
 	Name        string    `yaml:"name,omitempty"`
 	Description string    `yaml:"description,omitempty"`
 	Inputs      []*Input  `yaml:"inputs,omitempty"`
-	Targets     []*Target `yaml:"targets,omitempty"`
+	Targets     []*Target `yaml:"flows,omitempty"`
 	Script      string    `yaml:"script,omitempty"`
 	Autoenv     bool      `yaml:"autoenv,omitempty"`
 	Autodir     bool      `yaml:"autodir,omitempty"`
@@ -79,7 +94,7 @@ type TargetV1 struct {
 	Name        string    `yaml:"name,omitempty"`
 	Description string    `yaml:"description,omitempty"`
 	Inputs      []*Input  `yaml:"inputs,omitempty"`
-	Targets     []*Target `yaml:"targets,omitempty"`
+	Targets     []*Target `yaml:"flows,omitempty"`
 	Script      string    `yaml:"script,omitempty"`
 	Autoenv     bool      `yaml:"autoenv,omitempty"`
 	Autodir     bool      `yaml:"autodir,omitempty"`
@@ -88,13 +103,15 @@ type TargetV1 struct {
 type TargetV2 struct {
 	Description string             `yaml:"description,omitempty"`
 	Inputs      []*Input           `yaml:"inputs,omitempty"`
-	Targets     map[string]*Target `yaml:"targets,omitempty"`
+	Targets     map[string]*Target `yaml:"flows,omitempty"`
 	Script      string             `yaml:"script,omitempty"`
 	Autoenv     bool               `yaml:"autoenv,omitempty"`
 	Autodir     bool               `yaml:"autodir,omitempty"`
 }
 
 func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	log.Debugf("Trying to parse v1 format")
+
 	v1 := TargetV1{
 		Autoenv: true,
 		Autodir: true,
@@ -103,6 +120,12 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 
 	err := unmarshal(&v1)
+
+	if v1.Name == "" && len(v1.Targets) == 0 {
+		e := fmt.Errorf("Not v1 format: Both Name and Targets are empty")
+		log.Debugf("%s", e)
+		err = e
+	}
 
 	if err == nil {
 		t.Name = v1.Name
@@ -118,6 +141,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var v2 *TargetV2
 
 	if err != nil {
+		log.Debugf("Trying to parse v2 format")
 		v2 = &TargetV2{
 			Autoenv: true,
 			Autodir: true,
@@ -126,6 +150,12 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 
 		err = unmarshal(&v2)
+
+		if len(v2.Targets) == 0 && t.Script == "" {
+			e := fmt.Errorf("Not v2 format: Targets and Script are both missing.")
+			log.Debugf("%s", e)
+			err = e
+		}
 
 		if err == nil {
 			t.Description = v2.Description
@@ -136,6 +166,35 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Autodir = v2.Autodir
 		}
 
+	}
+
+	if err != nil {
+		log.Debugf("Trying to parse v3 format")
+
+		v3 := map[string]interface{}{}
+		err := unmarshal(&v3)
+
+		if err != nil {
+			return errors.Annotate(err, "Failed to unmarshal as a map.")
+		}
+
+		if v3["flows"] != nil {
+			rawFlows, ok := v3["flows"].(map[interface{}]interface{})
+			if !ok {
+				return fmt.Errorf("Not a map[interface{}]interface{}: v3[\"flows\"]'s type: %s, value: %s", reflect.TypeOf(v3["flows"]), v3["flows"])
+			}
+			flows, err := CastKeysToStrings(rawFlows)
+			if err != nil {
+				return errors.Annotate(err, "Failed to unmarshal as a map[string]interface{}")
+			}
+			t.Autoenv = true
+			t.Autodir = true
+			t.Inputs = []*Input{}
+
+			t.Targets = ReadV3Targets(flows)
+
+			return nil
+		}
 	}
 
 	return errors.Trace(err)
@@ -157,6 +216,65 @@ func ReadV2Targets(v2 map[string]*Target) []*Target {
 
 		t.Name = name
 		t2.CopyTo(t)
+
+		result = append(result, t)
+	}
+	return result
+}
+
+func CastKeysToStrings(m map[interface{}]interface{}) (map[string]interface{}, error) {
+	r := map[string]interface{}{}
+	for k, v := range m {
+		str, ok := k.(string)
+		if !ok {
+			return nil, fmt.Errorf("Unexpected type %s for key %s", reflect.TypeOf(k), k)
+		}
+		r[str] = v
+	}
+	return r, nil
+}
+
+func ReadV3Targets(v3 map[string]interface{}) []*Target {
+	result := []*Target{}
+	for k, v := range v3 {
+		t := &Target{
+			Autoenv: true,
+			Autodir: true,
+			Inputs:  []*Input{},
+			Targets: []*Target{},
+		}
+
+		log.Debugf("Arrived %s: %v", k, v)
+		log.Debugf("Type of value: %v", reflect.TypeOf(v))
+
+		t.Name = k
+
+		var err error
+
+		i2i, ok := v.(map[interface{}]interface{})
+
+		if !ok {
+			panic(fmt.Errorf("Not a map[interface{}]interface{}: %s", v))
+		}
+
+		s2i, err := CastKeysToStrings(i2i)
+
+		if err != nil {
+			panic(errors.Annotate(err, "Unexpected structure"))
+		}
+
+		leaf := s2i["script"] != nil
+
+		if !leaf {
+			t.Targets = ReadV3Targets(s2i)
+		} else {
+			log.Debugf("Not a nested map")
+			err = mapstructure.Decode(s2i, t)
+			if err != nil {
+				panic(errors.Trace(err))
+			}
+			log.Debugf("Loaded %v", t)
+		}
 
 		result = append(result, t)
 	}
@@ -231,7 +349,7 @@ type ProjectConfig struct {
 	Name        string
 	Description string    `yaml:"description,omitempty"`
 	Inputs      []*Input  `yaml:"inputs,omitempty"`
-	Targets     []*Target `yaml:"targets,omitempty"`
+	Targets     []*Target `yaml:"flows,omitempty"`
 	Script      string    `yaml:"script,omitempty"`
 }
 
@@ -515,7 +633,7 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 	inputs, err := p.AggregateInputsFor(taskKey, args)
 
 	if err != nil {
-		return "", errors.Annotatef(err, "Task `%s` failed", taskKey.String())
+		return "", errors.Annotatef(err, "Flow `%s` failed", taskKey.String())
 	}
 
 	for k, v := range inputs {
@@ -536,7 +654,7 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 	output, error := task.Run()
 
 	if error != nil {
-		error = errors.Annotatef(error, "Task `%s` failed", taskKey.String())
+		error = errors.Annotatef(error, "Flow `%s` failed", taskKey.String())
 	}
 
 	return output, error
@@ -546,10 +664,10 @@ func (p Project) AggregateInputsFor(taskKey TaskKey, args []string) (map[string]
 	//	task := p.FindTask(taskKey)
 	aggregated := map[string]interface{}{}
 	if err := p.CollectInputsFor(taskKey, aggregated, args); err != nil {
-		return nil, errors.Annotatef(err, "AggregateInputsFor(%s) failed", taskKey.String())
+		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", taskKey.String())
 	}
 	if err := p.AggregateInputsForParent(taskKey, aggregated); err != nil {
-		return nil, errors.Annotatef(err, "AggregateInputsFor(%s) failed", taskKey.String())
+		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", taskKey.String())
 	}
 	return aggregated, nil
 }
@@ -615,8 +733,7 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap, args []str
 			if output, err = FetchCache(p.CachedTaskOutputs, components); output == nil {
 				output, err = p.RunTask(p.CreateTaskKeyFromVariable(input), map[string]string{}, []string{})
 				if err != nil {
-					log.Errorf("`%s` required by `%s` is not provided. You have to provided it via a command line option or a positional argument!", k, taskKey.String())
-					return errors.Annotatef(err, "Task `%s` failed. No command line options or positional arguments provided for the input `%s`.", k, k)
+					return errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", k)
 				}
 				PopulateCache(p.CachedTaskOutputs, components, output)
 			}
@@ -770,7 +887,13 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 				panic(errors.Errorf("Fatal error config file: %s \n", err))
 			}
 			if _, err := p.RunTask(taskKey, options, args); err != nil {
-				log.Errorf("%s failed.", taskKey.String())
+				c := strings.Join(strings.Split(taskKey.String(), "."), " ")
+				stack := strings.Split(errors.ErrorStack(err), "\n")
+				for i := len(stack)/2 - 1; i >= 0; i-- {
+					opp := len(stack) - 1 - i
+					stack[i], stack[opp] = stack[opp], stack[i]
+				}
+				log.Errorf("Command `%s` failed\n\nCaused by:\n%s", c, strings.Join(stack, "\n"))
 				log.Debugf("Stack:\n%v", errors.ErrorStack(errors.Trace(err)))
 				os.Exit(1)
 			}
@@ -851,23 +974,54 @@ func (p *Project) GenerateAllFlags() {
 	}
 }
 
-func main() {
-	commandName := strings.Replace(os.Args[0], "./", "", -1)
+func ReadFromString(data string) (*Target, error) {
+	err, t := ReadFromBytes([]byte(data))
+	return err, t
+}
 
-	yamlBytes, err := ioutil.ReadFile(fmt.Sprintf("%s.definition.yaml", commandName))
+func ReadFromBytes(data []byte) (*Target, error) {
+	c := newDefaultTargetConfig()
+	if err := yaml.Unmarshal(data, c); err != nil {
+		return nil, errors.Annotatef(err, "yaml.Unmarshal failed: %v", err)
+	}
+	return c, nil
+}
+
+func ReadFromFile(path string) (*Target, error) {
+	log.Debugf("Loading %s", path)
+
+	yamlBytes, err := ioutil.ReadFile(path)
 
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("Error while loading %s", path)
 	}
 
-	c := newDefaultTargetConfig()
-	//	if err := yaml.Unmarshal([]byte(data), c); err != nil {
-	if err := yaml.Unmarshal(yamlBytes, c); err != nil {
-		//return nil, errors.Errorf("failed to parse cluster: %v", err)
-		log.Fatalf("failed to parse project: %v", err)
+	t, err := ReadFromBytes(yamlBytes)
+
+	if err != nil {
+		return nil, errors.Annotatef(err, "Error while loading %s", path)
 	}
-	//spew.Printf("ProjectConfig: %#+v", c)
-	//fmt.Printf("Target: %v", c)
+
+	return t, nil
+}
+
+func main() {
+	commandName := path.Base(os.Args[0])
+
+	varfile := fmt.Sprintf("%s.definition.yaml", commandName)
+
+	environ := ParseEnviron()
+
+	if environ["VARFILE"] != "" {
+		varfile = environ["VARFILE"]
+	}
+
+	c, err := ReadFromFile(varfile)
+
+	if err != nil {
+		log.Errorf(errors.ErrorStack(err))
+		panic(errors.Trace(err))
+	}
 
 	c.Name = commandName
 
