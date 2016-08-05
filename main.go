@@ -16,7 +16,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/juju/errors"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
@@ -625,10 +624,6 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 
 	vars := map[string](interface{}){}
 	vars["mysql"] = map[string]string{"host": "mysql2"}
-
-	log.Debugf("Project: %s", spew.Sdump(p))
-	log.Debugf("TaskKey: %s", spew.Sdump(taskKey))
-	log.Debugf("TaskDef: %s", spew.Sdump(t))
 
 	inputs, err := p.AggregateInputsFor(taskKey, args)
 
