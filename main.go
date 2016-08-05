@@ -111,6 +111,11 @@ type TargetV2 struct {
 }
 
 func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	v3 := map[string]interface{}{}
+	v3err := unmarshal(&v3)
+
+	log.Debugf("Unmarshalling: %v", v3)
+
 	log.Debugf("Trying to parse v1 format")
 
 	v1 := TargetV1{
@@ -152,7 +157,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 		err = unmarshal(&v2)
 
-		if len(v2.Targets) == 0 && t.Script == "" {
+		if len(v2.Targets) == 0 && v2.Script == "" {
 			e := fmt.Errorf("Not v2 format: Targets and Script are both missing.")
 			log.Debugf("%s", e)
 			err = e
@@ -172,11 +177,8 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		log.Debugf("Trying to parse v3 format")
 
-		v3 := map[string]interface{}{}
-		err := unmarshal(&v3)
-
-		if err != nil {
-			return errors.Annotate(err, "Failed to unmarshal as a map.")
+		if v3err != nil {
+			return errors.Annotate(v3err, "Failed to unmarshal as a map.")
 		}
 
 		if v3["flows"] != nil {
