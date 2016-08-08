@@ -395,12 +395,12 @@ type T struct {
 	}
 }
 
-func (t Task) RunScript(script string) (string, error) {
+func (t Task) RunScript(script string, depended bool) (string, error) {
 	commands := strings.Split(script, "\n")
 	var lastOutput string
 	for _, command := range commands {
 		if command != "" {
-			output, err := t.RunCommand(command)
+			output, err := t.RunCommand(command, depended)
 			if err != nil {
 				return output, err
 			}
@@ -450,7 +450,7 @@ func (t Task) GenerateAutoenvRecursively(path string, env map[string]interface{}
 	return result, nil
 }
 
-func (t Task) RunCommand(command string) (string, error) {
+func (t Task) RunCommand(command string, depended bool) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
 	log.Debugf("running command: %s", command)
@@ -565,12 +565,18 @@ func (t Task) RunCommand(command string) (string, error) {
 	stdoutEnds := false
 	stderrEnds := false
 
+	stdoutlog := log.WithFields(log.Fields{"prefix": "stdout"})
+
 	// Coordinating stdout/stderr in this single place to not screw up message ordering
 	for {
 		select {
 		case text, ok := <-channels.Stdout:
 			if ok {
-				fmt.Println(text)
+				if depended {
+					stdoutlog.Debug(text)
+				} else {
+					fmt.Println(text)
+				}
 			} else {
 				stdoutEnds = true
 			}
@@ -645,7 +651,7 @@ func (t TaskKey) Parent() (*TaskKey, error) {
 	}
 }
 
-func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []string) (string, error) {
+func (p Project) RunTask(taskKey TaskKey, args []string, depended bool) (string, error) {
 	t, err := p.FindTask(taskKey)
 
 	if err != nil {
@@ -676,7 +682,7 @@ func (p Project) RunTask(taskKey TaskKey, options map[string]string, args []stri
 
 	log.Debugf("Task: %v", task)
 
-	output, error := task.Run()
+	output, error := task.Run(depended)
 
 	if error != nil {
 		error = errors.Annotatef(error, "Flow `%s` failed", taskKey.String())
@@ -756,7 +762,7 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap, args []str
 			var output interface{}
 			var err error
 			if output, err = FetchCache(p.CachedTaskOutputs, components); output == nil {
-				output, err = p.RunTask(p.CreateTaskKeyFromVariable(input), map[string]string{}, []string{})
+				output, err = p.RunTask(p.CreateTaskKeyFromVariable(input), []string{}, true)
 				if err != nil {
 					return errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", k)
 				}
@@ -831,7 +837,13 @@ func (p *Project) RegisterTask(taskKey TaskKey, task *TaskDef) {
 	p.Tasks[taskKey.String()] = task
 }
 
-func (t Task) Run() (string, error) {
+func (t Task) Run(depended bool) (string, error) {
+	if depended {
+		log.Debugf("running flow: %s", t.Key.String())
+	} else {
+		log.Infof("running flow: %s", t.Key.String())
+	}
+
 	var buff bytes.Buffer
 	if err := t.Template.Execute(&buff, t.Vars); err != nil {
 		return "", errors.Annotatef(err, "Template execution failed.\n\nScript:\n%s\n\nVars:\n%v", t.TaskDef.Target.Script, t.Vars)
@@ -839,7 +851,7 @@ func (t Task) Run() (string, error) {
 
 	script := buff.String()
 
-	output, err := t.RunScript(script)
+	output, err := t.RunScript(script, depended)
 
 	if err != nil {
 		err = errors.Annotate(err, "Task#Run failed while running a script")
@@ -869,8 +881,6 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 		cmd.Short = target.Description
 		cmd.Long = target.Description
 	}
-
-	options := map[string]string{}
 
 	tk := strings.Join(append(parentTaskKey, target.Name), ".")
 	taskKey := p.CreateTaskKey(tk)
@@ -911,7 +921,7 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 			if err != nil {             // Handle errors reading the config file
 				panic(errors.Errorf("Fatal error config file: %s \n", err))
 			}
-			if _, err := p.RunTask(taskKey, options, args); err != nil {
+			if _, err := p.RunTask(taskKey, args, false); err != nil {
 				c := strings.Join(strings.Split(taskKey.String(), "."), " ")
 				stack := strings.Split(errors.ErrorStack(err), "\n")
 				for i := len(stack)/2 - 1; i >= 0; i-- {
