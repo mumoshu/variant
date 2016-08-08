@@ -450,6 +450,11 @@ func (t Task) GenerateAutoenvRecursively(path string, env map[string]interface{}
 	return result, nil
 }
 
+type StreamEvent struct {
+	Text string
+	Eof  bool
+}
+
 func (t Task) RunCommand(command string) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
@@ -508,17 +513,7 @@ func (t Task) RunCommand(command string) (string, error) {
 		l.Debugf("Autodir is disabled")
 	}
 
-	channels := struct {
-		EndOfStdout chan bool
-		EndOfStderr chan bool
-		Stdout      chan string
-		Stderr      chan string
-	}{
-		EndOfStdout: make(chan bool),
-		EndOfStderr: make(chan bool),
-		Stdout:      make(chan string),
-		Stderr:      make(chan string),
-	}
+	// Pipes
 
 	cmdReader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -526,43 +521,52 @@ func (t Task) RunCommand(command string) (string, error) {
 		os.Exit(1)
 	}
 
-	scanner := bufio.NewScanner(cmdReader)
-	var output string
-	go func() {
-		defer func() {
-			channels.EndOfStdout <- true
-		}()
-		for scanner.Scan() {
-			text := scanner.Text()
-			channels.Stdout <- text
-			output += text
-		}
-	}()
-
 	errReader, err := cmd.StderrPipe()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error creating StderrPipe for Cmd", err)
 		os.Exit(1)
 	}
-	errScanner := bufio.NewScanner(errReader)
-	go func() {
-		defer func() {
-			channels.EndOfStderr <- true
-		}()
-		for errScanner.Scan() {
-			text := errScanner.Text()
-			channels.Stderr <- text
-		}
-	}()
 
-	err = cmd.Start()
-	if err != nil {
+	// Start the command
+	if err := cmd.Start(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error starting Cmd", err)
 		os.Exit(1)
 	}
 
-	var waitStatus syscall.WaitStatus
-	err = cmd.Wait()
+	// Receive stdout and stderr
+
+	channels := struct {
+		Stdout chan StreamEvent
+		Stderr chan StreamEvent
+	}{
+		Stdout: make(chan StreamEvent),
+		Stderr: make(chan StreamEvent),
+	}
+
+	scanner := bufio.NewScanner(cmdReader)
+	var output string
+	go func() {
+		defer func() {
+			channels.Stdout <- StreamEvent{Eof: true}
+		}()
+		for scanner.Scan() {
+			text := scanner.Text()
+			channels.Stdout <- StreamEvent{Eof: false, Text: text}
+			output += text
+		}
+		//		channels.Stdout <- StreamEvent{Eof: true}
+	}()
+
+	errScanner := bufio.NewScanner(errReader)
+	go func() {
+		defer func() {
+			channels.Stderr <- StreamEvent{Eof: true}
+		}()
+		for errScanner.Scan() {
+			text := errScanner.Text()
+			channels.Stderr <- StreamEvent{Eof: false, Text: text}
+		}
+	}()
 
 	stdoutEnds := false
 	stderrEnds := false
@@ -570,18 +574,26 @@ func (t Task) RunCommand(command string) (string, error) {
 	// Coordinating stdout/stderr in this single place to not screw up message ordering
 	for {
 		select {
-		case stdoutEnds = <-channels.EndOfStdout:
-		case stderrEnds = <-channels.EndOfStderr:
-		case text := <-channels.Stdout:
-			fmt.Println(text)
-		case text := <-channels.Stderr:
-			l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
-
+		case e1 := <-channels.Stdout:
+			if e1.Eof {
+				stdoutEnds = true
+			} else {
+				fmt.Println(e1.Text)
+			}
+		case event := <-channels.Stderr:
+			if event.Eof {
+				stderrEnds = true
+			} else {
+				l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", event.Text)
+			}
 		}
 		if stdoutEnds && stderrEnds {
 			break
 		}
 	}
+
+	var waitStatus syscall.WaitStatus
+	err = cmd.Wait()
 
 	if err != nil {
 		l.Fatalf("%v", err)
