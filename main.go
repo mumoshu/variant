@@ -450,11 +450,6 @@ func (t Task) GenerateAutoenvRecursively(path string, env map[string]interface{}
 	return result, nil
 }
 
-type StreamEvent struct {
-	Text string
-	Eof  bool
-}
-
 func (t Task) RunCommand(command string) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
@@ -536,35 +531,34 @@ func (t Task) RunCommand(command string) (string, error) {
 	// Receive stdout and stderr
 
 	channels := struct {
-		Stdout chan StreamEvent
-		Stderr chan StreamEvent
+		Stdout chan string
+		Stderr chan string
 	}{
-		Stdout: make(chan StreamEvent),
-		Stderr: make(chan StreamEvent),
+		Stdout: make(chan string),
+		Stderr: make(chan string),
 	}
 
 	scanner := bufio.NewScanner(cmdReader)
 	var output string
 	go func() {
 		defer func() {
-			channels.Stdout <- StreamEvent{Eof: true}
+			close(channels.Stdout)
 		}()
 		for scanner.Scan() {
 			text := scanner.Text()
-			channels.Stdout <- StreamEvent{Eof: false, Text: text}
+			channels.Stdout <- text
 			output += text
 		}
-		//		channels.Stdout <- StreamEvent{Eof: true}
 	}()
 
 	errScanner := bufio.NewScanner(errReader)
 	go func() {
 		defer func() {
-			channels.Stderr <- StreamEvent{Eof: true}
+			close(channels.Stderr)
 		}()
 		for errScanner.Scan() {
 			text := errScanner.Text()
-			channels.Stderr <- StreamEvent{Eof: false, Text: text}
+			channels.Stderr <- text
 		}
 	}()
 
@@ -574,17 +568,17 @@ func (t Task) RunCommand(command string) (string, error) {
 	// Coordinating stdout/stderr in this single place to not screw up message ordering
 	for {
 		select {
-		case e1 := <-channels.Stdout:
-			if e1.Eof {
+		case text, ok := <-channels.Stdout:
+			if ok {
+				fmt.Println(text)
+			} else {
 				stdoutEnds = true
-			} else {
-				fmt.Println(e1.Text)
 			}
-		case event := <-channels.Stderr:
-			if event.Eof {
-				stderrEnds = true
+		case text, ok := <-channels.Stderr:
+			if ok {
+				l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
 			} else {
-				l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", event.Text)
+				stderrEnds = true
 			}
 		}
 		if stdoutEnds && stderrEnds {
