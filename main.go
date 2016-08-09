@@ -659,7 +659,7 @@ func (p Project) RunTask(taskKey TaskKey, args []string, depended bool) (string,
 	}
 
 	vars := map[string](interface{}){}
-	vars["mysql"] = map[string]string{"host": "mysql2"}
+	vars["args"] = args
 
 	inputs, err := p.AggregateInputsFor(taskKey, args)
 
