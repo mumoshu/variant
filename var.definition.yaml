@@ -1,6 +1,11 @@
 inputs:
 - name: env
 flows:
+- name: test2
+  inputs:
+    - name: foo
+  script: |
+    echo aa {{.foo}}
 - name: all
   inputs:
     - name: web.deploy

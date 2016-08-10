@@ -48,7 +48,10 @@ smoke5: build
 	$(CMD) all -v --web-deploy-target tar --job-deploy-job-id jobid
 
 smoke6: build
-	VARFILE=var.definition.v3.yaml dist/v0.0.1/var foo bar --message foo
+	VARFILE=var.definition.v3.yaml $(CMD) foo bar --message foo
+
+smoke7: build
+	$(CMD) env set dev && $(CMD) test2
 
 test:
-	make smoke{1,2,3,4,5}
+	make smoke{1,2,3,4,5,6,7}

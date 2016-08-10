@@ -21,6 +21,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
+
+	"./cmd"
+	"./env"
 )
 
 func init() {
@@ -917,10 +920,10 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 				//				}
 			}
 
-			err := viper.ReadInConfig() // Find and read the config file
-			if err != nil {             // Handle errors reading the config file
-				panic(errors.Errorf("Fatal error config file: %s \n", err))
-			}
+			//			err := viper.ReadInConfig() // Find and read the config file
+			//			if err != nil {             // Handle errors reading the config file
+			//				panic(errors.Errorf("Fatal error config file: %s \n", err))
+			//			}
 			if _, err := p.RunTask(taskKey, args, false); err != nil {
 				c := strings.Join(strings.Split(taskKey.String(), "."), " ")
 				stack := strings.Split(errors.ErrorStack(err), "\n")
@@ -1060,9 +1063,53 @@ func main() {
 
 	c.Name = commandName
 
+	p := &Project{
+		Name:              c.Name,
+		Tasks:             map[string]*TaskDef{},
+		CachedTaskOutputs: map[string]interface{}{},
+		Verbose:           false,
+	}
+
+	rootCmd, err := p.GenerateCommand(c, nil, []string{})
+	rootCmd.AddCommand(cmd.EnvCmd)
+
+	p.GenerateAllFlags()
+
+	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")
+
+	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
+	rootCmd.ParseFlags(os.Args[1:])
+
+	// Workaround: We want to set log leve via command-line option before the rootCmd is run
+	p.Reconfigure()
+
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+
 	viper.SetConfigType("yaml")
-	viper.SetConfigName(c.Name)
 	viper.AddConfigPath(".")
+
+	// See "How to merge two config files" https://github.com/spf13/viper/issues/181
+	viper.SetConfigName(c.Name)
+	log.Infof("Loading common configuration from %s.yaml", c.Name)
+	if err := viper.MergeInConfig(); err != nil {
+		panic(err)
+	}
+
+	env.SetAppName(commandName)
+	log.Infof("Loading current env from %s", env.GetPath())
+	envName, err := env.Get()
+	if err != nil {
+		log.Debugf("No env set, no additional config to load")
+	} else {
+		envConfigFile := fmt.Sprintf("config/environments/%s", envName)
+		viper.SetConfigName(envConfigFile)
+		log.Infof("Loading env specific configuration from %s.yaml", envConfigFile)
+		if err := viper.MergeInConfig(); err != nil {
+			log.Infof("%s.yaml does not exist. Skipping", envConfigFile)
+		}
+	}
 
 	//Set the environment prefix as app name
 	viper.SetEnvPrefix(strings.ToUpper(commandName))
@@ -1073,25 +1120,6 @@ func main() {
 	viper.SetEnvKeyReplacer(replacer)
 
 	//	var rootCmd = &cobra.Command{Use: c.Name}
-
-	p := &Project{
-		Name:              c.Name,
-		Tasks:             map[string]*TaskDef{},
-		CachedTaskOutputs: map[string]interface{}{},
-		Verbose:           false,
-	}
-
-	rootCmd, err := p.GenerateCommand(c, nil, []string{})
-
-	p.GenerateAllFlags()
-
-	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")
-
-	//	_, err := p.GenerateCommands(c.Targets, rootCmd, []string{})
-
-	if err != nil {
-		log.Fatalf("error: %v", err)
-	}
 
 	rootCmd.Execute()
 }
