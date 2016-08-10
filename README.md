@@ -21,3 +21,11 @@ $ var env set prod
 $ var test
 #=> reads inputs from var.yaml + config/environments/prod.yaml
 ```
+
+## Similar projects
+
+* [tj/robo](https://github.com/tj/robo)
+
+## License
+
+Apache License 2.0
