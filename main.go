@@ -27,7 +27,7 @@ import (
 )
 
 func init() {
-	//log.SetOutput(os.Stderr)
+	log.SetOutput(os.Stdout)
 
 	verbose := false
 	for _, e := range os.Environ() {
@@ -577,7 +577,7 @@ func (t Task) RunCommand(command string, depended bool) (string, error) {
 				if depended {
 					stdoutlog.Debug(text)
 				} else {
-					fmt.Println(text)
+					stdoutlog.Info(text)
 				}
 			} else {
 				stdoutEnds = true
