@@ -1,12 +1,15 @@
 CMD ?= dist/$(VERSION)/var
 GITHUB_USER ?= mumoshu
 GITHUB_REPO ?= variant
-VERSION ?= v0.0.1
+VERSION ?= v0.0.3-rc.1
 
 define GO_FMT
 test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -d {} + | tee /dev/stderr)" || \
 test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -w {} + | tee /dev/stderr)"
 endef
+
+reinstall-local: dist/$(VERSION)
+	if [ -f /usr/local/bin/var ]; then rm /usr/local/bin/var && cp dist/$(VERSION)/var /usr/local/bin/var; fi
 
 install-local: /usr/local/bin/var
 

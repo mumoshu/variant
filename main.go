@@ -14,7 +14,7 @@ import (
 	"text/template"
 
 	log "github.com/Sirupsen/logrus"
-	prefixed "github.com/x-cray/logrus-prefixed-formatter"
+	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 
 	"github.com/juju/errors"
 	"github.com/mitchellh/mapstructure"
@@ -27,9 +27,7 @@ import (
 )
 
 func init() {
-	log.SetFormatter(new(prefixed.TextFormatter))
-
-	log.SetOutput(os.Stderr)
+	//log.SetOutput(os.Stderr)
 
 	verbose := false
 	for _, e := range os.Environ() {
@@ -388,6 +386,7 @@ type Project struct {
 	Tasks             map[string]*TaskDef
 	CachedTaskOutputs map[string]interface{}
 	Verbose           bool
+	Output            string
 }
 
 type T struct {
@@ -618,6 +617,18 @@ func (p Project) Reconfigure() {
 	if p.Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
+
+	commandName := path.Base(os.Args[0])
+	if p.Output == "bunyan" {
+		log.SetFormatter(&bunyan.Formatter{Name: commandName})
+	} else if p.Output == "json" {
+		log.SetFormatter(&log.JSONFormatter{})
+	} else if p.Output == "text" {
+		log.SetFormatter(&log.TextFormatter{})
+	} else {
+		log.Fatalf("Unexpected output format specified: %s", p.Output)
+	}
+
 }
 
 func (p Project) CreateTaskKey(taskKeyStr string) TaskKey {
@@ -1068,6 +1079,7 @@ func main() {
 		Tasks:             map[string]*TaskDef{},
 		CachedTaskOutputs: map[string]interface{}{},
 		Verbose:           false,
+		Output:            "text",
 	}
 
 	rootCmd, err := p.GenerateCommand(c, nil, []string{})
@@ -1076,6 +1088,7 @@ func main() {
 	p.GenerateAllFlags()
 
 	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")
+	rootCmd.PersistentFlags().StringVarP(&(p.Output), "output", "o", "text", "Output format. One of: json|text|bunyan")
 
 	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
 	rootCmd.ParseFlags(os.Args[1:])
