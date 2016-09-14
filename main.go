@@ -396,6 +396,7 @@ type Project struct {
 	CachedTaskOutputs map[string]interface{}
 	Verbose           bool
 	Output            string
+	Env               string
 }
 
 type T struct {
@@ -699,6 +700,7 @@ func (p Project) RunTask(taskKey TaskKey, args []string, depended bool) (string,
 
 	vars := map[string](interface{}){}
 	vars["args"] = args
+	vars["env"] = p.Env
 
 	inputs, err := p.AggregateInputsFor(taskKey, args)
 
@@ -1101,12 +1103,19 @@ func main() {
 
 	c.Name = commandName
 
+	var envFromFile string
+	envFromFile, err = env.New(c.Name).GetOrSet("dev")
+	if err != nil {
+		panic(errors.Trace(err))
+	}
+
 	p := &Project{
 		Name:              c.Name,
 		Tasks:             map[string]*TaskDef{},
 		CachedTaskOutputs: map[string]interface{}{},
 		Verbose:           false,
 		Output:            "text",
+		Env:               envFromFile,
 	}
 
 	rootCmd, err := p.GenerateCommand(c, nil, []string{})
