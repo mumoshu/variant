@@ -90,6 +90,7 @@ type Target struct {
 	Script      string    `yaml:"script,omitempty"`
 	Autoenv     bool      `yaml:"autoenv,omitempty"`
 	Autodir     bool      `yaml:"autodir,omitempty"`
+	Interactive bool      `yaml:"interactive,omitempty"`
 }
 
 type TargetV1 struct {
@@ -100,6 +101,7 @@ type TargetV1 struct {
 	Script      string    `yaml:"script,omitempty"`
 	Autoenv     bool      `yaml:"autoenv,omitempty"`
 	Autodir     bool      `yaml:"autodir,omitempty"`
+	Interactive bool      `yaml:"interactive,omitempty"`
 }
 
 type TargetV2 struct {
@@ -109,6 +111,7 @@ type TargetV2 struct {
 	Script      string             `yaml:"script,omitempty"`
 	Autoenv     bool               `yaml:"autoenv,omitempty"`
 	Autodir     bool               `yaml:"autodir,omitempty"`
+	Interactive bool               `yaml:"interactive,omitempty"`
 }
 
 func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -142,6 +145,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Script = v1.Script
 		t.Autoenv = v1.Autoenv
 		t.Autodir = v1.Autodir
+		t.Interactive = v1.Interactive
 		return nil
 	}
 
@@ -150,10 +154,11 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		log.Debugf("Trying to parse v2 format")
 		v2 = &TargetV2{
-			Autoenv: true,
-			Autodir: true,
-			Inputs:  []*Input{},
-			Targets: map[string]*Target{},
+			Autoenv:     true,
+			Autodir:     true,
+			Interactive: false,
+			Inputs:      []*Input{},
+			Targets:     map[string]*Target{},
 		}
 
 		err = unmarshal(&v2)
@@ -171,6 +176,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Script = v2.Script
 			t.Autoenv = v2.Autoenv
 			t.Autodir = v2.Autodir
+			t.Interactive = v2.Interactive
 		}
 
 	}
@@ -211,6 +217,7 @@ func (t *Target) CopyTo(other *Target) {
 	other.Script = t.Script
 	other.Autoenv = t.Autoenv
 	other.Autodir = t.Autodir
+	other.Interactive = t.Interactive
 }
 
 func ReadV2Targets(v2 map[string]*Target) []*Target {
@@ -358,23 +365,25 @@ type ProjectConfig struct {
 }
 
 type TaskDef struct {
-	Key       TaskKey
-	Template  *template.Template
-	Inputs    []*Input
-	Variables []*Variable
-	Autoenv   bool
-	Autodir   bool
-	Target    *Target
-	Command   *cobra.Command
+	Key         TaskKey
+	Template    *template.Template
+	Inputs      []*Input
+	Variables   []*Variable
+	Autoenv     bool
+	Autodir     bool
+	Interactive bool
+	Target      *Target
+	Command     *cobra.Command
 }
 
 type Task struct {
-	Key      TaskKey
-	Template *template.Template
-	Vars     map[string]interface{}
-	Autoenv  bool
-	Autodir  bool
-	TaskDef  *TaskDef
+	Key         TaskKey
+	Template    *template.Template
+	Vars        map[string]interface{}
+	Autoenv     bool
+	Autodir     bool
+	Interactive bool
+	TaskDef     *TaskDef
 }
 
 type TaskKey struct {
@@ -510,95 +519,111 @@ func (t Task) RunCommand(command string, depended bool) (string, error) {
 		l.Debugf("Autodir is disabled")
 	}
 
-	// Pipes
+	output := ""
 
-	cmdReader, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error creating StdoutPipe for Cmd", err)
-		os.Exit(1)
-	}
+	if t.Interactive {
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-	errReader, err := cmd.StderrPipe()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error creating StderrPipe for Cmd", err)
-		os.Exit(1)
-	}
-
-	// Start the command
-	if err := cmd.Start(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error starting Cmd", err)
-		os.Exit(1)
-	}
-
-	// Receive stdout and stderr
-
-	channels := struct {
-		Stdout chan string
-		Stderr chan string
-	}{
-		Stdout: make(chan string),
-		Stderr: make(chan string),
-	}
-
-	scanner := bufio.NewScanner(cmdReader)
-	var output string
-	go func() {
-		defer func() {
-			close(channels.Stdout)
-		}()
-		for scanner.Scan() {
-			text := scanner.Text()
-			channels.Stdout <- text
-			output += text
+		// Start the command
+		if err := cmd.Start(); err != nil {
+			fmt.Fprintln(os.Stderr, "Error starting Cmd", err)
+			os.Exit(1)
 		}
-	}()
+	} else {
+		// Pipes
 
-	errScanner := bufio.NewScanner(errReader)
-	go func() {
-		defer func() {
-			close(channels.Stderr)
-		}()
-		for errScanner.Scan() {
-			text := errScanner.Text()
-			channels.Stderr <- text
+		cmdReader, err := cmd.StdoutPipe()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error creating StdoutPipe for Cmd", err)
+			os.Exit(1)
 		}
-	}()
 
-	stdoutEnds := false
-	stderrEnds := false
+		errReader, err := cmd.StderrPipe()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error creating StderrPipe for Cmd", err)
+			os.Exit(1)
+		}
 
-	stdoutlog := log.WithFields(log.Fields{"prefix": "stdout"})
+		// Start the command
+		if err := cmd.Start(); err != nil {
+			fmt.Fprintln(os.Stderr, "Error starting Cmd", err)
+			os.Exit(1)
+		}
 
-	// Coordinating stdout/stderr in this single place to not screw up message ordering
-	for {
-		select {
-		case text, ok := <-channels.Stdout:
-			if ok {
-				if depended {
-					stdoutlog.Debug(text)
-				} else {
-					stdoutlog.Info(text)
+		// Receive stdout and stderr
+
+		channels := struct {
+			Stdout chan string
+			Stderr chan string
+		}{
+			Stdout: make(chan string),
+			Stderr: make(chan string),
+		}
+
+		scanner := bufio.NewScanner(cmdReader)
+		go func() {
+			defer func() {
+				close(channels.Stdout)
+			}()
+			for scanner.Scan() {
+				text := scanner.Text()
+				channels.Stdout <- text
+				if output != "" {
+					output += "\n"
 				}
-			} else {
-				stdoutEnds = true
+				output += text
 			}
-		case text, ok := <-channels.Stderr:
-			if ok {
-				l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
-			} else {
-				stderrEnds = true
+		}()
+
+		errScanner := bufio.NewScanner(errReader)
+		go func() {
+			defer func() {
+				close(channels.Stderr)
+			}()
+			for errScanner.Scan() {
+				text := errScanner.Text()
+				channels.Stderr <- text
 			}
-		}
-		if stdoutEnds && stderrEnds {
-			break
+		}()
+
+		stdoutEnds := false
+		stderrEnds := false
+
+		stdoutlog := log.WithFields(log.Fields{"prefix": "stdout"})
+
+		// Coordinating stdout/stderr in this single place to not screw up message ordering
+		for {
+			select {
+			case text, ok := <-channels.Stdout:
+				if ok {
+					if depended {
+						stdoutlog.Debug(text)
+					} else {
+						stdoutlog.Info(text)
+					}
+				} else {
+					stdoutEnds = true
+				}
+			case text, ok := <-channels.Stderr:
+				if ok {
+					l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
+				} else {
+					stderrEnds = true
+				}
+			}
+			if stdoutEnds && stderrEnds {
+				break
+			}
 		}
 	}
 
 	var waitStatus syscall.WaitStatus
-	err = cmd.Wait()
+	err := cmd.Wait()
 
 	if err != nil {
-		l.Fatalf("%v", err)
+		l.Fatalf("cmd.Wait: %v", err)
 		// Did the command fail because of an unsuccessful exit code
 		if exitError, ok := err.(*exec.ExitError); ok {
 			waitStatus = exitError.Sys().(syscall.WaitStatus)
@@ -686,12 +711,13 @@ func (p Project) RunTask(taskKey TaskKey, args []string, depended bool) (string,
 	}
 
 	task := &Task{
-		Key:      taskKey,
-		Template: t.Template,
-		Vars:     vars,
-		Autoenv:  t.Autoenv,
-		Autodir:  t.Autodir,
-		TaskDef:  t,
+		Key:         taskKey,
+		Template:    t.Template,
+		Vars:        vars,
+		Autoenv:     t.Autoenv,
+		Autodir:     t.Autodir,
+		Interactive: t.Interactive,
+		TaskDef:     t,
 	}
 
 	log.Debugf("Task: %v", task)
@@ -899,12 +925,13 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 	tk := strings.Join(append(parentTaskKey, target.Name), ".")
 	taskKey := p.CreateTaskKey(tk)
 	task := &TaskDef{
-		Key:     taskKey,
-		Inputs:  target.Inputs,
-		Autoenv: target.Autoenv,
-		Autodir: target.Autodir,
-		Target:  target,
-		Command: cmd,
+		Key:         taskKey,
+		Inputs:      target.Inputs,
+		Autoenv:     target.Autoenv,
+		Autodir:     target.Autodir,
+		Interactive: target.Interactive,
+		Target:      target,
+		Command:     cmd,
 	}
 	p.RegisterTask(taskKey, task)
 
