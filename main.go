@@ -1157,7 +1157,9 @@ func main() {
 
 	var c *Target
 
-	if file.Exists(varfile) {
+	varfileExists := file.Exists(varfile)
+
+	if varfileExists {
 
 		target, err := ReadFromFile(varfile)
 
@@ -1167,7 +1169,6 @@ func main() {
 		}
 		c = target
 	} else {
-		log.Infof("%s does not exist", varfile)
 		c = newDefaultTargetConfig()
 	}
 
@@ -1192,6 +1193,7 @@ func main() {
 
 	rootCmd, err := p.GenerateCommand(c, nil, []string{})
 	rootCmd.AddCommand(cmd.EnvCmd)
+	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
 	p.GenerateAllFlags()
 
@@ -1206,6 +1208,11 @@ func main() {
 
 	if err != nil {
 		log.Fatalf("error: %v", err)
+	}
+
+	// Deferred to respect output format specified via the --output flag
+	if !varfileExists {
+		log.Infof("%s does not exist", varfile)
 	}
 
 	viper.SetConfigType("yaml")

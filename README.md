@@ -22,6 +22,15 @@ $ var test
 #=> reads inputs from var.yaml + config/environments/prod.yaml
 ```
 
+## Examples
+
+Extract variant's version using jq:
+
+```
+$ var version --output json | jq -c -r 'select(.msg == "version") | .framework_version'
+0.0.3-rc1
+```
+
 ## Similar projects
 
 * [tj/robo](https://github.com/tj/robo)
