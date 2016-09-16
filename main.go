@@ -1045,26 +1045,6 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 
 	p.GenerateCommands(target.Targets, cmd, append(parentTaskKey, target.Name))
 
-	// After all the commands and tasks are generated...
-
-	//	for _, input := range target.Inputs {
-	//		var description string
-	//		if input.Description != "" {
-	//			description = input.Description
-	//		} else {
-	//			description = input.Name
-	//		}
-	//		name := strings.Replace(input.Name, ".", "-", -1)
-	//
-	//		if len(target.Targets) == 0 {
-	//			cmd.Flags().StringP(name, string(input.Name[0]), "", description)
-	//			viper.BindPFlag(name, cmd.Flags().Lookup(name))
-	//		} else {
-	//			cmd.PersistentFlags().StringP(name, string(input.Name[0]), "", description)
-	//			viper.BindPFlag(name, cmd.PersistentFlags().Lookup(name))
-	//		}
-	//	}
-
 	return cmd, nil
 }
 
