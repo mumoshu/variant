@@ -962,10 +962,10 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 
 	if target.Script != "" {
 		tmpl, err := template.New(fmt.Sprintf("%s.definition.yaml: %s.script", p.Name, taskKey.ShortString())).Parse(target.Script)
-		tmpl.Option("missingkey=error")
 		if err != nil {
 			log.Panicf("Error: %v", err)
 		}
+		tmpl.Option("missingkey=error")
 		task.Template = tmpl
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.Reconfigure()
