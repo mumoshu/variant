@@ -1116,12 +1116,23 @@ func main() {
 		varfile = environ["VARFILE"]
 	}
 
-	c, err := ReadFromFile(varfile)
+	var c *Target
 
-	if err != nil {
-		log.Errorf(errors.ErrorStack(err))
-		panic(errors.Trace(err))
+	if file.Exists(varfile) {
+
+		target, err := ReadFromFile(varfile)
+
+		if err != nil {
+			log.Errorf(errors.ErrorStack(err))
+			panic(errors.Trace(err))
+		}
+		c = target
+	} else {
+		log.Infof("%s does not exist", varfile)
+		c = newDefaultTargetConfig()
 	}
+
+	var err error
 
 	c.Name = commandName
 
