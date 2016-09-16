@@ -1101,7 +1101,7 @@ func main() {
 	var varfile string
 	var args []string
 
-	if (os.Args[0] != "var" || os.Args[0] != "/usr/bin/env") && file.Exists(os.Args[1]) {
+	if len(os.Args) > 1 && (os.Args[0] != "var" || os.Args[0] != "/usr/bin/env") && file.Exists(os.Args[1]) {
 		varfile = os.Args[1]
 		args = os.Args[2:]
 	} else {
