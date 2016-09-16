@@ -505,16 +505,18 @@ func (t Task) RunCommand(command string, depended bool) (string, error) {
 	if t.Autodir {
 		l.Debugf("Autodir is enabled")
 		parentKey, err := t.Key.Parent()
-		l.Debugf("full: %s", parentKey.String())
-		shortKey := parentKey.ShortString()
-		l.Debugf("short: %s", shortKey)
-		path := strings.Replace(shortKey, ".", "/", -1)
-		l.Debugf("Dir: %s", path)
-		if err != nil {
-			l.Debugf("%s does not have parent", t.Key.String())
-		} else {
-			if _, err := os.Stat(path); err == nil {
-				cmd.Dir = path
+		if parentKey != nil {
+			l.Debugf("full: %s", parentKey.String())
+			shortKey := parentKey.ShortString()
+			l.Debugf("short: %s", shortKey)
+			path := strings.Replace(shortKey, ".", "/", -1)
+			l.Debugf("Dir: %s", path)
+			if err != nil {
+				l.Debugf("%s does not have parent", t.Key.String())
+			} else {
+				if _, err := os.Stat(path); err == nil {
+					cmd.Dir = path
+				}
 			}
 		}
 	} else {
