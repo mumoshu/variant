@@ -24,6 +24,7 @@ import (
 
 	"./cmd"
 	"./env"
+	"./file"
 )
 
 func init() {
@@ -1097,7 +1098,16 @@ func ReadFromFile(path string) (*Target, error) {
 func main() {
 	commandName := path.Base(os.Args[0])
 
-	varfile := fmt.Sprintf("%s.definition.yaml", commandName)
+	var varfile string
+	var args []string
+
+	if file.Exists(os.Args[1]) {
+		varfile = os.Args[1]
+		args = os.Args[2:]
+	} else {
+		varfile = fmt.Sprintf("%s.definition.yaml", commandName)
+		args = os.Args[1:]
+	}
 
 	environ := ParseEnviron()
 
@@ -1138,7 +1148,7 @@ func main() {
 	rootCmd.PersistentFlags().StringVarP(&(p.Output), "output", "o", "text", "Output format. One of: json|text|bunyan")
 
 	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
-	rootCmd.ParseFlags(os.Args[1:])
+	rootCmd.ParseFlags(args)
 
 	// Workaround: We want to set log leve via command-line option before the rootCmd is run
 	p.Reconfigure()
@@ -1181,5 +1191,6 @@ func main() {
 
 	//	var rootCmd = &cobra.Command{Use: c.Name}
 
+	rootCmd.SetArgs(args)
 	rootCmd.Execute()
 }
