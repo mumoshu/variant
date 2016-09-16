@@ -394,12 +394,13 @@ type TaskKey struct {
 }
 
 type Project struct {
-	Name              string
-	Tasks             map[string]*TaskDef
-	CachedTaskOutputs map[string]interface{}
-	Verbose           bool
-	Output            string
-	Env               string
+	Name                string
+	CommandRelativePath string
+	Tasks               map[string]*TaskDef
+	CachedTaskOutputs   map[string]interface{}
+	Verbose             bool
+	Output              string
+	Env                 string
 }
 
 type T struct {
@@ -714,6 +715,7 @@ func (p Project) RunTask(taskKey TaskKey, args []string, depended bool) (string,
 	vars := map[string](interface{}){}
 	vars["args"] = args
 	vars["env"] = p.Env
+	vars["cmd"] = p.CommandRelativePath
 
 	inputs, err := p.AggregateInputsFor(taskKey, args)
 
@@ -1136,6 +1138,7 @@ func ReadFromFile(path string) (*Target, error) {
 
 func main() {
 	var commandName string
+	var commandPath string
 	var varfile string
 	var args []string
 
@@ -1143,8 +1146,10 @@ func main() {
 		varfile = os.Args[1]
 		args = os.Args[2:]
 		commandName = path.Base(varfile)
+		commandPath = varfile
 	} else {
 		commandName = path.Base(os.Args[0])
+		commandPath = os.Args[0]
 		varfile = fmt.Sprintf("%s.definition.yaml", commandName)
 		args = os.Args[1:]
 	}
@@ -1155,7 +1160,7 @@ func main() {
 		varfile = environ["VARFILE"]
 	}
 
-	var c *Target
+	var rootTarget *Target
 
 	varfileExists := file.Exists(varfile)
 
@@ -1167,31 +1172,32 @@ func main() {
 			log.Errorf(errors.ErrorStack(err))
 			panic(errors.Trace(err))
 		}
-		c = target
+		rootTarget = target
 	} else {
-		c = newDefaultTargetConfig()
+		rootTarget = newDefaultTargetConfig()
 	}
 
 	var err error
 
-	c.Name = commandName
+	rootTarget.Name = commandName
 
 	var envFromFile string
-	envFromFile, err = env.New(c.Name).GetOrSet("dev")
+	envFromFile, err = env.New(rootTarget.Name).GetOrSet("dev")
 	if err != nil {
 		panic(errors.Trace(err))
 	}
 
 	p := &Project{
-		Name:              c.Name,
-		Tasks:             map[string]*TaskDef{},
-		CachedTaskOutputs: map[string]interface{}{},
-		Verbose:           false,
-		Output:            "text",
-		Env:               envFromFile,
+		Name:                rootTarget.Name,
+		CommandRelativePath: commandPath,
+		Tasks:               map[string]*TaskDef{},
+		CachedTaskOutputs:   map[string]interface{}{},
+		Verbose:             false,
+		Output:              "text",
+		Env:                 envFromFile,
 	}
 
-	rootCmd, err := p.GenerateCommand(c, nil, []string{})
+	rootCmd, err := p.GenerateCommand(rootTarget, nil, []string{})
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
@@ -1219,10 +1225,10 @@ func main() {
 	viper.AddConfigPath(".")
 
 	// See "How to merge two config files" https://github.com/spf13/viper/issues/181
-	viper.SetConfigName(c.Name)
-	commonConfigFile := fmt.Sprintf("%s.yaml", c.Name)
+	viper.SetConfigName(rootTarget.Name)
+	commonConfigFile := fmt.Sprintf("%s.yaml", rootTarget.Name)
 	if file.Exists(commonConfigFile) {
-		log.Debugf("Loading common configuration from %s.yaml", c.Name)
+		log.Debugf("Loading common configuration from %s.yaml", rootTarget.Name)
 		if err := viper.MergeInConfig(); err != nil {
 			panic(err)
 		}
