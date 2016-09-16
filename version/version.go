@@ -6,5 +6,5 @@ type Version struct {
 }
 
 func Get() (Version, error) {
-	return Version{FrameworkVersion: "0.0.3-rc1"}, nil
+	return Version{FrameworkVersion: "0.0.3-rc.2"}, nil
 }
