@@ -334,7 +334,7 @@ func (p *Project) CollectVariablesRecursively(currentTaskKey TaskKey, path strin
 			Complete:    input.Complete,
 		}
 
-		ctx.WithFields(log.Fields{"full": variable.FullName, "task": variable.TaskKey.String()}).Debugf("has var %s", variable.Name)
+		ctx.WithFields(log.Fields{"full": variable.FullName, "task": variable.TaskKey.String()}).Debugf("has var %s. short=%s", variable.Name, variable.ShortName())
 
 		result = append(result, variable)
 	}
@@ -737,6 +737,8 @@ func (p Project) RunTask(taskKey TaskKey, args []string, depended bool) (string,
 
 	output, error := task.Run(depended)
 
+	log.Debugf("Output: %s", output)
+
 	if error != nil {
 		error = errors.Annotatef(error, "Flow `%s` failed", taskKey.String())
 	}
@@ -1031,7 +1033,7 @@ func (p *Project) GenerateAllFlags() {
 	for _, taskDef := range p.Tasks {
 		taskDef.Variables = p.AllVariables(taskDef)
 		for _, input := range taskDef.Variables {
-			log.Debugf("%s -> %s", taskDef.Key.String(), input.Name)
+			log.Debugf("Configuring flag and config key for task %s's input: %s", taskDef.Key.String(), input.Name)
 
 			target := taskDef.Target
 			cmd := taskDef.Command
@@ -1049,13 +1051,17 @@ func (p *Project) GenerateAllFlags() {
 				name = input.ShortName()
 			}
 
+			log.Debugf("short=%s, full=%s, name=%s, selected=%s", input.ShortName(), input.FullName, input.Name, name)
+
 			flagName := strings.Replace(name, ".", "-", -1)
 
 			if len(target.Targets) == 0 {
 				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
+				log.Debugf("Binding flag --%s to the config key %s", flagName, name)
 				viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
 			} else {
 				cmd.PersistentFlags().StringP(flagName, "" /*string(input.Name[0])*/, "" /*default*/, description)
+				log.Debugf("Binding persistent flag --%s to the config key %s", flagName, name)
 				viper.BindPFlag(name, cmd.PersistentFlags().Lookup(flagName))
 			}
 		}
@@ -1087,6 +1093,8 @@ func ReadFromFile(path string) (*Target, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error while loading %s", path)
 	}
+
+	log.Debugf("%s", string(yamlBytes))
 
 	t, err := ReadFromBytes(yamlBytes)
 
@@ -1187,14 +1195,14 @@ func main() {
 	}
 
 	env.SetAppName(commandName)
-	log.Infof("Loading current env from %s", env.GetPath())
+	log.Debugf("Loading current env from %s", env.GetPath())
 	envName, err := env.Get()
 	if err != nil {
 		log.Debugf("No env set, no additional config to load")
 	} else {
 		envConfigFile := fmt.Sprintf("config/environments/%s", envName)
 		viper.SetConfigName(envConfigFile)
-		log.Infof("Loading env specific configuration from %s.yaml", envConfigFile)
+		log.Debugf("Loading env specific configuration from %s.yaml", envConfigFile)
 		if err := viper.MergeInConfig(); err != nil {
 			log.Infof("%s.yaml does not exist. Skipping", envConfigFile)
 		}
