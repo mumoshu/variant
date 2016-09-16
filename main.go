@@ -692,6 +692,14 @@ func (t TaskKey) Parent() (*TaskKey, error) {
 }
 
 func (p Project) RunTask(taskKey TaskKey, args []string, depended bool) (string, error) {
+	provided := p.GetValueForName(taskKey.ShortString())
+
+	if provided != "" {
+		log.Debugf("Output for task %s is already provided in configuration: %s", taskKey.ShortString(), provided)
+		log.Info(provided)
+		return provided, nil
+	}
+
 	t, err := p.FindTask(taskKey)
 
 	if err != nil {
@@ -762,6 +770,32 @@ func (p Project) AggregateInputsForParent(taskKey TaskKey, aggregated AnyMap) er
 	return nil
 }
 
+func (p Project) GetValueForName(k string) string {
+	ctx := log.WithFields(log.Fields{"prefix": k})
+
+	lastIndex := strings.LastIndex(k, ".")
+
+	provided := ""
+
+	if lastIndex != -1 {
+		a := []rune(k)
+		k1 := string(a[:lastIndex])
+		k2 := string(a[lastIndex+1:])
+
+		values := viper.GetStringMapString(k1)
+
+		ctx.Debugf("GetStringMap(k1=%s)=%v, k2=%s", k1, values, k2)
+
+		if values != nil && values[k2] != "" {
+			provided = values[k2]
+		}
+	} else {
+		provided = viper.GetString(k)
+	}
+
+	return provided
+}
+
 func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap, args []string) error {
 	log.Debugf("Collecting inputs for the task `%v`", taskKey.String())
 	task, err := p.FindTask(taskKey)
@@ -778,22 +812,10 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap, args []str
 			arg = &args[i]
 		}
 
-		k := input.ShortName()
-		provided := viper.GetString(k)
+		provided := p.GetValueForName(input.ShortName())
 
-		if provided != "" {
-			ctx.Debugf("a command-line option or a configuration value provided: %s=%s", k, provided)
-		} else {
-			ctx.Debugf("no command-line option or config value provided: %s", k)
-
-			k = input.Name
-			provided = viper.GetString(k)
-
-			if provided != "" {
-				ctx.Debugf("a command-line option or a configuration value provided: %s=%s", k, provided)
-			} else {
-				ctx.Debugf("no command-line option or config value provided: %s", k)
-			}
+		if provided == "" {
+			provided = p.GetValueForName(input.Name)
 		}
 
 		components := strings.Split(input.Name, ".")
