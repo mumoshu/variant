@@ -1096,15 +1096,16 @@ func ReadFromFile(path string) (*Target, error) {
 }
 
 func main() {
-	commandName := path.Base(os.Args[0])
-
+	var commandName string
 	var varfile string
 	var args []string
 
 	if len(os.Args) > 1 && (os.Args[0] != "var" || os.Args[0] != "/usr/bin/env") && file.Exists(os.Args[1]) {
 		varfile = os.Args[1]
 		args = os.Args[2:]
+		commandName = path.Base(varfile)
 	} else {
+		commandName = path.Base(os.Args[0])
 		varfile = fmt.Sprintf("%s.definition.yaml", commandName)
 		args = os.Args[1:]
 	}
