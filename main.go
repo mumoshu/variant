@@ -1075,6 +1075,10 @@ func ReadFromBytes(data []byte) (*Target, error) {
 func ReadFromFile(path string) (*Target, error) {
 	log.Debugf("Loading %s", path)
 
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return nil, fmt.Errorf("%s does not exist", path)
+	}
+
 	yamlBytes, err := ioutil.ReadFile(path)
 
 	if err != nil {
