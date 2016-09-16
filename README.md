@@ -26,6 +26,11 @@ $ var test
 
 * [tj/robo](https://github.com/tj/robo)
 
+## Interesting Readings
+
+* [How to write killer DevOps automation workflows](http://techbeacon.com/how-write-killer-devops-automation-workflows)
+* [progrium/bashstyle: Let's do Bash right!](https://github.com/progrium/bashstyle)
+
 ## License
 
 Apache License 2.0
