@@ -969,23 +969,7 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 			p.Reconfigure()
 
 			log.Debugf("Number of inputs: %v", len(target.Inputs))
-			for _, input := range target.Inputs {
-				name := strings.Replace(input.Name, ".", "-", -1)
 
-				log.Debugf("BindPFlag(name=%v)", name)
-				//				if len(target.Targets) == 0 {
-				//					viper.BindPFlag(input.Name, cmd.Flags().Lookup(name))
-				//					log.Debugf("Looked up %v: %v", name, cmd.Flags().Lookup(name))
-				//				} else {
-				//					viper.BindPFlag(input.Name, cmd.PersistentFlags().Lookup(name))
-				//					log.Debugf("Looked up %v: %v", name, cmd.PersistentFlags().Lookup(name))
-				//				}
-			}
-
-			//			err := viper.ReadInConfig() // Find and read the config file
-			//			if err != nil {             // Handle errors reading the config file
-			//				panic(errors.Errorf("Fatal error config file: %s \n", err))
-			//			}
 			if _, err := p.RunTask(taskKey, args, false); err != nil {
 				c := strings.Join(strings.Split(taskKey.String(), "."), " ")
 				stack := strings.Split(errors.ErrorStack(err), "\n")
