@@ -368,6 +368,7 @@ type ProjectConfig struct {
 type TaskDef struct {
 	Key         TaskKey
 	Template    *template.Template
+	Script      string
 	Inputs      []*Input
 	Variables   []*Variable
 	Autoenv     bool
@@ -380,6 +381,7 @@ type TaskDef struct {
 type Task struct {
 	Key         TaskKey
 	Template    *template.Template
+	Script      string
 	Vars        map[string]interface{}
 	Autoenv     bool
 	Autodir     bool
@@ -726,6 +728,7 @@ func (p Project) RunTask(taskKey TaskKey, args []string, depended bool) (string,
 	task := &Task{
 		Key:         taskKey,
 		Template:    t.Template,
+		Script:      t.Script,
 		Vars:        vars,
 		Autoenv:     t.Autoenv,
 		Autodir:     t.Autodir,
@@ -906,6 +909,34 @@ func (p *Project) RegisterTask(taskKey TaskKey, task *TaskDef) {
 	p.Tasks[taskKey.String()] = task
 }
 
+func recursiveFetchFromMap(m map[string]interface{}, key string) (string, error) {
+	sep := "."
+
+	components := strings.Split(strings.Replace(key, "-", "_", -1), sep)
+	head, rest := components[0], components[1:]
+	value, exists := m[head]
+	if !exists {
+		return "", fmt.Errorf("No value for %s in %+v", head, m)
+	}
+
+	next, isMap := value.(map[string]interface{})
+	result, isStr := value.(string)
+
+	if !isStr {
+		if !isMap {
+			return "", fmt.Errorf("Not map or string: %s in %+v", head, m)
+		}
+
+		if len(rest) == 0 {
+			return "", fmt.Errorf("%s in %+v is a map but no more key to recurse", head, m)
+		}
+
+		return recursiveFetchFromMap(next, strings.Join(rest, sep))
+	}
+
+	return result, nil
+}
+
 func (t Task) Run(depended bool) (string, error) {
 	if depended {
 		log.Debugf("running flow: %s", t.Key.String())
@@ -913,8 +944,26 @@ func (t Task) Run(depended bool) (string, error) {
 		log.Infof("running flow: %s", t.Key.String())
 	}
 
+	get := func(key string) (interface{}, error) {
+		val, err := recursiveFetchFromMap(t.Vars, key)
+
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+		return val, nil
+	}
+
+	fns := template.FuncMap{
+		"get": get,
+	}
+
+	tmpl, err := t.Template.Funcs(fns).Parse(t.Script)
+	if err != nil {
+		log.Errorf("Error: %v", err)
+	}
+
 	var buff bytes.Buffer
-	if err := t.Template.Execute(&buff, t.Vars); err != nil {
+	if err := tmpl.Execute(&buff, t.Vars); err != nil {
 		return "", errors.Annotatef(err, "Template execution failed.\n\nScript:\n%s\n\nVars:\n%v", t.TaskDef.Target.Script, t.Vars)
 	}
 
@@ -953,7 +1002,7 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 
 	tk := strings.Join(append(parentTaskKey, target.Name), ".")
 	taskKey := p.CreateTaskKey(tk)
-	task := &TaskDef{
+	taskDef := &TaskDef{
 		Key:         taskKey,
 		Inputs:      target.Inputs,
 		Autoenv:     target.Autoenv,
@@ -962,15 +1011,13 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 		Target:      target,
 		Command:     cmd,
 	}
-	p.RegisterTask(taskKey, task)
+	p.RegisterTask(taskKey, taskDef)
 
 	if target.Script != "" {
-		tmpl, err := template.New(fmt.Sprintf("%s.definition.yaml: %s.script", p.Name, taskKey.ShortString())).Parse(target.Script)
-		if err != nil {
-			log.Panicf("Error: %v", err)
-		}
+		tmpl := template.New(fmt.Sprintf("%s.definition.yaml: %s.script", p.Name, taskKey.ShortString()))
 		tmpl.Option("missingkey=error")
-		task.Template = tmpl
+		taskDef.Template = tmpl
+		taskDef.Script = target.Script
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.Reconfigure()
 
