@@ -833,7 +833,7 @@ func (p Project) CollectInputsFor(taskKey TaskKey, aggregated AnyMap, args []str
 			if output, err = FetchCache(p.CachedTaskOutputs, components); output == nil {
 				output, err = p.RunTask(p.CreateTaskKeyFromVariable(input), []string{}, true)
 				if err != nil {
-					return errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", k)
+					return errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", input.ShortName())
 				}
 				PopulateCache(p.CachedTaskOutputs, components, output)
 			}
