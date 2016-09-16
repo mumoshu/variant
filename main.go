@@ -796,10 +796,12 @@ func (p Project) GetValueForName(k string) string {
 
 		if values != nil && values[k2] != "" {
 			provided = values[k2]
+			return provided
 		}
-	} else {
-		provided = viper.GetString(k)
 	}
+
+	provided = viper.GetString(k)
+	ctx.Debugf("viper.GetString(\"%s\") #=> \"%s\"", k, provided)
 
 	return provided
 }
