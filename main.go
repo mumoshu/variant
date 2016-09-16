@@ -1162,9 +1162,14 @@ func main() {
 
 	// See "How to merge two config files" https://github.com/spf13/viper/issues/181
 	viper.SetConfigName(c.Name)
-	log.Infof("Loading common configuration from %s.yaml", c.Name)
-	if err := viper.MergeInConfig(); err != nil {
-		panic(err)
+	commonConfigFile := fmt.Sprintf("%s.yaml", c.Name)
+	if file.Exists(commonConfigFile) {
+		log.Debugf("Loading common configuration from %s.yaml", c.Name)
+		if err := viper.MergeInConfig(); err != nil {
+			panic(err)
+		}
+	} else {
+		log.Infof("%s does not exist. Skipping", commonConfigFile)
 	}
 
 	env.SetAppName(commandName)
