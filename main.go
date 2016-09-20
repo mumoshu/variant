@@ -412,7 +412,8 @@ type T struct {
 }
 
 func (t Task) RunScript(script string, depended bool) (string, error) {
-	commands := strings.Split(script, "\n")
+	//commands := strings.Split(script, "\n")
+	commands := []string{script}
 	var lastOutput string
 	for _, command := range commands {
 		if command != "" {
