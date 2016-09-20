@@ -926,7 +926,9 @@ func recursiveFetchFromMap(m map[string]interface{}, key string) (string, error)
 	sep := "."
 
 	components := strings.Split(strings.Replace(key, "-", "_", -1), sep)
-	head, rest := components[0], components[1:]
+	log.Debugf("components=%v", components)
+	head := components[0]
+	rest := components[1:]
 	value, exists := m[head]
 	if !exists {
 		return "", fmt.Errorf("No value for %s in %+v", head, m)
