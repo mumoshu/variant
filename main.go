@@ -645,6 +645,13 @@ func (t Task) RunCommand(command string, depended bool) (string, error) {
 	return strings.Trim(output, "\n "), nil
 }
 
+type MessageOnlyFormatter struct {
+}
+
+func (f *MessageOnlyFormatter) Format(entry *log.Entry) ([]byte, error) {
+	return append([]byte(entry.Message), '\n'), nil
+}
+
 func (p Project) Reconfigure() {
 	if p.Verbose {
 		log.SetLevel(log.DebugLevel)
@@ -657,6 +664,8 @@ func (p Project) Reconfigure() {
 		log.SetFormatter(&log.JSONFormatter{})
 	} else if p.Output == "text" {
 		log.SetFormatter(&log.TextFormatter{})
+	} else if p.Output == "message" {
+		log.SetFormatter(&MessageOnlyFormatter{})
 	} else {
 		log.Fatalf("Unexpected output format specified: %s", p.Output)
 	}
