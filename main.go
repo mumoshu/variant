@@ -124,8 +124,8 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	log.Debugf("Trying to parse v1 format")
 
 	v1 := TargetV1{
-		Autoenv: true,
-		Autodir: true,
+		Autoenv: false,
+		Autodir: false,
 		Inputs:  []*Input{},
 		Targets: []*Target{},
 	}
@@ -155,8 +155,8 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		log.Debugf("Trying to parse v2 format")
 		v2 = &TargetV2{
-			Autoenv:     true,
-			Autodir:     true,
+			Autoenv:     false,
+			Autodir:     false,
 			Interactive: false,
 			Inputs:      []*Input{},
 			Targets:     map[string]*Target{},
@@ -198,8 +198,8 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			if err != nil {
 				return errors.Annotate(err, "Failed to unmarshal as a map[string]interface{}")
 			}
-			t.Autoenv = true
-			t.Autodir = true
+			t.Autoenv = false
+			t.Autodir = false
 			t.Inputs = []*Input{}
 
 			t.Targets = ReadV3Targets(flows)
@@ -250,8 +250,8 @@ func ReadV3Targets(v3 map[string]interface{}) []*Target {
 	result := []*Target{}
 	for k, v := range v3 {
 		t := &Target{
-			Autoenv: true,
-			Autodir: true,
+			Autoenv: false,
+			Autodir: false,
 			Inputs:  []*Input{},
 			Targets: []*Target{},
 		}
@@ -353,7 +353,7 @@ func newDefaultTargetConfig() *Target {
 	return &Target{
 		Inputs:  []*Input{},
 		Targets: []*Target{},
-		Autoenv: true,
+		Autoenv: false,
 	}
 }
 
