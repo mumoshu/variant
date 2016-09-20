@@ -969,8 +969,14 @@ func (t Task) Run(depended bool) (string, error) {
 		return val, nil
 	}
 
+	escapeDoubleQuotes := func(str string) (interface{}, error) {
+		val := strings.Replace(str, "\"", "\\\"", -1)
+		return val, nil
+	}
+
 	fns := template.FuncMap{
-		"get": get,
+		"get":                get,
+		"escapeDoubleQuotes": escapeDoubleQuotes,
 	}
 
 	tmpl, err := t.Template.Funcs(fns).Parse(t.Script)
