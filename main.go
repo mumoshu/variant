@@ -803,7 +803,7 @@ func (p Project) GetValueForName(k string) string {
 
 		values := viper.GetStringMapString(k1)
 
-		ctx.Debugf("GetStringMap(k1=%s)=%v, k2=%s", k1, values, k2)
+		ctx.Debugf("viper.GetStringMap(k1=%s)=%v, k2=%s", k1, values, k2)
 
 		if values != nil && values[k2] != "" {
 			provided = values[k2]
@@ -1097,12 +1097,16 @@ func (p *Project) GenerateAllFlags() {
 
 			if len(target.Targets) == 0 {
 				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
-				log.Debugf("Binding flag --%s to the config key %s", flagName, name)
-				viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
+				//log.Debugf("Binding flag --%s to the config key %s", flagName, name)
+				//viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
+				log.Debugf("Binding flag --%s to the config key %s", flagName, input.ShortName())
+				viper.BindPFlag(input.ShortName(), cmd.Flags().Lookup(flagName))
 			} else {
 				cmd.PersistentFlags().StringP(flagName, "" /*string(input.Name[0])*/, "" /*default*/, description)
-				log.Debugf("Binding persistent flag --%s to the config key %s", flagName, name)
-				viper.BindPFlag(name, cmd.PersistentFlags().Lookup(flagName))
+				//log.Debugf("Binding persistent flag --%s to the config key %s", flagName, name)
+				//viper.BindPFlag(name, cmd.PersistentFlags().Lookup(flagName))
+				log.Debugf("Binding persistent flag --%s to the config key %s", flagName, input.ShortName())
+				viper.BindPFlag(input.ShortName(), cmd.PersistentFlags().Lookup(flagName))
 			}
 		}
 	}
