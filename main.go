@@ -83,39 +83,39 @@ func (v *Variable) ShortName() string {
 	return strings.SplitN(v.FullName, ".", 2)[1]
 }
 
-type Target struct {
-	Name        string    `yaml:"name,omitempty"`
-	Description string    `yaml:"description,omitempty"`
-	Inputs      []*Input  `yaml:"inputs,omitempty"`
-	Targets     []*Target `yaml:"flows,omitempty"`
-	Script      string    `yaml:"script,omitempty"`
-	Autoenv     bool      `yaml:"autoenv,omitempty"`
-	Autodir     bool      `yaml:"autodir,omitempty"`
-	Interactive bool      `yaml:"interactive,omitempty"`
+type FlowConfig struct {
+	Name        string        `yaml:"name,omitempty"`
+	Description string        `yaml:"description,omitempty"`
+	Inputs      []*Input      `yaml:"inputs,omitempty"`
+	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
+	Script      string        `yaml:"script,omitempty"`
+	Autoenv     bool          `yaml:"autoenv,omitempty"`
+	Autodir     bool          `yaml:"autodir,omitempty"`
+	Interactive bool          `yaml:"interactive,omitempty"`
 }
 
-type TargetV1 struct {
-	Name        string    `yaml:"name,omitempty"`
-	Description string    `yaml:"description,omitempty"`
-	Inputs      []*Input  `yaml:"inputs,omitempty"`
-	Targets     []*Target `yaml:"flows,omitempty"`
-	Script      string    `yaml:"script,omitempty"`
-	Autoenv     bool      `yaml:"autoenv,omitempty"`
-	Autodir     bool      `yaml:"autodir,omitempty"`
-	Interactive bool      `yaml:"interactive,omitempty"`
+type FlowConfigV1 struct {
+	Name        string        `yaml:"name,omitempty"`
+	Description string        `yaml:"description,omitempty"`
+	Inputs      []*Input      `yaml:"inputs,omitempty"`
+	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
+	Script      string        `yaml:"script,omitempty"`
+	Autoenv     bool          `yaml:"autoenv,omitempty"`
+	Autodir     bool          `yaml:"autodir,omitempty"`
+	Interactive bool          `yaml:"interactive,omitempty"`
 }
 
-type TargetV2 struct {
-	Description string             `yaml:"description,omitempty"`
-	Inputs      []*Input           `yaml:"inputs,omitempty"`
-	Targets     map[string]*Target `yaml:"flows,omitempty"`
-	Script      string             `yaml:"script,omitempty"`
-	Autoenv     bool               `yaml:"autoenv,omitempty"`
-	Autodir     bool               `yaml:"autodir,omitempty"`
-	Interactive bool               `yaml:"interactive,omitempty"`
+type FlowConfigV2 struct {
+	Description string                 `yaml:"description,omitempty"`
+	Inputs      []*Input               `yaml:"inputs,omitempty"`
+	FlowConfigs map[string]*FlowConfig `yaml:"flows,omitempty"`
+	Script      string                 `yaml:"script,omitempty"`
+	Autoenv     bool                   `yaml:"autoenv,omitempty"`
+	Autodir     bool                   `yaml:"autodir,omitempty"`
+	Interactive bool                   `yaml:"interactive,omitempty"`
 }
 
-func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	v3 := map[string]interface{}{}
 	v3err := unmarshal(&v3)
 
@@ -123,17 +123,17 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	log.Debugf("Trying to parse v1 format")
 
-	v1 := TargetV1{
-		Autoenv: false,
-		Autodir: false,
-		Inputs:  []*Input{},
-		Targets: []*Target{},
+	v1 := FlowConfigV1{
+		Autoenv:     false,
+		Autodir:     false,
+		Inputs:      []*Input{},
+		FlowConfigs: []*FlowConfig{},
 	}
 
 	err := unmarshal(&v1)
 
-	if v1.Name == "" && len(v1.Targets) == 0 {
-		e := fmt.Errorf("Not v1 format: Both Name and Targets are empty")
+	if v1.Name == "" && len(v1.FlowConfigs) == 0 {
+		e := fmt.Errorf("Not v1 format: Both `name` and `flows` are empty")
 		log.Debugf("%s", e)
 		err = e
 	}
@@ -142,7 +142,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Name = v1.Name
 		t.Description = v1.Description
 		t.Inputs = v1.Inputs
-		t.Targets = v1.Targets
+		t.FlowConfigs = v1.FlowConfigs
 		t.Script = v1.Script
 		t.Autoenv = v1.Autoenv
 		t.Autodir = v1.Autodir
@@ -150,22 +150,22 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return nil
 	}
 
-	var v2 *TargetV2
+	var v2 *FlowConfigV2
 
 	if err != nil {
 		log.Debugf("Trying to parse v2 format")
-		v2 = &TargetV2{
+		v2 = &FlowConfigV2{
 			Autoenv:     false,
 			Autodir:     false,
 			Interactive: false,
 			Inputs:      []*Input{},
-			Targets:     map[string]*Target{},
+			FlowConfigs: map[string]*FlowConfig{},
 		}
 
 		err = unmarshal(&v2)
 
-		if len(v2.Targets) == 0 && v2.Script == "" {
-			e := fmt.Errorf("Not v2 format: Targets and Script are both missing.")
+		if len(v2.FlowConfigs) == 0 && v2.Script == "" {
+			e := fmt.Errorf("Not v2 format: Both `flows` and `script` are missing.")
 			log.Debugf("%s", e)
 			err = e
 		}
@@ -173,7 +173,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		if err == nil {
 			t.Description = v2.Description
 			t.Inputs = v2.Inputs
-			t.Targets = ReadV2Targets(v2.Targets)
+			t.FlowConfigs = TransformV2FlowConfigMapToArray(v2.FlowConfigs)
 			t.Script = v2.Script
 			t.Autoenv = v2.Autoenv
 			t.Autodir = v2.Autodir
@@ -202,7 +202,7 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Autodir = false
 			t.Inputs = []*Input{}
 
-			t.Targets = ReadV3Targets(flows)
+			t.FlowConfigs = TransformV3FlowConfigMapToArray(flows)
 
 			return nil
 		}
@@ -211,20 +211,20 @@ func (t *Target) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return errors.Trace(err)
 }
 
-func (t *Target) CopyTo(other *Target) {
+func (t *FlowConfig) CopyTo(other *FlowConfig) {
 	other.Description = t.Description
 	other.Inputs = t.Inputs
-	other.Targets = t.Targets
+	other.FlowConfigs = t.FlowConfigs
 	other.Script = t.Script
 	other.Autoenv = t.Autoenv
 	other.Autodir = t.Autodir
 	other.Interactive = t.Interactive
 }
 
-func ReadV2Targets(v2 map[string]*Target) []*Target {
-	result := []*Target{}
+func TransformV2FlowConfigMapToArray(v2 map[string]*FlowConfig) []*FlowConfig {
+	result := []*FlowConfig{}
 	for name, t2 := range v2 {
-		t := &Target{}
+		t := &FlowConfig{}
 
 		t.Name = name
 		t2.CopyTo(t)
@@ -246,14 +246,14 @@ func CastKeysToStrings(m map[interface{}]interface{}) (map[string]interface{}, e
 	return r, nil
 }
 
-func ReadV3Targets(v3 map[string]interface{}) []*Target {
-	result := []*Target{}
+func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*FlowConfig {
+	result := []*FlowConfig{}
 	for k, v := range v3 {
-		t := &Target{
-			Autoenv: false,
-			Autodir: false,
-			Inputs:  []*Input{},
-			Targets: []*Target{},
+		t := &FlowConfig{
+			Autoenv:     false,
+			Autodir:     false,
+			Inputs:      []*Input{},
+			FlowConfigs: []*FlowConfig{},
 		}
 
 		log.Debugf("Arrived %s: %v", k, v)
@@ -278,7 +278,7 @@ func ReadV3Targets(v3 map[string]interface{}) []*Target {
 		leaf := s2i["script"] != nil
 
 		if !leaf {
-			t.Targets = ReadV3Targets(s2i)
+			t.FlowConfigs = TransformV3FlowConfigMapToArray(s2i)
 		} else {
 			log.Debugf("Not a nested map")
 			err = mapstructure.Decode(s2i, t)
@@ -344,25 +344,25 @@ func (p *Project) CollectVariablesRecursively(currentFlowKey FlowKey, path strin
 
 func newDefaultProjectConfig() *ProjectConfig {
 	return &ProjectConfig{
-		Inputs:  []*Input{},
-		Targets: []*Target{},
+		Inputs:      []*Input{},
+		FlowConfigs: []*FlowConfig{},
 	}
 }
 
-func newDefaultTargetConfig() *Target {
-	return &Target{
-		Inputs:  []*Input{},
-		Targets: []*Target{},
-		Autoenv: false,
+func newDefaultFlowConfig() *FlowConfig {
+	return &FlowConfig{
+		Inputs:      []*Input{},
+		FlowConfigs: []*FlowConfig{},
+		Autoenv:     false,
 	}
 }
 
 type ProjectConfig struct {
 	Name        string
-	Description string    `yaml:"description,omitempty"`
-	Inputs      []*Input  `yaml:"inputs,omitempty"`
-	Targets     []*Target `yaml:"flows,omitempty"`
-	Script      string    `yaml:"script,omitempty"`
+	Description string        `yaml:"description,omitempty"`
+	Inputs      []*Input      `yaml:"inputs,omitempty"`
+	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
+	Script      string        `yaml:"script,omitempty"`
 }
 
 type FlowDef struct {
@@ -374,7 +374,7 @@ type FlowDef struct {
 	Autoenv     bool
 	Autodir     bool
 	Interactive bool
-	Target      *Target
+	FlowConfig  *FlowConfig
 	Command     *cobra.Command
 }
 
@@ -985,7 +985,7 @@ func (t Flow) Run(depended bool) (string, error) {
 
 	var buff bytes.Buffer
 	if err := tmpl.Execute(&buff, t.Vars); err != nil {
-		return "", errors.Annotatef(err, "Template execution failed.\n\nScript:\n%s\n\nVars:\n%v", t.FlowDef.Target.Script, t.Vars)
+		return "", errors.Annotatef(err, "Template execution failed.\n\nScript:\n%s\n\nVars:\n%v", t.FlowDef.FlowConfig.Script, t.Vars)
 	}
 
 	script := buff.String()
@@ -999,50 +999,50 @@ func (t Flow) Run(depended bool) (string, error) {
 	return output, err
 }
 
-func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
+func (p *Project) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
 	positionalArgs := ""
-	for i, input := range target.Inputs {
-		if i != len(target.Inputs)-1 {
+	for i, input := range flowConfig.Inputs {
+		if i != len(flowConfig.Inputs)-1 {
 			positionalArgs += fmt.Sprintf("[%s ", input.Name)
 		} else {
 			positionalArgs += fmt.Sprintf("[%s", input.Name)
 		}
 	}
-	for i := 0; i < len(target.Inputs); i++ {
+	for i := 0; i < len(flowConfig.Inputs); i++ {
 		positionalArgs += "]"
 	}
 
 	var cmd = &cobra.Command{
 
-		Use: fmt.Sprintf("%s %s", target.Name, positionalArgs),
+		Use: fmt.Sprintf("%s %s", flowConfig.Name, positionalArgs),
 	}
-	if target.Description != "" {
-		cmd.Short = target.Description
-		cmd.Long = target.Description
+	if flowConfig.Description != "" {
+		cmd.Short = flowConfig.Description
+		cmd.Long = flowConfig.Description
 	}
 
-	tk := strings.Join(append(parentFlowKey, target.Name), ".")
+	tk := strings.Join(append(parentFlowKey, flowConfig.Name), ".")
 	flowKey := p.CreateFlowKey(tk)
 	flowDef := &FlowDef{
 		Key:         flowKey,
-		Inputs:      target.Inputs,
-		Autoenv:     target.Autoenv,
-		Autodir:     target.Autodir,
-		Interactive: target.Interactive,
-		Target:      target,
+		Inputs:      flowConfig.Inputs,
+		Autoenv:     flowConfig.Autoenv,
+		Autodir:     flowConfig.Autodir,
+		Interactive: flowConfig.Interactive,
+		FlowConfig:  flowConfig,
 		Command:     cmd,
 	}
 	p.RegisterFlowDef(flowKey, flowDef)
 
-	if target.Script != "" {
+	if flowConfig.Script != "" {
 		tmpl := template.New(fmt.Sprintf("%s.definition.yaml: %s.script", p.Name, flowKey.ShortString()))
 		tmpl.Option("missingkey=error")
 		flowDef.Template = tmpl
-		flowDef.Script = target.Script
+		flowDef.Script = flowConfig.Script
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.Reconfigure()
 
-			log.Debugf("Number of inputs: %v", len(target.Inputs))
+			log.Debugf("Number of inputs: %v", len(flowConfig.Inputs))
 
 			if _, err := p.RunFlow(flowKey, args, false); err != nil {
 				c := strings.Join(strings.Split(flowKey.String(), "."), " ")
@@ -1064,14 +1064,14 @@ func (p *Project) GenerateCommand(target *Target, rootCommand *cobra.Command, pa
 
 	log.WithFields(log.Fields{"prefix": flowKey.String()}).Debug("is a flow")
 
-	p.GenerateCommands(target.Targets, cmd, append(parentFlowKey, target.Name))
+	p.GenerateCommands(flowConfig.FlowConfigs, cmd, append(parentFlowKey, flowConfig.Name))
 
 	return cmd, nil
 }
 
-func (p *Project) GenerateCommands(targets []*Target, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
-	for _, target := range targets {
-		p.GenerateCommand(target, rootCommand, parentFlowKey)
+func (p *Project) GenerateCommands(flowConfigs []*FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
+	for _, c := range flowConfigs {
+		p.GenerateCommand(c, rootCommand, parentFlowKey)
 	}
 
 	return rootCommand, nil
@@ -1083,7 +1083,7 @@ func (p *Project) GenerateAllFlags() {
 		for _, input := range flowDef.Variables {
 			log.Debugf("Configuring flag and config key for flow %s's input: %s", flowDef.Key.String(), input.Name)
 
-			target := flowDef.Target
+			flowConfig := flowDef.FlowConfig
 			cmd := flowDef.Command
 			var description string
 			if input.Description != "" {
@@ -1103,7 +1103,7 @@ func (p *Project) GenerateAllFlags() {
 
 			flagName := strings.Replace(name, ".", "-", -1)
 
-			if len(target.Targets) == 0 {
+			if len(flowConfig.FlowConfigs) == 0 {
 				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
 				//log.Debugf("Binding flag --%s to the config key %s", flagName, name)
 				//viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
@@ -1120,20 +1120,20 @@ func (p *Project) GenerateAllFlags() {
 	}
 }
 
-func ReadFromString(data string) (*Target, error) {
-	err, t := ReadFromBytes([]byte(data))
+func ReadFlowConfigFromString(data string) (*FlowConfig, error) {
+	err, t := ReadFlowConfigFromBytes([]byte(data))
 	return err, t
 }
 
-func ReadFromBytes(data []byte) (*Target, error) {
-	c := newDefaultTargetConfig()
+func ReadFlowConfigFromBytes(data []byte) (*FlowConfig, error) {
+	c := newDefaultFlowConfig()
 	if err := yaml.Unmarshal(data, c); err != nil {
 		return nil, errors.Annotatef(err, "yaml.Unmarshal failed: %v", err)
 	}
 	return c, nil
 }
 
-func ReadFromFile(path string) (*Target, error) {
+func ReadFlowConfigFromFile(path string) (*FlowConfig, error) {
 	log.Debugf("Loading %s", path)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -1148,7 +1148,7 @@ func ReadFromFile(path string) (*Target, error) {
 
 	log.Debugf("%s", string(yamlBytes))
 
-	t, err := ReadFromBytes(yamlBytes)
+	t, err := ReadFlowConfigFromBytes(yamlBytes)
 
 	if err != nil {
 		return nil, errors.Annotatef(err, "Error while loading %s", path)
@@ -1181,35 +1181,35 @@ func main() {
 		varfile = environ["VARFILE"]
 	}
 
-	var rootTarget *Target
+	var rootFlowConfig *FlowConfig
 
 	varfileExists := file.Exists(varfile)
 
 	if varfileExists {
 
-		target, err := ReadFromFile(varfile)
+		flowConfigFromFile, err := ReadFlowConfigFromFile(varfile)
 
 		if err != nil {
 			log.Errorf(errors.ErrorStack(err))
 			panic(errors.Trace(err))
 		}
-		rootTarget = target
+		rootFlowConfig = flowConfigFromFile
 	} else {
-		rootTarget = newDefaultTargetConfig()
+		rootFlowConfig = newDefaultFlowConfig()
 	}
 
 	var err error
 
-	rootTarget.Name = commandName
+	rootFlowConfig.Name = commandName
 
 	var envFromFile string
-	envFromFile, err = env.New(rootTarget.Name).GetOrSet("dev")
+	envFromFile, err = env.New(rootFlowConfig.Name).GetOrSet("dev")
 	if err != nil {
 		panic(errors.Trace(err))
 	}
 
 	p := &Project{
-		Name:                rootTarget.Name,
+		Name:                rootFlowConfig.Name,
 		CommandRelativePath: commandPath,
 		FlowDefs:            map[string]*FlowDef{},
 		CachedFlowOutputs:   map[string]interface{}{},
@@ -1218,7 +1218,7 @@ func main() {
 		Env:                 envFromFile,
 	}
 
-	rootCmd, err := p.GenerateCommand(rootTarget, nil, []string{})
+	rootCmd, err := p.GenerateCommand(rootFlowConfig, nil, []string{})
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
@@ -1246,10 +1246,10 @@ func main() {
 	viper.AddConfigPath(".")
 
 	// See "How to merge two config files" https://github.com/spf13/viper/issues/181
-	viper.SetConfigName(rootTarget.Name)
-	commonConfigFile := fmt.Sprintf("%s.yaml", rootTarget.Name)
+	viper.SetConfigName(rootFlowConfig.Name)
+	commonConfigFile := fmt.Sprintf("%s.yaml", rootFlowConfig.Name)
 	if file.Exists(commonConfigFile) {
-		log.Debugf("Loading common configuration from %s.yaml", rootTarget.Name)
+		log.Debugf("Loading common configuration from %s.yaml", rootFlowConfig.Name)
 		if err := viper.MergeInConfig(); err != nil {
 			panic(err)
 		}

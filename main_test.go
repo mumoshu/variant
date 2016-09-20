@@ -17,22 +17,22 @@ flows:
 
 func TestMinimalConfigParsing(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
-	expected := &Target{
+	expected := &FlowConfig{
 		Inputs: []*Input{},
-		Targets: []*Target{
-			&Target{
+		FlowConfigs: []*FlowConfig{
+			&FlowConfig{
 				Autoenv: true,
 				Autodir: true,
 				Name:    "foo",
 				Inputs:  []*Input{},
-				Targets: []*Target{
-					&Target{
-						Autoenv: true,
-						Autodir: true,
-						Name:    "bar",
-						Script:  "foobar",
-						Targets: []*Target{},
-						Inputs:  []*Input{},
+				FlowConfigs: []*FlowConfig{
+					&FlowConfig{
+						Autoenv:     true,
+						Autodir:     true,
+						Name:        "bar",
+						Script:      "foobar",
+						FlowConfigs: []*FlowConfig{},
+						Inputs:      []*Input{},
 					},
 				},
 			},
@@ -40,7 +40,7 @@ func TestMinimalConfigParsing(t *testing.T) {
 		Autoenv: true,
 		Autodir: true,
 	}
-	actual, err := ReadFromString(minimalConfigYaml)
+	actual, err := ReadFlowConfigFromString(minimalConfigYaml)
 
 	if err != nil {
 		t.Errorf("Error: %v", err)
