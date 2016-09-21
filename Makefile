@@ -1,7 +1,7 @@
 CMD ?= dist/$(VERSION)/var
 GITHUB_USER ?= mumoshu
 GITHUB_REPO ?= variant
-VERSION ?= v0.0.3-rc.4
+VERSION ?= v0.0.3-rc.5
 
 define GO_FMT
 test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -d {} + | tee /dev/stderr)" || \
