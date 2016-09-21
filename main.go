@@ -89,6 +89,7 @@ type FlowConfig struct {
 	Inputs      []*Input      `yaml:"inputs,omitempty"`
 	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
 	Script      string        `yaml:"script,omitempty"`
+	Steps       []Step        `yaml:"steps,omitempty"`
 	Autoenv     bool          `yaml:"autoenv,omitempty"`
 	Autodir     bool          `yaml:"autodir,omitempty"`
 	Interactive bool          `yaml:"interactive,omitempty"`
@@ -100,6 +101,7 @@ type FlowConfigV1 struct {
 	Inputs      []*Input      `yaml:"inputs,omitempty"`
 	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
 	Script      string        `yaml:"script,omitempty"`
+	StepConfigs []*StepConfig `yaml:"steps,omitempty"`
 	Autoenv     bool          `yaml:"autoenv,omitempty"`
 	Autodir     bool          `yaml:"autodir,omitempty"`
 	Interactive bool          `yaml:"interactive,omitempty"`
@@ -110,9 +112,34 @@ type FlowConfigV2 struct {
 	Inputs      []*Input               `yaml:"inputs,omitempty"`
 	FlowConfigs map[string]*FlowConfig `yaml:"flows,omitempty"`
 	Script      string                 `yaml:"script,omitempty"`
+	StepConfigs []*StepConfig          `yaml:"steps,omitempty"`
 	Autoenv     bool                   `yaml:"autoenv,omitempty"`
 	Autodir     bool                   `yaml:"autodir,omitempty"`
 	Interactive bool                   `yaml:"interactive,omitempty"`
+}
+
+type StepConfig struct {
+	Script interface{} `yaml:"script,omitempty"`
+	Flow   interface{} `yaml:"flow,omitempty"`
+}
+
+type Step interface {
+	GetName() string
+	Run(project *Project, flow *Flow, parent ...FlowDef) (StepStringOutput, error)
+}
+
+type StepStringOutput struct {
+	String string
+}
+
+type ScriptStep struct {
+	Name string
+	Code string
+}
+
+type FlowStep struct {
+	Name          string
+	FlowKeyString string
 }
 
 func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -128,6 +155,7 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		Autodir:     false,
 		Inputs:      []*Input{},
 		FlowConfigs: []*FlowConfig{},
+		StepConfigs: []*StepConfig{},
 	}
 
 	err := unmarshal(&v1)
@@ -147,7 +175,11 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Autoenv = v1.Autoenv
 		t.Autodir = v1.Autodir
 		t.Interactive = v1.Interactive
-		return nil
+		steps, err := readStepsFromStepConfigs(v1.Script, v1.StepConfigs)
+		if err != nil {
+			return errors.Annotatef(err, "Error while reading v1 config")
+		}
+		t.Steps = steps
 	}
 
 	var v2 *FlowConfigV2
@@ -160,12 +192,13 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			Interactive: false,
 			Inputs:      []*Input{},
 			FlowConfigs: map[string]*FlowConfig{},
+			StepConfigs: []*StepConfig{},
 		}
 
 		err = unmarshal(&v2)
 
-		if len(v2.FlowConfigs) == 0 && v2.Script == "" {
-			e := fmt.Errorf("Not v2 format: Both `flows` and `script` are missing.")
+		if len(v2.FlowConfigs) == 0 && v2.Script == "" && len(v2.StepConfigs) == 0 {
+			e := fmt.Errorf("Not v2 format: `flows`, `script`, `steps` are missing.")
 			log.Debugf("%s", e)
 			err = e
 		}
@@ -174,6 +207,11 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Description = v2.Description
 			t.Inputs = v2.Inputs
 			t.FlowConfigs = TransformV2FlowConfigMapToArray(v2.FlowConfigs)
+			steps, err := readStepsFromStepConfigs(v2.Script, v2.StepConfigs)
+			if err != nil {
+				return errors.Annotatef(err, "Error while reading v2 config")
+			}
+			t.Steps = steps
 			t.Script = v2.Script
 			t.Autoenv = v2.Autoenv
 			t.Autodir = v2.Autodir
@@ -215,6 +253,7 @@ func (t *FlowConfig) CopyTo(other *FlowConfig) {
 	other.Description = t.Description
 	other.Inputs = t.Inputs
 	other.FlowConfigs = t.FlowConfigs
+	other.Steps = t.Steps
 	other.Script = t.Script
 	other.Autoenv = t.Autoenv
 	other.Autodir = t.Autodir
@@ -232,6 +271,45 @@ func TransformV2FlowConfigMapToArray(v2 map[string]*FlowConfig) []*FlowConfig {
 		result = append(result, t)
 	}
 	return result
+}
+
+func readStepsFromStepConfigs(script string, stepConfigs []*StepConfig) ([]Step, error) {
+	result := []Step{}
+
+	if script != "" {
+		if len(stepConfigs) > 0 {
+			return nil, fmt.Errorf("both script and steps exist.")
+		}
+		result = []Step{ScriptStep{
+			Name: "script",
+			Code: script,
+		}}
+	} else {
+
+		for i, stepConfig := range stepConfigs {
+			var step Step
+
+			name := fmt.Sprintf("step-%d", i+1)
+
+			if flowKey, isStr := stepConfig.Flow.(string); isStr && flowKey != "" {
+				step = FlowStep{
+					Name:          name,
+					FlowKeyString: flowKey,
+				}
+			} else if code, isStr := stepConfig.Script.(string); isStr && code != "" {
+				step = ScriptStep{
+					Name: name,
+					Code: code,
+				}
+			} else {
+				return nil, fmt.Errorf("Error reading step[%d]: field named `flow` or `script` doesn't exist")
+			}
+
+			result = append(result, step)
+		}
+	}
+
+	return result, nil
 }
 
 func CastKeysToStrings(m map[interface{}]interface{}) (map[string]interface{}, error) {
@@ -354,6 +432,7 @@ func newDefaultFlowConfig() *FlowConfig {
 		Inputs:      []*Input{},
 		FlowConfigs: []*FlowConfig{},
 		Autoenv:     false,
+		Steps:       []Step{},
 	}
 }
 
@@ -367,8 +446,8 @@ type ProjectConfig struct {
 
 type FlowDef struct {
 	Key         FlowKey
-	Template    *template.Template
-	Script      string
+	ProjectName string
+	Steps       []Step
 	Inputs      []*Input
 	Variables   []*Variable
 	Autoenv     bool
@@ -380,8 +459,8 @@ type FlowDef struct {
 
 type Flow struct {
 	Key         FlowKey
-	Template    *template.Template
-	Script      string
+	ProjectName string
+	Steps       []Step
 	Vars        map[string]interface{}
 	Autoenv     bool
 	Autodir     bool
@@ -409,22 +488,6 @@ type T struct {
 		RenamedC int   `yaml:"c"`
 		D        []int `yaml:",flow"`
 	}
-}
-
-func (t Flow) RunScript(script string, depended bool) (string, error) {
-	//commands := strings.Split(script, "\n")
-	commands := []string{script}
-	var lastOutput string
-	for _, command := range commands {
-		if command != "" {
-			output, err := t.RunCommand(command, depended)
-			if err != nil {
-				return output, err
-			}
-			lastOutput = output
-		}
-	}
-	return lastOutput, nil
 }
 
 func (t Flow) GenerateAutoenv() (map[string]string, error) {
@@ -467,7 +530,7 @@ func (t Flow) GenerateAutoenvRecursively(path string, env map[string]interface{}
 	return result, nil
 }
 
-func (t Flow) RunCommand(command string, depended bool) (string, error) {
+func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *Flow) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
 	log.Debugf("running command: %s", command)
@@ -485,9 +548,9 @@ func (t Flow) RunCommand(command string, depended bool) (string, error) {
 		mergedEnv[key] = value
 	}
 
-	if t.Autoenv {
+	if parentFlow.Autoenv {
 		l.Debugf("Autoenv is enabled")
-		autoEnv, err := t.GenerateAutoenv()
+		autoEnv, err := parentFlow.GenerateAutoenv()
 		if err != nil {
 			log.Errorf("Failed to generate autoenv: %v", err)
 		}
@@ -506,9 +569,9 @@ func (t Flow) RunCommand(command string, depended bool) (string, error) {
 		l.Debugf("Autoenv is disabled")
 	}
 
-	if t.Autodir {
+	if parentFlow.Autodir {
 		l.Debugf("Autodir is enabled")
-		parentKey, err := t.Key.Parent()
+		parentKey, err := parentFlow.Key.Parent()
 		if parentKey != nil {
 			l.Debugf("full: %s", parentKey.String())
 			shortKey := parentKey.ShortString()
@@ -516,7 +579,7 @@ func (t Flow) RunCommand(command string, depended bool) (string, error) {
 			path := strings.Replace(shortKey, ".", "/", -1)
 			l.Debugf("Dir: %s", path)
 			if err != nil {
-				l.Debugf("%s does not have parent", t.Key.String())
+				l.Debugf("%s does not have parent", parentFlow.Key.String())
 			} else {
 				if _, err := os.Stat(path); err == nil {
 					cmd.Dir = path
@@ -529,7 +592,7 @@ func (t Flow) RunCommand(command string, depended bool) (string, error) {
 
 	output := ""
 
-	if t.Interactive {
+	if parentFlow.Interactive {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -707,8 +770,13 @@ func (t FlowKey) Parent() (*FlowKey, error) {
 	}
 }
 
-func (p Project) RunFlow(flowKey FlowKey, args []string, depended bool) (string, error) {
-	provided := p.GetValueForName(flowKey.ShortString())
+func (p Project) RunFlowForKeyString(keyStr string, args []string, parent ...FlowDef) (string, error) {
+	flowKey := p.CreateFlowKey(fmt.Sprintf("%s.%s", p.Name, keyStr))
+	return p.RunFlowForKey(flowKey, args, parent...)
+}
+
+func (p Project) RunFlowForKey(flowKey FlowKey, args []string, parent ...FlowDef) (string, error) {
+	provided := p.GetValueForConfigKey(flowKey.ShortString())
 
 	if provided != "" {
 		log.Debugf("Output for flow %s is already provided in configuration: %s", flowKey.ShortString(), provided)
@@ -716,7 +784,7 @@ func (p Project) RunFlow(flowKey FlowKey, args []string, depended bool) (string,
 		return provided, nil
 	}
 
-	t, err := p.FindFlowDef(flowKey)
+	flowDef, err := p.FindFlowDef(flowKey)
 
 	if err != nil {
 		return "", errors.Annotate(err, "RunFlowError")
@@ -727,7 +795,7 @@ func (p Project) RunFlow(flowKey FlowKey, args []string, depended bool) (string,
 	vars["env"] = p.Env
 	vars["cmd"] = p.CommandRelativePath
 
-	inputs, err := p.AggregateInputsFor(flowKey, args)
+	inputs, err := p.AggregateVariablesOfFlowForKey(flowKey, args, parent...)
 
 	if err != nil {
 		return "", errors.Annotatef(err, "Flow `%s` failed", flowKey.String())
@@ -739,18 +807,18 @@ func (p Project) RunFlow(flowKey FlowKey, args []string, depended bool) (string,
 
 	flow := &Flow{
 		Key:         flowKey,
-		Template:    t.Template,
-		Script:      t.Script,
+		ProjectName: flowDef.ProjectName,
+		Steps:       flowDef.Steps,
 		Vars:        vars,
-		Autoenv:     t.Autoenv,
-		Autodir:     t.Autodir,
-		Interactive: t.Interactive,
-		FlowDef:     t,
+		Autoenv:     flowDef.Autoenv,
+		Autodir:     flowDef.Autodir,
+		Interactive: flowDef.Interactive,
+		FlowDef:     flowDef,
 	}
 
 	log.Debugf("Flow: %v", flow)
 
-	output, error := flow.Run(depended)
+	output, error := flow.Run(&p, parent...)
 
 	log.Debugf("Output: %s", output)
 
@@ -761,12 +829,12 @@ func (p Project) RunFlow(flowKey FlowKey, args []string, depended bool) (string,
 	return output, error
 }
 
-func (p Project) AggregateInputsFor(flowKey FlowKey, args []string) (map[string]interface{}, error) {
+func (p Project) AggregateVariablesOfFlowForKey(flowKey FlowKey, args []string, parent ...FlowDef) (map[string]interface{}, error) {
 	aggregated := map[string]interface{}{}
-	if err := p.CollectInputsFor(flowKey, aggregated, args); err != nil {
+	if err := p.CollectVariablesOfFlowForKey(flowKey, aggregated, args, parent...); err != nil {
 		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.String())
 	}
-	if err := p.AggregateInputsForParent(flowKey, aggregated); err != nil {
+	if err := p.CollectVariablesOfParent(flowKey, aggregated); err != nil {
 		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.String())
 	}
 	return aggregated, nil
@@ -774,22 +842,22 @@ func (p Project) AggregateInputsFor(flowKey FlowKey, args []string) (map[string]
 
 type AnyMap map[string]interface{}
 
-func (p Project) AggregateInputsForParent(flowKey FlowKey, aggregated AnyMap) error {
+func (p Project) CollectVariablesOfParent(flowKey FlowKey, aggregated AnyMap) error {
 	parentKey, err := flowKey.Parent()
 	if err != nil {
 		log.Debug("%v", err)
 	} else {
-		if err := p.CollectInputsFor(*parentKey, aggregated, []string{}); err != nil {
+		if err := p.CollectVariablesOfFlowForKey(*parentKey, aggregated, []string{}); err != nil {
 			return errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.String())
 		}
-		if err := p.AggregateInputsForParent(*parentKey, aggregated); err != nil {
+		if err := p.CollectVariablesOfParent(*parentKey, aggregated); err != nil {
 			return errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.String())
 		}
 	}
 	return nil
 }
 
-func (p Project) GetValueForName(k string) string {
+func (p Project) GetValueForConfigKey(k string) string {
 	ctx := log.WithFields(log.Fields{"prefix": k})
 
 	lastIndex := strings.LastIndex(k, ".")
@@ -817,14 +885,26 @@ func (p Project) GetValueForName(k string) string {
 	return provided
 }
 
-func (p Project) CollectInputsFor(flowKey FlowKey, aggregated AnyMap, args []string) error {
-	log.Debugf("Collecting inputs for the flow `%v`", flowKey.String())
+func (p Project) CollectVariablesOfFlowForKey(flowKey FlowKey, variables AnyMap, args []string, parent ...FlowDef) error {
+	var initialFlowKey string
+	if len(parent) > 0 {
+		initialFlowKey = parent[0].Key.ShortString()
+	} else {
+		initialFlowKey = ""
+	}
+
+	if initialFlowKey != "" {
+		log.Debugf("Collecting inputs for the flow `%v` via the flow `%s`", flowKey.ShortString(), initialFlowKey)
+	} else {
+		log.Debugf("Collecting inputs for the flow `%v`", flowKey.ShortString())
+	}
+
 	flowDef, err := p.FindFlowDef(flowKey)
 	if err != nil {
 		return errors.Trace(err)
 	}
 	for i, input := range flowDef.Variables {
-		log.Debugf("Flow `%v` depends on the input `%s`", flowKey.String(), input.ShortName())
+		log.Debugf("Flow `%v` depends on the input `%s`", flowKey.ShortString(), input.ShortName())
 		ctx := log.WithFields(log.Fields{"prefix": input.Name})
 
 		var arg *string
@@ -833,32 +913,40 @@ func (p Project) CollectInputsFor(flowKey FlowKey, aggregated AnyMap, args []str
 			arg = &args[i]
 		}
 
-		provided := p.GetValueForName(input.ShortName())
+		var provided string
 
-		if provided == "" {
-			provided = p.GetValueForName(input.Name)
+		if initialFlowKey != "" {
+			provided = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", initialFlowKey, input.ShortName()))
 		}
 
-		components := strings.Split(input.Name, ".")
+		if provided == "" && strings.LastIndex(input.ShortName(), flowKey.ShortString()) == -1 {
+			provided = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", flowKey.ShortString(), input.ShortName()))
+		}
+
+		if provided == "" {
+			provided = p.GetValueForConfigKey(input.ShortName())
+		}
+
+		pathComponents := strings.Split(input.Name, ".")
 
 		if arg != nil {
-			PopulateCache(aggregated, components, *arg)
+			SetValueAtPath(variables, pathComponents, *arg)
 		} else if provided == "" {
 			var output interface{}
 			var err error
-			if output, err = FetchCache(p.CachedFlowOutputs, components); output == nil {
-				output, err = p.RunFlow(p.CreateFlowKeyFromVariable(input), []string{}, true)
+			if output, err = FetchCache(p.CachedFlowOutputs, pathComponents); output == nil {
+				output, err = p.RunFlowForKey(p.CreateFlowKeyFromVariable(input), []string{}, *flowDef)
 				if err != nil {
 					return errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", input.ShortName())
 				}
-				PopulateCache(p.CachedFlowOutputs, components, output)
+				SetValueAtPath(p.CachedFlowOutputs, pathComponents, output)
 			}
 			if err != nil {
 				return errors.Trace(err)
 			}
-			PopulateCache(aggregated, components, output)
+			SetValueAtPath(variables, pathComponents, output)
 		} else {
-			PopulateCache(aggregated, components, provided)
+			SetValueAtPath(variables, pathComponents, provided)
 		}
 
 	}
@@ -888,7 +976,7 @@ func FetchCache(cache map[string]interface{}, keyComponents []string) (interface
 	}
 }
 
-func PopulateCache(cache map[string]interface{}, keyComponents []string, value interface{}) error {
+func SetValueAtPath(cache map[string]interface{}, keyComponents []string, value interface{}) error {
 	k, rest := keyComponents[0], keyComponents[1:]
 
 	k = strings.Replace(k, "-", "_", -1)
@@ -903,7 +991,10 @@ func PopulateCache(cache map[string]interface{}, keyComponents []string, value i
 		if cache[k] == nil {
 			cache[k] = map[string]interface{}{}
 		}
-		PopulateCache(cache[k].(map[string]interface{}), rest, value)
+		err := SetValueAtPath(cache[k].(map[string]interface{}), rest, value)
+		if err != nil {
+			return errors.Trace(err)
+		}
 	}
 	return nil
 }
@@ -952,15 +1043,86 @@ func recursiveFetchFromMap(m map[string]interface{}, key string) (string, error)
 	return result, nil
 }
 
-func (t Flow) Run(depended bool) (string, error) {
-	if depended {
-		log.Debugf("running flow: %s", t.Key.String())
+func (t *Flow) Run(project *Project, parent ...FlowDef) (string, error) {
+	if len(parent) > 0 {
+		log.Debugf("running flow `%s` via `%s`", t.Key.String(), parent[0].Key.String())
 	} else {
 		log.Infof("running flow: %s", t.Key.String())
 	}
 
+	var output StepStringOutput
+	var err error
+
+	for _, step := range t.Steps {
+		output, err = step.Run(project, t, parent...)
+
+		if err != nil {
+			return "", errors.Annotate(err, "Flow#Run failed while running a script")
+		}
+	}
+
+	if err != nil {
+		err = errors.Annotate(err, "Flow#Run failed while running a script")
+	}
+
+	return output.String, err
+}
+
+func (s FlowStep) Run(project *Project, flow *Flow, parent ...FlowDef) (StepStringOutput, error) {
+	output, err := project.RunFlowForKeyString(s.FlowKeyString, []string{}, parent...)
+	return StepStringOutput{String: output}, err
+}
+
+func (s FlowStep) GetName() string {
+	return s.Name
+}
+
+func (s ScriptStep) GetName() string {
+	return s.Name
+}
+
+func (s ScriptStep) Run(project *Project, flow *Flow, parent ...FlowDef) (StepStringOutput, error) {
+	depended := len(parent) > 0
+
+	t := template.New(fmt.Sprintf("%s.definition.yaml: %s.%s.script", flow.ProjectName, s.GetName(), flow.Key.ShortString()))
+	t.Option("missingkey=error")
+
+	tmpl, err := t.Funcs(flow.CreateFuncMap()).Parse(s.Code)
+	if err != nil {
+		log.Errorf("Error: %v", err)
+	}
+
+	var buff bytes.Buffer
+	if err := tmpl.Execute(&buff, flow.Vars); err != nil {
+		return StepStringOutput{String: "scripterror"}, errors.Annotatef(err, "Template execution failed.\n\nScript:\n%s\n\nVars:\n%v", s.Code, flow.Vars)
+	}
+
+	script := buff.String()
+
+	output, err := s.RunScript(script, depended, flow)
+
+	return StepStringOutput{String: output}, err
+}
+
+func (t ScriptStep) RunScript(script string, depended bool, flow *Flow) (string, error) {
+	//commands := strings.Split(script, "\n")
+	commands := []string{script}
+	var lastOutput string
+	for _, command := range commands {
+		if command != "" {
+			output, err := t.RunCommand(command, depended, flow)
+			if err != nil {
+				return output, err
+			}
+			lastOutput = output
+		}
+	}
+	return lastOutput, nil
+}
+
+func (f Flow) CreateFuncMap() template.FuncMap {
 	get := func(key string) (interface{}, error) {
-		val, err := recursiveFetchFromMap(t.Vars, key)
+		val, err := recursiveFetchFromMap(f.Vars, key)
 
 		if err != nil {
 			return nil, errors.Trace(err)
@@ -978,25 +1140,7 @@ func (t Flow) Run(depended bool) (string, error) {
 		"escapeDoubleQuotes": escapeDoubleQuotes,
 	}
 
-	tmpl, err := t.Template.Funcs(fns).Parse(t.Script)
-	if err != nil {
-		log.Errorf("Error: %v", err)
-	}
-
-	var buff bytes.Buffer
-	if err := tmpl.Execute(&buff, t.Vars); err != nil {
-		return "", errors.Annotatef(err, "Template execution failed.\n\nScript:\n%s\n\nVars:\n%v", t.FlowDef.FlowConfig.Script, t.Vars)
-	}
-
-	script := buff.String()
-
-	output, err := t.RunScript(script, depended)
-
-	if err != nil {
-		err = errors.Annotate(err, "Flow#Run failed while running a script")
-	}
-
-	return output, err
+	return fns
 }
 
 func (p *Project) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
@@ -1021,11 +1165,13 @@ func (p *Project) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Com
 		cmd.Long = flowConfig.Description
 	}
 
-	tk := strings.Join(append(parentFlowKey, flowConfig.Name), ".")
-	flowKey := p.CreateFlowKey(tk)
+	flowKeyStr := strings.Join(append(parentFlowKey, flowConfig.Name), ".")
+	flowKey := p.CreateFlowKey(flowKeyStr)
 	flowDef := &FlowDef{
 		Key:         flowKey,
 		Inputs:      flowConfig.Inputs,
+		ProjectName: p.Name,
+		Steps:       flowConfig.Steps,
 		Autoenv:     flowConfig.Autoenv,
 		Autodir:     flowConfig.Autodir,
 		Interactive: flowConfig.Interactive,
@@ -1034,17 +1180,13 @@ func (p *Project) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Com
 	}
 	p.RegisterFlowDef(flowKey, flowDef)
 
-	if flowConfig.Script != "" {
-		tmpl := template.New(fmt.Sprintf("%s.definition.yaml: %s.script", p.Name, flowKey.ShortString()))
-		tmpl.Option("missingkey=error")
-		flowDef.Template = tmpl
-		flowDef.Script = flowConfig.Script
+	if len(flowConfig.Steps) > 0 {
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.Reconfigure()
 
 			log.Debugf("Number of inputs: %v", len(flowConfig.Inputs))
 
-			if _, err := p.RunFlow(flowKey, args, false); err != nil {
+			if _, err := p.RunFlowForKey(flowKey, args); err != nil {
 				c := strings.Join(strings.Split(flowKey.String(), "."), " ")
 				stack := strings.Split(errors.ErrorStack(err), "\n")
 				for i := len(stack)/2 - 1; i >= 0; i-- {
@@ -1103,18 +1245,25 @@ func (p *Project) GenerateAllFlags() {
 
 			flagName := strings.Replace(name, ".", "-", -1)
 
+			var longerName string
+			if input.FlowKey.ShortString() == flowDef.Key.ShortString() {
+				longerName = input.ShortName()
+			} else {
+				longerName = fmt.Sprintf("%s.%s", flowDef.Key.ShortString(), input.ShortName())
+			}
+
 			if len(flowConfig.FlowConfigs) == 0 {
 				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
 				//log.Debugf("Binding flag --%s to the config key %s", flagName, name)
 				//viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
-				log.Debugf("Binding flag --%s to the config key %s", flagName, input.ShortName())
-				viper.BindPFlag(input.ShortName(), cmd.Flags().Lookup(flagName))
+				log.Debugf("Binding flag --%s of the command %s to the input %s with the config key %s", flagName, flowDef.Key.ShortString(), input.Name, longerName)
+				viper.BindPFlag(longerName, cmd.Flags().Lookup(flagName))
 			} else {
 				cmd.PersistentFlags().StringP(flagName, "" /*string(input.Name[0])*/, "" /*default*/, description)
 				//log.Debugf("Binding persistent flag --%s to the config key %s", flagName, name)
 				//viper.BindPFlag(name, cmd.PersistentFlags().Lookup(flagName))
-				log.Debugf("Binding persistent flag --%s to the config key %s", flagName, input.ShortName())
-				viper.BindPFlag(input.ShortName(), cmd.PersistentFlags().Lookup(flagName))
+				log.Debugf("Binding persistent flag --%s to the config key %s", flagName, longerName)
+				viper.BindPFlag(longerName, cmd.PersistentFlags().Lookup(flagName))
 			}
 		}
 	}

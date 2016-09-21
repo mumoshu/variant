@@ -56,5 +56,5 @@ smoke6: build
 smoke7: build
 	$(CMD) env set dev && $(CMD) test2
 
-test:
+smoke-tests:
 	make smoke{1,2,3,4,5,6,7}
