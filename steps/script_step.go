@@ -42,8 +42,8 @@ func (s ScriptStep) GetName() string {
 	return s.Name
 }
 
-func (s ScriptStep) Run(project *engine.Project, flow *engine.Flow, parent ...engine.FlowDef) (engine.StepStringOutput, error) {
-	depended := len(parent) > 0
+func (s ScriptStep) Run(project *engine.Project, flow *engine.Flow, caller ...engine.FlowDef) (engine.StepStringOutput, error) {
+	depended := len(caller) > 0
 
 	t := template.New(fmt.Sprintf("%s.definition.yaml: %s.%s.script", flow.ProjectName, s.GetName(), flow.Key.ShortString()))
 	t.Option("missingkey=error")

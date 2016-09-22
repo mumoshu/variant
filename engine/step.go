@@ -2,7 +2,7 @@ package engine
 
 type Step interface {
 	GetName() string
-	Run(project *Project, flow *Flow, parent ...FlowDef) (StepStringOutput, error)
+	Run(project *Project, flow *Flow, caller ...FlowDef) (StepStringOutput, error)
 }
 
 type StepStringOutput struct {

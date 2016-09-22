@@ -112,12 +112,12 @@ func (p Project) CreateFlowKeyFromInputName(inputName string) FlowKey {
 	return FlowKey{Components: c}
 }
 
-func (p Project) RunFlowForKeyString(keyStr string, args []string, parent ...FlowDef) (string, error) {
+func (p Project) RunFlowForKeyString(keyStr string, args []string, caller ...FlowDef) (string, error) {
 	flowKey := p.CreateFlowKey(fmt.Sprintf("%s.%s", p.Name, keyStr))
-	return p.RunFlowForKey(flowKey, args, parent...)
+	return p.RunFlowForKey(flowKey, args, caller...)
 }
 
-func (p Project) RunFlowForKey(flowKey FlowKey, args []string, parent ...FlowDef) (string, error) {
+func (p Project) RunFlowForKey(flowKey FlowKey, args []string, caller ...FlowDef) (string, error) {
 	provided := p.GetValueForConfigKey(flowKey.ShortString())
 
 	if provided != "" {
@@ -137,7 +137,7 @@ func (p Project) RunFlowForKey(flowKey FlowKey, args []string, parent ...FlowDef
 	vars["env"] = p.Env
 	vars["cmd"] = p.CommandRelativePath
 
-	inputs, err := p.AggregateVariablesOfFlowForKey(flowKey, args, parent...)
+	inputs, err := p.AggregateVariablesOfFlowForKey(flowKey, args, caller...)
 
 	if err != nil {
 		return "", errors.Annotatef(err, "Flow `%s` failed", flowKey.String())
@@ -160,7 +160,7 @@ func (p Project) RunFlowForKey(flowKey FlowKey, args []string, parent ...FlowDef
 
 	log.Debugf("Flow: %v", flow)
 
-	output, error := flow.Run(&p, parent...)
+	output, error := flow.Run(&p, caller...)
 
 	log.Debugf("Output: %s", output)
 
@@ -171,9 +171,9 @@ func (p Project) RunFlowForKey(flowKey FlowKey, args []string, parent ...FlowDef
 	return output, error
 }
 
-func (p Project) AggregateVariablesOfFlowForKey(flowKey FlowKey, args []string, parent ...FlowDef) (map[string]interface{}, error) {
+func (p Project) AggregateVariablesOfFlowForKey(flowKey FlowKey, args []string, caller ...FlowDef) (map[string]interface{}, error) {
 	aggregated := map[string]interface{}{}
-	if err := p.CollectVariablesOfFlowForKey(flowKey, aggregated, args, parent...); err != nil {
+	if err := p.CollectVariablesOfFlowForKey(flowKey, aggregated, args, caller...); err != nil {
 		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.String())
 	}
 	if err := p.CollectVariablesOfParent(flowKey, aggregated); err != nil {
@@ -227,10 +227,10 @@ func (p Project) GetValueForConfigKey(k string) string {
 	return provided
 }
 
-func (p Project) CollectVariablesOfFlowForKey(flowKey FlowKey, variables AnyMap, args []string, parent ...FlowDef) error {
+func (p Project) CollectVariablesOfFlowForKey(flowKey FlowKey, variables AnyMap, args []string, caller ...FlowDef) error {
 	var initialFlowKey string
-	if len(parent) > 0 {
-		initialFlowKey = parent[0].Key.ShortString()
+	if len(caller) > 0 {
+		initialFlowKey = caller[0].Key.ShortString()
 	} else {
 		initialFlowKey = ""
 	}

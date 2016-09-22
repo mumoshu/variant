@@ -9,9 +9,9 @@ import (
 	"github.com/juju/errors"
 )
 
-func (t *Flow) Run(project *Project, parent ...FlowDef) (string, error) {
-	if len(parent) > 0 {
-		log.Debugf("running flow `%s` via `%s`", t.Key.String(), parent[0].Key.String())
+func (t *Flow) Run(project *Project, caller ...FlowDef) (string, error) {
+	if len(caller) > 0 {
+		log.Debugf("running flow `%s` via `%s`", t.Key.String(), caller[0].Key.String())
 	} else {
 		log.Infof("running flow: %s", t.Key.String())
 	}
@@ -20,7 +20,7 @@ func (t *Flow) Run(project *Project, parent ...FlowDef) (string, error) {
 	var err error
 
 	for _, step := range t.Steps {
-		output, err = step.Run(project, t, parent...)
+		output, err = step.Run(project, t, caller...)
 
 		if err != nil {
 			return "", errors.Annotate(err, "Flow#Run failed while running a script")
