@@ -1,7 +1,8 @@
-CMD ?= dist/$(VERSION)/var
+CMD ?= $(shell pwd)/dist/$(VERSION)/var
 GITHUB_USER ?= mumoshu
 GITHUB_REPO ?= variant
 VERSION ?= v0.0.3-rc.5
+IT_DIR = test/integration
 
 define GO_FMT
 test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -d {} + | tee /dev/stderr)" || \
@@ -36,25 +37,25 @@ publish-latest: dist/$(VERSION)
 	ghr -u $(GITHUB_USER) -r $(GITHUB_REPO) -c master --replace --prerelease latest dist/$(VERSION)
 
 smoke1: build
-	$(CMD) -v web deploy foo
+	cd $(IT_DIR) && $(CMD) -v web deploy foo
 
 smoke2: build
-	$(CMD) web deploy foo
+	cd $(IT_DIR) && $(CMD) web deploy foo
 
 smoke3: build
-	$(CMD) -v web deploy --target foo
+	cd $(IT_DIR) && $(CMD) -v web deploy --target foo
 
 smoke4: build
-	$(CMD) -v add 1 2
+	cd $(IT_DIR) && $(CMD) -v add 1 2
 
 smoke5: build
-	$(CMD) all -v --web-deploy-target tar --job-deploy-job-id jobid
+	cd $(IT_DIR) && $(CMD) all -v --web-deploy-target tar --job-deploy-job-id jobid
 
 smoke6: build
-	VARFILE=var.definition.v3.yaml $(CMD) foo bar --message foo
+	cd $(IT_DIR) && VARFILE=var.definition.v3.yaml $(CMD) foo bar --message foo
 
 smoke7: build
-	$(CMD) env set dev && $(CMD) test2
+	cd $(IT_DIR) && $(CMD) env set dev && $(CMD) test2
 
 smoke-tests:
 	make smoke{1,2,3,4,5,6,7}

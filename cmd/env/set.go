@@ -19,7 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	env "../../env"
+	env "../../cli/env"
 )
 
 var SetCmd = &cobra.Command{
