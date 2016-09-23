@@ -5,14 +5,9 @@ import (
 )
 
 type Flow struct {
+	FlowConfig
 	Key            FlowKey
 	ProjectName    string
-	Steps          []Step
-	Inputs         []*Input
 	ResolvedInputs []*ResolvedInput
-	Autoenv        bool
-	Autodir        bool
-	Interactive    bool
-	FlowConfig     *FlowConfig
 	Command        *cobra.Command
 }

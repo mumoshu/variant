@@ -319,7 +319,6 @@ func (p *Application) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra
 	}
 
 	var cmd = &cobra.Command{
-
 		Use: fmt.Sprintf("%s %s", flowConfig.Name, positionalArgs),
 	}
 	if flowConfig.Description != "" {
@@ -331,14 +330,9 @@ func (p *Application) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra
 	flowKey := p.CreateFlowKey(flowKeyStr)
 	flowDef := &Flow{
 		Key:         flowKey,
-		Inputs:      flowConfig.Inputs,
 		ProjectName: p.Name,
-		Steps:       flowConfig.Steps,
-		Autoenv:     flowConfig.Autoenv,
-		Autodir:     flowConfig.Autodir,
-		Interactive: flowConfig.Interactive,
-		FlowConfig:  flowConfig,
 		Command:     cmd,
+		FlowConfig:  *flowConfig,
 	}
 	p.RegisterFlow(flowKey, flowDef)
 
