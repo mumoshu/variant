@@ -98,7 +98,9 @@ func main() {
 		Env:                 envFromFile,
 	}
 
-	rootFlow, err1 := p.GenerateFlow(rootFlowConfig, []string{})
+	g := &engine.FlowGenerator{}
+
+	rootFlow, err1 := g.GenerateFlow(rootFlowConfig, []string{}, p)
 
 	if err1 != nil {
 		panic(err1)

@@ -313,34 +313,6 @@ func (p *Application) RegisterFlows(flow *Flow) {
 	}
 }
 
-func (p *Application) GenerateFlow(flowConfig *FlowConfig, parentFlowKey []string) (*Flow, error) {
-	flowKeyComponents := append(parentFlowKey, flowConfig.Name)
-	flowKeyStr := strings.Join(flowKeyComponents, ".")
-	flowKey := p.CreateFlowKey(flowKeyStr)
-	flow := &Flow{
-		Key:         flowKey,
-		ProjectName: p.Name,
-		//Command:     cmd,
-		FlowConfig: *flowConfig,
-	}
-
-	flows := []*Flow{}
-
-	for _, c := range flow.FlowConfigs {
-		f, err := p.GenerateFlow(c, flowKeyComponents)
-
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
-
-		flows = append(flows, f)
-	}
-
-	flow.Flows = flows
-
-	return flow, nil
-}
-
 func (p *Application) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (*cobra.Command, error) {
 	positionalArgs := ""
 	for i, input := range flow.Inputs {
