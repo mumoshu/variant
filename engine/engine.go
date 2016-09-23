@@ -77,14 +77,6 @@ type FlowKey struct {
 	Components []string
 }
 
-type T struct {
-	A string
-	B struct {
-		RenamedC int   `yaml:"c"`
-		D        []int `yaml:",flow"`
-	}
-}
-
 func (t Flow) GenerateAutoenv() (map[string]string, error) {
 	replacer := strings.NewReplacer("-", "_", ".", "_")
 	toEnvName := func(parName string) string {
