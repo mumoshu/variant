@@ -102,6 +102,7 @@ func main() {
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
+	p.ResolveInputs()
 	p.GenerateAllFlags()
 
 	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")

@@ -375,9 +375,14 @@ func (p *Application) GenerateCommands(flowConfigs []*FlowConfig, rootCommand *c
 	return rootCommand, nil
 }
 
-func (p *Application) GenerateAllFlags() {
+func (p *Application) ResolveInputs() {
 	for _, flow := range p.Flows {
 		flow.ResolvedInputs = p.ResolveInputsForFlow(flow)
+	}
+}
+
+func (p *Application) GenerateAllFlags() {
+	for _, flow := range p.Flows {
 		for _, input := range flow.ResolvedInputs {
 			log.Debugf("Configuring flag and config key for flow %s's input: %s", flow.Key.String(), input.Name)
 
