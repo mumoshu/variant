@@ -70,6 +70,20 @@ $ var version --output json | jq -c -r 'select(.msg == "version") | .framework_v
 * [How to write killer DevOps automation workflows](http://techbeacon.com/how-write-killer-devops-automation-workflows)
 * [progrium/bashstyle: Let's do Bash right!](https://github.com/progrium/bashstyle)
 
+## Future Goals
+
+* Runners to run flows in places other than the host running your Variant app
+  * Docker
+  * Kubernetes
+  * etc
+* Tools/instructions to package your Variant app for easier distribution
+  * Single docker image containing
+    * all the scripts written directly in the yaml
+    * maybe all the scripts referenced from scripts in the yaml
+    * maybe all the commands run via the host runner
+* Integration with job queues
+  * to ensure your flows are run reliably, at-least-once, tolerating temporary failures
+
 ## License
 
 Apache License 2.0
