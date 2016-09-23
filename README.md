@@ -7,7 +7,12 @@ Because those executables vary in
 * Its quality, from originally one-off script written in a day but living for several months or even years, to serious commands which are well-designed and written in richer programming languages with enough testing,
 * Its interface. Passing parameters via environment variables, application specific command-line flags, configuration files
 
-writing a single tool which wires up all the executables is time-consuming.
+writing a single tool which
+
+* wires up all the executables
+* re-implements all the things currently done in various tools
+
+is both time-consuming.
 
 ## What?
 
