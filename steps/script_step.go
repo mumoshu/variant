@@ -42,7 +42,7 @@ func (s ScriptStep) GetName() string {
 	return s.Name
 }
 
-func (s ScriptStep) Run(project *engine.Project, flow *engine.Flow, caller ...engine.FlowDef) (engine.StepStringOutput, error) {
+func (s ScriptStep) Run(project *engine.Application, flow *engine.BoundFlow, caller ...engine.Flow) (engine.StepStringOutput, error) {
 	depended := len(caller) > 0
 
 	t := template.New(fmt.Sprintf("%s.definition.yaml: %s.%s.script", flow.ProjectName, s.GetName(), flow.Key.ShortString()))
@@ -65,7 +65,7 @@ func (s ScriptStep) Run(project *engine.Project, flow *engine.Flow, caller ...en
 	return engine.StepStringOutput{String: output}, err
 }
 
-func (t ScriptStep) RunScript(script string, depended bool, flow *engine.Flow) (string, error) {
+func (t ScriptStep) RunScript(script string, depended bool, flow *engine.BoundFlow) (string, error) {
 	//commands := strings.Split(script, "\n")
 	commands := []string{script}
 	var lastOutput string
@@ -81,7 +81,7 @@ func (t ScriptStep) RunScript(script string, depended bool, flow *engine.Flow) (
 	return lastOutput, nil
 }
 
-func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine.Flow) (string, error) {
+func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine.BoundFlow) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
 	log.Debugf("running command: %s", command)

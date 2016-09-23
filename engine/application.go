@@ -15,17 +15,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Project struct {
+type Application struct {
 	Name                string
 	CommandRelativePath string
-	FlowDefs            map[string]*FlowDef
+	Flows               map[string]*Flow
 	CachedFlowOutputs   map[string]interface{}
 	Verbose             bool
 	Output              string
 	Env                 string
 }
 
-func (p Project) Reconfigure() {
+func (p Application) UpdateLoggingConfiguration() {
 	if p.Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -42,48 +42,43 @@ func (p Project) Reconfigure() {
 	} else {
 		log.Fatalf("Unexpected output format specified: %s", p.Output)
 	}
-
 }
 
-func (p *Project) AllVariables(flowDef *FlowDef) []*Variable {
-	return p.CollectVariablesRecursively(flowDef.Key, "")
+func (p *Application) ResolveInputsForFlow(flowDef *Flow) []*ResolvedInput {
+	return p.ResolveInputsForFlowKey(flowDef.Key, "")
 }
 
-func (p *Project) CollectVariablesRecursively(currentFlowKey FlowKey, path string) []*Variable {
-	result := []*Variable{}
+func (p *Application) ResolveInputsForFlowKey(currentFlowKey FlowKey, path string) []*ResolvedInput {
+	result := []*ResolvedInput{}
 
 	ctx := log.WithFields(log.Fields{"prefix": fmt.Sprintf("%s", currentFlowKey.String())})
 
-	currentFlowDef, err := p.FindFlowDef(currentFlowKey)
+	currentFlow, err := p.FindFlow(currentFlowKey)
 
 	if err != nil {
-		allFlowDefs := []string{}
-		for _, t := range p.FlowDefs {
-			allFlowDefs = append(allFlowDefs, t.Key.String())
+		allFlows := []string{}
+		for _, t := range p.Flows {
+			allFlows = append(allFlows, t.Key.String())
 		}
-		ctx.Debugf("is not a FlowDef in: %v", allFlowDefs)
-		return []*Variable{}
+		ctx.Debugf("is not a Flow in: %v", allFlows)
+		return []*ResolvedInput{}
 	}
 
-	for _, input := range currentFlowDef.Inputs {
+	for _, input := range currentFlow.Inputs {
 		childKey := p.CreateFlowKeyFromInput(input)
 
 		ctx.Debugf("depends on %s", childKey.String())
 
-		vars := p.CollectVariablesRecursively(childKey, fmt.Sprintf("%s.", currentFlowKey.String()))
+		vars := p.ResolveInputsForFlowKey(childKey, fmt.Sprintf("%s.", currentFlowKey.String()))
 
 		for _, v := range vars {
 			result = append(result, v)
 		}
 
-		variable := &Variable{
-			FlowKey:     currentFlowKey,
-			FullName:    fmt.Sprintf("%s.%s", currentFlowKey.String(), input.Name),
-			Name:        input.Name,
-			Parameters:  input.Parameters,
-			Description: input.Description,
-			Candidates:  input.Candidates,
-			Complete:    input.Complete,
+		variable := &ResolvedInput{
+			FlowKey:  currentFlowKey,
+			FullName: fmt.Sprintf("%s.%s", currentFlowKey.String(), input.Name),
+			Input:    *input,
 		}
 
 		ctx.WithFields(log.Fields{"full": variable.FullName, "flow": variable.FlowKey.String()}).Debugf("has var %s. short=%s", variable.Name, variable.ShortName())
@@ -94,30 +89,30 @@ func (p *Project) CollectVariablesRecursively(currentFlowKey FlowKey, path strin
 	return result
 }
 
-func (p Project) CreateFlowKey(flowKeyStr string) FlowKey {
+func (p Application) CreateFlowKey(flowKeyStr string) FlowKey {
 	c := strings.Split(flowKeyStr, ".")
 	return FlowKey{Components: c}
 }
 
-func (p Project) CreateFlowKeyFromVariable(variable *Variable) FlowKey {
+func (p Application) CreateFlowKeyFromResolvedInput(variable *ResolvedInput) FlowKey {
 	return p.CreateFlowKeyFromInputName(variable.Name)
 }
 
-func (p Project) CreateFlowKeyFromInput(input *Input) FlowKey {
+func (p Application) CreateFlowKeyFromInput(input *Input) FlowKey {
 	return p.CreateFlowKeyFromInputName(input.Name)
 }
 
-func (p Project) CreateFlowKeyFromInputName(inputName string) FlowKey {
+func (p Application) CreateFlowKeyFromInputName(inputName string) FlowKey {
 	c := strings.Split(p.Name+"."+inputName, ".")
 	return FlowKey{Components: c}
 }
 
-func (p Project) RunFlowForKeyString(keyStr string, args []string, caller ...FlowDef) (string, error) {
+func (p Application) RunFlowForKeyString(keyStr string, args []string, caller ...Flow) (string, error) {
 	flowKey := p.CreateFlowKey(fmt.Sprintf("%s.%s", p.Name, keyStr))
 	return p.RunFlowForKey(flowKey, args, caller...)
 }
 
-func (p Project) RunFlowForKey(flowKey FlowKey, args []string, caller ...FlowDef) (string, error) {
+func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flow) (string, error) {
 	provided := p.GetValueForConfigKey(flowKey.ShortString())
 
 	if provided != "" {
@@ -126,7 +121,7 @@ func (p Project) RunFlowForKey(flowKey FlowKey, args []string, caller ...FlowDef
 		return provided, nil
 	}
 
-	flowDef, err := p.FindFlowDef(flowKey)
+	flowDef, err := p.FindFlow(flowKey)
 
 	if err != nil {
 		return "", errors.Annotate(err, "RunFlowError")
@@ -137,7 +132,7 @@ func (p Project) RunFlowForKey(flowKey FlowKey, args []string, caller ...FlowDef
 	vars["env"] = p.Env
 	vars["cmd"] = p.CommandRelativePath
 
-	inputs, err := p.AggregateVariablesOfFlowForKey(flowKey, args, caller...)
+	inputs, err := p.InheritedInputValuesForFlowKey(flowKey, args, caller...)
 
 	if err != nil {
 		return "", errors.Annotatef(err, "Flow `%s` failed", flowKey.String())
@@ -147,15 +142,9 @@ func (p Project) RunFlowForKey(flowKey FlowKey, args []string, caller ...FlowDef
 		vars[k] = v
 	}
 
-	flow := &Flow{
-		Key:         flowKey,
-		ProjectName: flowDef.ProjectName,
-		Steps:       flowDef.Steps,
-		Vars:        vars,
-		Autoenv:     flowDef.Autoenv,
-		Autodir:     flowDef.Autodir,
-		Interactive: flowDef.Interactive,
-		FlowDef:     flowDef,
+	flow := &BoundFlow{
+		Vars: vars,
+		Flow: *flowDef,
 	}
 
 	log.Debugf("Flow: %v", flow)
@@ -171,35 +160,40 @@ func (p Project) RunFlowForKey(flowKey FlowKey, args []string, caller ...FlowDef
 	return output, error
 }
 
-func (p Project) AggregateVariablesOfFlowForKey(flowKey FlowKey, args []string, caller ...FlowDef) (map[string]interface{}, error) {
-	aggregated := map[string]interface{}{}
-	if err := p.CollectVariablesOfFlowForKey(flowKey, aggregated, args, caller...); err != nil {
+func (p Application) InheritedInputValuesForFlowKey(flowKey FlowKey, args []string, caller ...Flow) (map[string]interface{}, error) {
+	result := map[string]interface{}{}
+
+	// TODO make this parents-first instead of children-first?
+	direct, err := p.DirectInputValuesForFlowKey(flowKey, args, caller...)
+
+	if err != nil {
 		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.String())
 	}
-	if err := p.CollectVariablesOfParent(flowKey, aggregated); err != nil {
-		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.String())
+
+	for k, v := range direct {
+		result[k] = v
 	}
-	return aggregated, nil
+
+	parentKey, err := flowKey.Parent()
+
+	if err == nil {
+		inherited, err := p.InheritedInputValuesForFlowKey(*parentKey, []string{}, caller...)
+
+		if err != nil {
+			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.String())
+		}
+
+		for k, v := range inherited {
+			result[k] = v
+		}
+	}
+
+	return result, nil
 }
 
 type AnyMap map[string]interface{}
 
-func (p Project) CollectVariablesOfParent(flowKey FlowKey, aggregated AnyMap) error {
-	parentKey, err := flowKey.Parent()
-	if err != nil {
-		log.Debug("%v", err)
-	} else {
-		if err := p.CollectVariablesOfFlowForKey(*parentKey, aggregated, []string{}); err != nil {
-			return errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.String())
-		}
-		if err := p.CollectVariablesOfParent(*parentKey, aggregated); err != nil {
-			return errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.String())
-		}
-	}
-	return nil
-}
-
-func (p Project) GetValueForConfigKey(k string) string {
+func (p Application) GetValueForConfigKey(k string) string {
 	ctx := log.WithFields(log.Fields{"prefix": k})
 
 	lastIndex := strings.LastIndex(k, ".")
@@ -227,25 +221,27 @@ func (p Project) GetValueForConfigKey(k string) string {
 	return provided
 }
 
-func (p Project) CollectVariablesOfFlowForKey(flowKey FlowKey, variables AnyMap, args []string, caller ...FlowDef) error {
-	var initialFlowKey string
+func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string, caller ...Flow) (map[string]interface{}, error) {
+	values := map[string]interface{}{}
+
+	var baseFlowKey string
 	if len(caller) > 0 {
-		initialFlowKey = caller[0].Key.ShortString()
+		baseFlowKey = caller[0].Key.ShortString()
 	} else {
-		initialFlowKey = ""
+		baseFlowKey = ""
 	}
 
-	if initialFlowKey != "" {
-		log.Debugf("Collecting inputs for the flow `%v` via the flow `%s`", flowKey.ShortString(), initialFlowKey)
+	if baseFlowKey != "" {
+		log.Debugf("Collecting inputs for the flow `%v` via the flow `%s`", flowKey.ShortString(), baseFlowKey)
 	} else {
 		log.Debugf("Collecting inputs for the flow `%v`", flowKey.ShortString())
 	}
 
-	flowDef, err := p.FindFlowDef(flowKey)
+	flowDef, err := p.FindFlow(flowKey)
 	if err != nil {
-		return errors.Trace(err)
+		return nil, errors.Trace(err)
 	}
-	for i, input := range flowDef.Variables {
+	for i, input := range flowDef.ResolvedInputs {
 		log.Debugf("Flow `%v` depends on the input `%s`", flowKey.ShortString(), input.ShortName())
 		ctx := log.WithFields(log.Fields{"prefix": input.Name})
 
@@ -257,8 +253,8 @@ func (p Project) CollectVariablesOfFlowForKey(flowKey FlowKey, variables AnyMap,
 
 		var provided string
 
-		if initialFlowKey != "" {
-			provided = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", initialFlowKey, input.ShortName()))
+		if baseFlowKey != "" {
+			provided = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseFlowKey, input.ShortName()))
 		}
 
 		if provided == "" && strings.LastIndex(input.ShortName(), flowKey.ShortString()) == -1 {
@@ -272,44 +268,44 @@ func (p Project) CollectVariablesOfFlowForKey(flowKey FlowKey, variables AnyMap,
 		pathComponents := strings.Split(input.Name, ".")
 
 		if arg != nil {
-			SetValueAtPath(variables, pathComponents, *arg)
+			SetValueAtPath(values, pathComponents, *arg)
 		} else if provided == "" {
 			var output interface{}
 			var err error
 			if output, err = FetchCache(p.CachedFlowOutputs, pathComponents); output == nil {
-				output, err = p.RunFlowForKey(p.CreateFlowKeyFromVariable(input), []string{}, *flowDef)
+				output, err = p.RunFlowForKey(p.CreateFlowKeyFromResolvedInput(input), []string{}, *flowDef)
 				if err != nil {
-					return errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", input.ShortName())
+					return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", input.ShortName())
 				}
 				SetValueAtPath(p.CachedFlowOutputs, pathComponents, output)
 			}
 			if err != nil {
-				return errors.Trace(err)
+				return nil, errors.Trace(err)
 			}
-			SetValueAtPath(variables, pathComponents, output)
+			SetValueAtPath(values, pathComponents, output)
 		} else {
-			SetValueAtPath(variables, pathComponents, provided)
+			SetValueAtPath(values, pathComponents, provided)
 		}
 
 	}
-	return nil
+	return values, nil
 }
 
-func (p *Project) FindFlowDef(flowKey FlowKey) (*FlowDef, error) {
-	t := p.FlowDefs[flowKey.String()]
+func (p *Application) FindFlow(flowKey FlowKey) (*Flow, error) {
+	t := p.Flows[flowKey.String()]
 
 	if t == nil {
-		return nil, errors.Errorf("No FlowDef exists for the flow key `%s`", flowKey.String())
+		return nil, errors.Errorf("No Flow exists for the flow key `%s`", flowKey.String())
 	}
 
 	return t, nil
 }
 
-func (p *Project) RegisterFlowDef(flowKey FlowKey, flowDef *FlowDef) {
-	p.FlowDefs[flowKey.String()] = flowDef
+func (p *Application) RegisterFlow(flowKey FlowKey, flowDef *Flow) {
+	p.Flows[flowKey.String()] = flowDef
 }
 
-func (p *Project) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
+func (p *Application) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
 	positionalArgs := ""
 	for i, input := range flowConfig.Inputs {
 		if i != len(flowConfig.Inputs)-1 {
@@ -333,7 +329,7 @@ func (p *Project) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Com
 
 	flowKeyStr := strings.Join(append(parentFlowKey, flowConfig.Name), ".")
 	flowKey := p.CreateFlowKey(flowKeyStr)
-	flowDef := &FlowDef{
+	flowDef := &Flow{
 		Key:         flowKey,
 		Inputs:      flowConfig.Inputs,
 		ProjectName: p.Name,
@@ -344,11 +340,11 @@ func (p *Project) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Com
 		FlowConfig:  flowConfig,
 		Command:     cmd,
 	}
-	p.RegisterFlowDef(flowKey, flowDef)
+	p.RegisterFlow(flowKey, flowDef)
 
 	if len(flowConfig.Steps) > 0 {
 		cmd.Run = func(cmd *cobra.Command, args []string) {
-			p.Reconfigure()
+			p.UpdateLoggingConfiguration()
 
 			log.Debugf("Number of inputs: %v", len(flowConfig.Inputs))
 
@@ -377,7 +373,7 @@ func (p *Project) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Com
 	return cmd, nil
 }
 
-func (p *Project) GenerateCommands(flowConfigs []*FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
+func (p *Application) GenerateCommands(flowConfigs []*FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
 	for _, c := range flowConfigs {
 		p.GenerateCommand(c, rootCommand, parentFlowKey)
 	}
@@ -385,14 +381,14 @@ func (p *Project) GenerateCommands(flowConfigs []*FlowConfig, rootCommand *cobra
 	return rootCommand, nil
 }
 
-func (p *Project) GenerateAllFlags() {
-	for _, flowDef := range p.FlowDefs {
-		flowDef.Variables = p.AllVariables(flowDef)
-		for _, input := range flowDef.Variables {
-			log.Debugf("Configuring flag and config key for flow %s's input: %s", flowDef.Key.String(), input.Name)
+func (p *Application) GenerateAllFlags() {
+	for _, flow := range p.Flows {
+		flow.ResolvedInputs = p.ResolveInputsForFlow(flow)
+		for _, input := range flow.ResolvedInputs {
+			log.Debugf("Configuring flag and config key for flow %s's input: %s", flow.Key.String(), input.Name)
 
-			flowConfig := flowDef.FlowConfig
-			cmd := flowDef.Command
+			flowConfig := flow.FlowConfig
+			cmd := flow.Command
 			var description string
 			if input.Description != "" {
 				description = input.Description
@@ -401,7 +397,7 @@ func (p *Project) GenerateAllFlags() {
 			}
 
 			var name string
-			if input.FlowKey.String() == flowDef.Key.String() {
+			if input.FlowKey.String() == flow.Key.String() {
 				name = input.Name
 			} else {
 				name = input.ShortName()
@@ -412,17 +408,17 @@ func (p *Project) GenerateAllFlags() {
 			flagName := strings.Replace(name, ".", "-", -1)
 
 			var longerName string
-			if input.FlowKey.ShortString() == flowDef.Key.ShortString() {
+			if input.FlowKey.ShortString() == flow.Key.ShortString() {
 				longerName = input.ShortName()
 			} else {
-				longerName = fmt.Sprintf("%s.%s", flowDef.Key.ShortString(), input.ShortName())
+				longerName = fmt.Sprintf("%s.%s", flow.Key.ShortString(), input.ShortName())
 			}
 
 			if len(flowConfig.FlowConfigs) == 0 {
 				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
 				//log.Debugf("Binding flag --%s to the config key %s", flagName, name)
 				//viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
-				log.Debugf("Binding flag --%s of the command %s to the input %s with the config key %s", flagName, flowDef.Key.ShortString(), input.Name, longerName)
+				log.Debugf("Binding flag --%s of the command %s to the input %s with the config key %s", flagName, flow.Key.ShortString(), input.Name, longerName)
 				viper.BindPFlag(longerName, cmd.Flags().Lookup(flagName))
 			} else {
 				cmd.PersistentFlags().StringP(flagName, "" /*string(input.Name[0])*/, "" /*default*/, description)

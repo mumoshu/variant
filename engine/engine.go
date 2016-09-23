@@ -9,7 +9,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/juju/errors"
-	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
@@ -25,118 +24,12 @@ func ParseEnviron() map[string]string {
 	return mergedEnv
 }
 
-func newDefaultProjectConfig() *ProjectConfig {
-	return &ProjectConfig{
-		Inputs:      []*Input{},
-		FlowConfigs: []*FlowConfig{},
-	}
-}
-
 func NewDefaultFlowConfig() *FlowConfig {
 	return &FlowConfig{
 		Inputs:      []*Input{},
 		FlowConfigs: []*FlowConfig{},
 		Autoenv:     false,
 		Steps:       []Step{},
-	}
-}
-
-type ProjectConfig struct {
-	Name        string
-	Description string        `yaml:"description,omitempty"`
-	Inputs      []*Input      `yaml:"inputs,omitempty"`
-	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
-	Script      string        `yaml:"script,omitempty"`
-}
-
-type FlowDef struct {
-	Key         FlowKey
-	ProjectName string
-	Steps       []Step
-	Inputs      []*Input
-	Variables   []*Variable
-	Autoenv     bool
-	Autodir     bool
-	Interactive bool
-	FlowConfig  *FlowConfig
-	Command     *cobra.Command
-}
-
-type Flow struct {
-	Key         FlowKey
-	ProjectName string
-	Steps       []Step
-	Vars        map[string]interface{}
-	Autoenv     bool
-	Autodir     bool
-	Interactive bool
-	FlowDef     *FlowDef
-}
-
-type FlowKey struct {
-	Components []string
-}
-
-func (t Flow) GenerateAutoenv() (map[string]string, error) {
-	replacer := strings.NewReplacer("-", "_", ".", "_")
-	toEnvName := func(parName string) string {
-		return strings.ToUpper(replacer.Replace(parName))
-	}
-	return t.GenerateAutoenvRecursively("", t.Vars, toEnvName)
-}
-
-func (t Flow) GenerateAutoenvRecursively(path string, env map[string]interface{}, toEnvName func(string) string) (map[string]string, error) {
-	logger := log.WithFields(log.Fields{"path": path})
-	result := map[string]string{}
-	for k, v := range env {
-		if nestedEnv, ok := v.(map[string]interface{}); ok {
-			nestedResult, err := t.GenerateAutoenvRecursively(fmt.Sprintf("%s.", k), nestedEnv, toEnvName)
-			if err != nil {
-				logger.Errorf("Error while recursiong: %v", err)
-			}
-			for k, v := range nestedResult {
-				result[k] = v
-			}
-		} else if nestedEnv, ok := v.(map[string]string); ok {
-			for k2, v := range nestedEnv {
-				result[toEnvName(fmt.Sprintf("%s%s.%s", path, k, k2))] = v
-			}
-		} else if ary, ok := v.([]string); ok {
-			for i, v := range ary {
-				result[toEnvName(fmt.Sprintf("%s%s.%d", path, k, i))] = v
-			}
-		} else {
-			if stringV, ok := v.(string); ok {
-				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = stringV
-			} else {
-				return nil, errors.Errorf("The value for the key %s was neither a `map[string]interface{}` nor a `string`: %v", k, v)
-			}
-		}
-	}
-	logger.Debugf("Generated autoenv: %v", result)
-	return result, nil
-}
-
-type MessageOnlyFormatter struct {
-}
-
-func (f *MessageOnlyFormatter) Format(entry *log.Entry) ([]byte, error) {
-	return append([]byte(entry.Message), '\n'), nil
-}
-
-func (t FlowKey) String() string {
-	return strings.Join(t.Components, ".")
-}
-
-func (t FlowKey) ShortString() string {
-	return strings.Join(t.Components[1:], ".")
-}
-
-func (t FlowKey) Parent() (*FlowKey, error) {
-	if len(t.Components) > 1 {
-		return &FlowKey{Components: t.Components[:len(t.Components)-1]}, nil
-	} else {
-		return nil, errors.Errorf("FlowKey %v doesn't have a parent", t)
 	}
 }
 

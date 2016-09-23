@@ -88,10 +88,10 @@ func main() {
 		panic(errors.Trace(err))
 	}
 
-	p := &engine.Project{
+	p := &engine.Application{
 		Name:                rootFlowConfig.Name,
 		CommandRelativePath: commandPath,
-		FlowDefs:            map[string]*engine.FlowDef{},
+		Flows:               map[string]*engine.Flow{},
 		CachedFlowOutputs:   map[string]interface{}{},
 		Verbose:             false,
 		Output:              "text",
@@ -111,7 +111,7 @@ func main() {
 	rootCmd.ParseFlags(args)
 
 	// Workaround: We want to set log leve via command-line option before the rootCmd is run
-	p.Reconfigure()
+	p.UpdateLoggingConfiguration()
 
 	if err != nil {
 		log.Fatalf("error: %v", err)

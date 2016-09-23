@@ -26,7 +26,7 @@ type FlowStep struct {
 	FlowKeyString string
 }
 
-func (s FlowStep) Run(project *engine.Project, flow *engine.Flow, caller ...engine.FlowDef) (engine.StepStringOutput, error) {
+func (s FlowStep) Run(project *engine.Application, flow *engine.BoundFlow, caller ...engine.Flow) (engine.StepStringOutput, error) {
 	output, err := project.RunFlowForKeyString(s.FlowKeyString, []string{}, caller...)
 	return engine.StepStringOutput{String: output}, err
 }
