@@ -9,5 +9,6 @@ type Flow struct {
 	Key            FlowKey
 	ProjectName    string
 	ResolvedInputs []*ResolvedInput
+	Flows          []*Flow
 	Command        *cobra.Command
 }

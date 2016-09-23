@@ -305,42 +305,63 @@ func (p *Application) RegisterFlow(flowKey FlowKey, flowDef *Flow) {
 	p.Flows[flowKey.String()] = flowDef
 }
 
-func (p *Application) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
+func (p *Application) GenerateFlow(flowConfig *FlowConfig, parentFlowKey []string) (*Flow, error) {
+	flowKeyComponents := append(parentFlowKey, flowConfig.Name)
+	flowKeyStr := strings.Join(flowKeyComponents, ".")
+	flowKey := p.CreateFlowKey(flowKeyStr)
+	flow := &Flow{
+		Key:         flowKey,
+		ProjectName: p.Name,
+		//Command:     cmd,
+		FlowConfig: *flowConfig,
+	}
+	p.RegisterFlow(flowKey, flow)
+
+	flows := []*Flow{}
+
+	for _, c := range flow.FlowConfigs {
+		f, err := p.GenerateFlow(c, flowKeyComponents)
+
+		if err != nil {
+			return nil, errors.Trace(err)
+		}
+
+		flows = append(flows, f)
+	}
+
+	flow.Flows = flows
+
+	return flow, nil
+}
+
+func (p *Application) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (*cobra.Command, error) {
 	positionalArgs := ""
-	for i, input := range flowConfig.Inputs {
-		if i != len(flowConfig.Inputs)-1 {
+	for i, input := range flow.Inputs {
+		if i != len(flow.Inputs)-1 {
 			positionalArgs += fmt.Sprintf("[%s ", input.Name)
 		} else {
 			positionalArgs += fmt.Sprintf("[%s", input.Name)
 		}
 	}
-	for i := 0; i < len(flowConfig.Inputs); i++ {
+	for i := 0; i < len(flow.Inputs); i++ {
 		positionalArgs += "]"
 	}
 
 	var cmd = &cobra.Command{
-		Use: fmt.Sprintf("%s %s", flowConfig.Name, positionalArgs),
+		Use: fmt.Sprintf("%s %s", flow.Name, positionalArgs),
 	}
-	if flowConfig.Description != "" {
-		cmd.Short = flowConfig.Description
-		cmd.Long = flowConfig.Description
+	if flow.Description != "" {
+		cmd.Short = flow.Description
+		cmd.Long = flow.Description
 	}
 
-	flowKeyStr := strings.Join(append(parentFlowKey, flowConfig.Name), ".")
-	flowKey := p.CreateFlowKey(flowKeyStr)
-	flowDef := &Flow{
-		Key:         flowKey,
-		ProjectName: p.Name,
-		Command:     cmd,
-		FlowConfig:  *flowConfig,
-	}
-	p.RegisterFlow(flowKey, flowDef)
+	flowKey := flow.Key
 
-	if len(flowConfig.Steps) > 0 {
+	if len(flow.Steps) > 0 {
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.UpdateLoggingConfiguration()
 
-			log.Debugf("Number of inputs: %v", len(flowConfig.Inputs))
+			log.Debugf("Number of inputs: %v", len(flow.Inputs))
 
 			if _, err := p.RunFlowForKey(flowKey, args); err != nil {
 				c := strings.Join(strings.Split(flowKey.String(), "."), " ")
@@ -362,17 +383,13 @@ func (p *Application) GenerateCommand(flowConfig *FlowConfig, rootCommand *cobra
 
 	log.WithFields(log.Fields{"prefix": flowKey.String()}).Debug("is a flow")
 
-	p.GenerateCommands(flowConfig.FlowConfigs, cmd, append(parentFlowKey, flowConfig.Name))
-
-	return cmd, nil
-}
-
-func (p *Application) GenerateCommands(flowConfigs []*FlowConfig, rootCommand *cobra.Command, parentFlowKey []string) (*cobra.Command, error) {
-	for _, c := range flowConfigs {
-		p.GenerateCommand(c, rootCommand, parentFlowKey)
+	for _, f := range flow.Flows {
+		p.GenerateCommand(f, cmd)
 	}
 
-	return rootCommand, nil
+	flow.Command = cmd
+
+	return cmd, nil
 }
 
 func (p *Application) ResolveInputs() {

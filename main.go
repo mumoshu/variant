@@ -98,7 +98,13 @@ func main() {
 		Env:                 envFromFile,
 	}
 
-	rootCmd, err := p.GenerateCommand(rootFlowConfig, nil, []string{})
+	rootFlow, err1 := p.GenerateFlow(rootFlowConfig, []string{})
+
+	if err1 != nil {
+		panic(err1)
+	}
+
+	rootCmd, err := p.GenerateCommand(rootFlow, nil)
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
