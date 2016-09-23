@@ -305,6 +305,14 @@ func (p *Application) RegisterFlow(flowKey FlowKey, flowDef *Flow) {
 	p.Flows[flowKey.String()] = flowDef
 }
 
+func (p *Application) RegisterFlows(flow *Flow) {
+	p.RegisterFlow(flow.Key, flow)
+
+	for _, child := range flow.Flows {
+		p.RegisterFlows(child)
+	}
+}
+
 func (p *Application) GenerateFlow(flowConfig *FlowConfig, parentFlowKey []string) (*Flow, error) {
 	flowKeyComponents := append(parentFlowKey, flowConfig.Name)
 	flowKeyStr := strings.Join(flowKeyComponents, ".")
@@ -315,7 +323,6 @@ func (p *Application) GenerateFlow(flowConfig *FlowConfig, parentFlowKey []strin
 		//Command:     cmd,
 		FlowConfig: *flowConfig,
 	}
-	p.RegisterFlow(flowKey, flow)
 
 	flows := []*Flow{}
 

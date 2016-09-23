@@ -104,6 +104,8 @@ func main() {
 		panic(err1)
 	}
 
+	p.RegisterFlows(rootFlow)
+
 	rootCmd, err := p.GenerateCommand(rootFlow, nil)
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
