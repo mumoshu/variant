@@ -115,11 +115,13 @@ func main() {
 		InputResolver:       inputResolver,
 	}
 
-	rootCmd, err := p.GenerateCommand(rootFlow, nil)
+	adapter := engine.NewCobraAdapter(p)
+
+	rootCmd, err := adapter.GenerateCommand(rootFlow, nil)
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
-	p.GenerateAllFlags()
+	adapter.GenerateAllFlags()
 
 	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().StringVarP(&(p.Output), "output", "o", "text", "Output format. One of: json|text|bunyan")
