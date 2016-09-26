@@ -10,6 +10,8 @@ import (
 	"github.com/juju/errors"
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/spf13/viper"
+
+	"../util/maputil"
 )
 
 type Application struct {
@@ -204,23 +206,23 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 		pathComponents := strings.Split(input.Name, ".")
 
 		if arg != nil {
-			SetValueAtPath(values, pathComponents, *arg)
+			maputil.SetValueAtPath(values, pathComponents, *arg)
 		} else if provided == "" {
 			var output interface{}
 			var err error
-			if output, err = FetchCache(p.CachedFlowOutputs, pathComponents); output == nil {
+			if output, err = maputil.GetValueAtPath(p.CachedFlowOutputs, pathComponents); output == nil {
 				output, err = p.RunFlowForKey(p.FlowKeyCreator.CreateFlowKeyFromResolvedInput(input), []string{}, *flowDef)
 				if err != nil {
 					return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", input.ShortName())
 				}
-				SetValueAtPath(p.CachedFlowOutputs, pathComponents, output)
+				maputil.SetValueAtPath(p.CachedFlowOutputs, pathComponents, output)
 			}
 			if err != nil {
 				return nil, errors.Trace(err)
 			}
-			SetValueAtPath(values, pathComponents, output)
+			maputil.SetValueAtPath(values, pathComponents, output)
 		} else {
-			SetValueAtPath(values, pathComponents, provided)
+			maputil.SetValueAtPath(values, pathComponents, provided)
 		}
 
 	}

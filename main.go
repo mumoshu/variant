@@ -15,7 +15,8 @@ import (
 	"./cmd"
 	"./engine"
 	"./steps"
-	"./util/file"
+	"./util/envutil"
+	"./util/fileutil"
 )
 
 func init() {
@@ -43,7 +44,7 @@ func main() {
 	var varfile string
 	var args []string
 
-	if len(os.Args) > 1 && (os.Args[0] != "var" || os.Args[0] != "/usr/bin/env") && file.Exists(os.Args[1]) {
+	if len(os.Args) > 1 && (os.Args[0] != "var" || os.Args[0] != "/usr/bin/env") && fileutil.Exists(os.Args[1]) {
 		varfile = os.Args[1]
 		args = os.Args[2:]
 		commandName = path.Base(varfile)
@@ -55,7 +56,7 @@ func main() {
 		args = os.Args[1:]
 	}
 
-	environ := engine.ParseEnviron()
+	environ := envutil.ParseEnviron()
 
 	if environ["VARFILE"] != "" {
 		varfile = environ["VARFILE"]
@@ -63,7 +64,7 @@ func main() {
 
 	var rootFlowConfig *engine.FlowConfig
 
-	varfileExists := file.Exists(varfile)
+	varfileExists := fileutil.Exists(varfile)
 
 	if varfileExists {
 
@@ -147,7 +148,7 @@ func main() {
 	// See "How to merge two config files" https://github.com/spf13/viper/issues/181
 	viper.SetConfigName(rootFlowConfig.Name)
 	commonConfigFile := fmt.Sprintf("%s.yaml", rootFlowConfig.Name)
-	if file.Exists(commonConfigFile) {
+	if fileutil.Exists(commonConfigFile) {
 		log.Debugf("Loading common configuration from %s.yaml", rootFlowConfig.Name)
 		if err := viper.MergeInConfig(); err != nil {
 			panic(err)

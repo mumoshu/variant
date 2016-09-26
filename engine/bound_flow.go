@@ -8,6 +8,8 @@ import (
 
 	"fmt"
 	"github.com/juju/errors"
+
+	"../util/maputil"
 )
 
 type BoundFlow struct {
@@ -82,7 +84,7 @@ func (t *BoundFlow) Run(project *Application, caller ...Flow) (string, error) {
 
 func (f BoundFlow) CreateFuncMap() template.FuncMap {
 	get := func(key string) (interface{}, error) {
-		val, err := recursiveFetchFromMap(f.Vars, key)
+		val, err := maputil.GetStringAtPath(f.Vars, key)
 
 		if err != nil {
 			return nil, errors.Trace(err)
