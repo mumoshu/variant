@@ -18,11 +18,13 @@ import (
 type Application struct {
 	Name                string
 	CommandRelativePath string
-	Flows               map[string]*Flow
 	CachedFlowOutputs   map[string]interface{}
 	Verbose             bool
 	Output              string
 	Env                 string
+	FlowRegistry        *FlowRegistry
+	InputResolver       InputResolver
+	FlowKeyCreator      *FlowKeyCreator
 }
 
 func (p Application) UpdateLoggingConfiguration() {
@@ -44,71 +46,8 @@ func (p Application) UpdateLoggingConfiguration() {
 	}
 }
 
-func (p *Application) ResolveInputsForFlow(flowDef *Flow) []*ResolvedInput {
-	return p.ResolveInputsForFlowKey(flowDef.Key, "")
-}
-
-func (p *Application) ResolveInputsForFlowKey(currentFlowKey FlowKey, path string) []*ResolvedInput {
-	result := []*ResolvedInput{}
-
-	ctx := log.WithFields(log.Fields{"prefix": fmt.Sprintf("%s", currentFlowKey.String())})
-
-	currentFlow, err := p.FindFlow(currentFlowKey)
-
-	if err != nil {
-		allFlows := []string{}
-		for _, t := range p.Flows {
-			allFlows = append(allFlows, t.Key.String())
-		}
-		ctx.Debugf("is not a Flow in: %v", allFlows)
-		return []*ResolvedInput{}
-	}
-
-	for _, input := range currentFlow.Inputs {
-		childKey := p.CreateFlowKeyFromInput(input)
-
-		ctx.Debugf("depends on %s", childKey.String())
-
-		vars := p.ResolveInputsForFlowKey(childKey, fmt.Sprintf("%s.", currentFlowKey.String()))
-
-		for _, v := range vars {
-			result = append(result, v)
-		}
-
-		variable := &ResolvedInput{
-			FlowKey:  currentFlowKey,
-			FullName: fmt.Sprintf("%s.%s", currentFlowKey.String(), input.Name),
-			Input:    *input,
-		}
-
-		ctx.WithFields(log.Fields{"full": variable.FullName, "flow": variable.FlowKey.String()}).Debugf("has var %s. short=%s", variable.Name, variable.ShortName())
-
-		result = append(result, variable)
-	}
-
-	return result
-}
-
-func (p Application) CreateFlowKey(flowKeyStr string) FlowKey {
-	c := strings.Split(flowKeyStr, ".")
-	return FlowKey{Components: c}
-}
-
-func (p Application) CreateFlowKeyFromResolvedInput(variable *ResolvedInput) FlowKey {
-	return p.CreateFlowKeyFromInputName(variable.Name)
-}
-
-func (p Application) CreateFlowKeyFromInput(input *Input) FlowKey {
-	return p.CreateFlowKeyFromInputName(input.Name)
-}
-
-func (p Application) CreateFlowKeyFromInputName(inputName string) FlowKey {
-	c := strings.Split(p.Name+"."+inputName, ".")
-	return FlowKey{Components: c}
-}
-
 func (p Application) RunFlowForKeyString(keyStr string, args []string, caller ...Flow) (string, error) {
-	flowKey := p.CreateFlowKey(fmt.Sprintf("%s.%s", p.Name, keyStr))
+	flowKey := p.FlowKeyCreator.CreateFlowKey(fmt.Sprintf("%s.%s", p.Name, keyStr))
 	return p.RunFlowForKey(flowKey, args, caller...)
 }
 
@@ -121,7 +60,7 @@ func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flo
 		return provided, nil
 	}
 
-	flowDef, err := p.FindFlow(flowKey)
+	flowDef, err := p.FlowRegistry.FindFlow(flowKey)
 
 	if err != nil {
 		return "", errors.Annotate(err, "RunFlowError")
@@ -237,7 +176,7 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 		log.Debugf("Collecting inputs for the flow `%v`", flowKey.ShortString())
 	}
 
-	flowDef, err := p.FindFlow(flowKey)
+	flowDef, err := p.FlowRegistry.FindFlow(flowKey)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -273,7 +212,7 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 			var output interface{}
 			var err error
 			if output, err = FetchCache(p.CachedFlowOutputs, pathComponents); output == nil {
-				output, err = p.RunFlowForKey(p.CreateFlowKeyFromResolvedInput(input), []string{}, *flowDef)
+				output, err = p.RunFlowForKey(p.FlowKeyCreator.CreateFlowKeyFromResolvedInput(input), []string{}, *flowDef)
 				if err != nil {
 					return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", input.ShortName())
 				}
@@ -289,28 +228,6 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 
 	}
 	return values, nil
-}
-
-func (p *Application) FindFlow(flowKey FlowKey) (*Flow, error) {
-	t := p.Flows[flowKey.String()]
-
-	if t == nil {
-		return nil, errors.Errorf("No Flow exists for the flow key `%s`", flowKey.String())
-	}
-
-	return t, nil
-}
-
-func (p *Application) RegisterFlow(flowKey FlowKey, flowDef *Flow) {
-	p.Flows[flowKey.String()] = flowDef
-}
-
-func (p *Application) RegisterFlows(flow *Flow) {
-	p.RegisterFlow(flow.Key, flow)
-
-	for _, child := range flow.Flows {
-		p.RegisterFlows(child)
-	}
 }
 
 func (p *Application) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (*cobra.Command, error) {
@@ -371,14 +288,12 @@ func (p *Application) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (*
 	return cmd, nil
 }
 
-func (p *Application) ResolveInputs() {
-	for _, flow := range p.Flows {
-		flow.ResolvedInputs = p.ResolveInputsForFlow(flow)
-	}
+func (p *Application) Flows() map[string]*Flow {
+	return p.FlowRegistry.Flows()
 }
 
 func (p *Application) GenerateAllFlags() {
-	for _, flow := range p.Flows {
+	for _, flow := range p.Flows() {
 		for _, input := range flow.ResolvedInputs {
 			log.Debugf("Configuring flag and config key for flow %s's input: %s", flow.Key.String(), input.Name)
 

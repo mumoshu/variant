@@ -88,31 +88,37 @@ func main() {
 		panic(errors.Trace(err))
 	}
 
-	p := &engine.Application{
-		Name:                rootFlowConfig.Name,
-		CommandRelativePath: commandPath,
-		Flows:               map[string]*engine.Flow{},
-		CachedFlowOutputs:   map[string]interface{}{},
-		Verbose:             false,
-		Output:              "text",
-		Env:                 envFromFile,
-	}
+	flowKeyCreator := engine.NewFlowKeyCreator(rootFlowConfig.Name)
 
-	g := &engine.FlowGenerator{}
+	g := engine.NewFlowGenerator(flowKeyCreator)
 
-	rootFlow, err1 := g.GenerateFlow(rootFlowConfig, []string{}, p)
-
+	rootFlow, err1 := g.GenerateFlow(rootFlowConfig, []string{}, rootFlowConfig.Name)
 	if err1 != nil {
 		panic(err1)
 	}
 
-	p.RegisterFlows(rootFlow)
+	flowRegistry := engine.NewFlowRegistry()
+	flowRegistry.RegisterFlows(rootFlow)
+
+	inputResolver := engine.NewRegistryBasedInputResolver(flowRegistry, flowKeyCreator)
+	inputResolver.ResolveInputs()
+
+	p := &engine.Application{
+		Name:                rootFlowConfig.Name,
+		CommandRelativePath: commandPath,
+		CachedFlowOutputs:   map[string]interface{}{},
+		Verbose:             false,
+		Output:              "text",
+		Env:                 envFromFile,
+		FlowKeyCreator:      flowKeyCreator,
+		FlowRegistry:        flowRegistry,
+		InputResolver:       inputResolver,
+	}
 
 	rootCmd, err := p.GenerateCommand(rootFlow, nil)
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
-	p.ResolveInputs()
 	p.GenerateAllFlags()
 
 	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")

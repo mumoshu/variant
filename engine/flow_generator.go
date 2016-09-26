@@ -6,15 +6,22 @@ import (
 )
 
 type FlowGenerator struct {
+	flowKeyCreator *FlowKeyCreator
 }
 
-func (g *FlowGenerator) GenerateFlow(flowConfig *FlowConfig, parentFlowKey []string, p *Application) (*Flow, error) {
+func NewFlowGenerator(c *FlowKeyCreator) *FlowGenerator {
+	return &FlowGenerator{
+		flowKeyCreator: c,
+	}
+}
+
+func (g *FlowGenerator) GenerateFlow(flowConfig *FlowConfig, parentFlowKey []string, appName string) (*Flow, error) {
 	flowKeyComponents := append(parentFlowKey, flowConfig.Name)
 	flowKeyStr := strings.Join(flowKeyComponents, ".")
-	flowKey := p.CreateFlowKey(flowKeyStr)
+	flowKey := g.flowKeyCreator.CreateFlowKey(flowKeyStr)
 	flow := &Flow{
 		Key:         flowKey,
-		ProjectName: p.Name,
+		ProjectName: appName,
 		//Command:     cmd,
 		FlowConfig: *flowConfig,
 	}
@@ -22,7 +29,7 @@ func (g *FlowGenerator) GenerateFlow(flowConfig *FlowConfig, parentFlowKey []str
 	flows := []*Flow{}
 
 	for _, c := range flow.FlowConfigs {
-		f, err := g.GenerateFlow(c, flowKeyComponents, p)
+		f, err := g.GenerateFlow(c, flowKeyComponents, appName)
 
 		if err != nil {
 			return nil, errors.Trace(err)
