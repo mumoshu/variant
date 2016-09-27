@@ -51,18 +51,28 @@ func (p Application) RunFlowForKeyString(keyStr string, args []string, caller ..
 }
 
 func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flow) (string, error) {
+	var ctx *log.Entry
+
+	if len(caller) == 1 {
+		ctx = log.WithFields(log.Fields{"caller": caller[0].Key.ShortString()})
+	} else {
+		ctx = log.WithFields(log.Fields{})
+	}
+
+	ctx.Debugf("app started flow %s", flowKey.ShortString())
+
 	provided := p.GetValueForConfigKey(flowKey.ShortString())
 
 	if provided != "" {
-		log.Debugf("Output for flow %s is already provided in configuration: %s", flowKey.ShortString(), provided)
-		log.Info(provided)
+		ctx.Debugf("app skipped flow %s via provided value: %s", flowKey.ShortString(), provided)
+		ctx.Info(provided)
 		return provided, nil
 	}
 
 	flowDef, err := p.FlowRegistry.FindFlow(flowKey)
 
 	if err != nil {
-		return "", errors.Annotate(err, "RunFlowError")
+		return "", errors.Annotatef(err, "app failed finding flow %s", flowKey.ShortString())
 	}
 
 	vars := map[string](interface{}){}
@@ -73,7 +83,7 @@ func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flo
 	inputs, err := p.InheritedInputValuesForFlowKey(flowKey, args, caller...)
 
 	if err != nil {
-		return "", errors.Annotatef(err, "Flow `%s` failed", flowKey.String())
+		return "", errors.Annotatef(err, "app failed running flow %s", flowKey.ShortString())
 	}
 
 	for k, v := range inputs {
@@ -85,15 +95,19 @@ func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flo
 		Flow: *flowDef,
 	}
 
-	log.Debugf("Flow: %v", flow)
+	kv := maputil.FlattenAsString(vars)
+
+	ctx.Debugf("app bound variables for flow %s: %s", flowKey.ShortString(), kv)
 
 	output, error := flow.Run(&p, caller...)
 
-	log.Debugf("Output: %s", output)
+	ctx.Debugf("app received output from flow %s: %s", flowKey.ShortString(), output)
 
 	if error != nil {
-		error = errors.Annotatef(error, "Flow `%s` failed", flowKey.String())
+		error = errors.Annotatef(error, "app failed running flow %s", flowKey.ShortString())
 	}
+
+	ctx.Debugf("app finished running flow %s", flowKey.ShortString())
 
 	return output, error
 }
@@ -132,7 +146,7 @@ func (p Application) InheritedInputValuesForFlowKey(flowKey FlowKey, args []stri
 type AnyMap map[string]interface{}
 
 func (p Application) GetValueForConfigKey(k string) string {
-	ctx := log.WithFields(log.Fields{"prefix": k})
+	ctx := log.WithFields(log.Fields{"key": k})
 
 	lastIndex := strings.LastIndex(k, ".")
 
@@ -145,21 +159,38 @@ func (p Application) GetValueForConfigKey(k string) string {
 
 		values := viper.GetStringMapString(k1)
 
-		ctx.Debugf("viper.GetStringMap(k1=%s)=%v, k2=%s", k1, values, k2)
+		ctx.Debugf("app fetched %s: %v", k1, values)
+
+		var provided string
 
 		if values != nil && values[k2] != "" {
 			provided = values[k2]
+		} else {
+			provided = ""
+		}
+
+		ctx.Debugf("app fetched %s[%s]: %s", k1, k2, provided)
+
+		if provided != "" {
 			return provided
 		}
 	}
 
 	provided = viper.GetString(k)
-	ctx.Debugf("viper.GetString(\"%s\") #=> \"%s\"", k, provided)
+	ctx.Debugf("app fetched string %s: %s", k, provided)
 
 	return provided
 }
 
 func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string, caller ...Flow) (map[string]interface{}, error) {
+	var ctx *log.Entry
+
+	if len(caller) == 1 {
+		ctx = log.WithFields(log.Fields{"caller": caller[0].Key.ShortString(), "flow": flowKey.ShortString()})
+	} else {
+		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString()})
+	}
+
 	values := map[string]interface{}{}
 
 	var baseFlowKey string
@@ -169,19 +200,14 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 		baseFlowKey = ""
 	}
 
-	if baseFlowKey != "" {
-		log.Debugf("Collecting inputs for the flow `%v` via the flow `%s`", flowKey.ShortString(), baseFlowKey)
-	} else {
-		log.Debugf("Collecting inputs for the flow `%v`", flowKey.ShortString())
-	}
+	ctx.Debugf("app started collecting inputs")
 
 	flowDef, err := p.FlowRegistry.FindFlow(flowKey)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
 	for i, input := range flowDef.ResolvedInputs {
-		log.Debugf("Flow `%v` depends on the input `%s`", flowKey.ShortString(), input.ShortName())
-		ctx := log.WithFields(log.Fields{"prefix": input.Name})
+		ctx.Debugf("app sees flow depends on input %s", input.ShortName())
 
 		var arg *string
 		if len(args) >= i+1 {
@@ -226,6 +252,9 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 		}
 
 	}
+
+	ctx.Debugf("app finished collecting inputs: %s", maputil.FlattenAsString(values))
+
 	return values, nil
 }
 

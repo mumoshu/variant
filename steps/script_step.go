@@ -55,7 +55,8 @@ func (s ScriptStep) Run(project *engine.Application, flow *engine.BoundFlow, cal
 
 	var buff bytes.Buffer
 	if err := tmpl.Execute(&buff, flow.Vars); err != nil {
-		return engine.StepStringOutput{String: "scripterror"}, errors.Annotatef(err, "Template execution failed.\n\nScript:\n%s\n\nVars:\n%v", s.Code, flow.Vars)
+		log.WithFields(log.Fields{"source": s.Code, "vars": flow.Vars}).Errorf("script step failed templating")
+		return engine.StepStringOutput{String: "scripterror"}, errors.Annotatef(err, "script step failed templating")
 	}
 
 	script := buff.String()
@@ -84,10 +85,8 @@ func (t ScriptStep) RunScript(script string, depended bool, flow *engine.BoundFl
 func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine.BoundFlow) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
-	log.Debugf("running command: %s", command)
-	log.Debugf("shelling out: %v", append([]string{c}, args...))
 
-	l := log.WithFields(log.Fields{"command": command})
+	log.WithFields(log.Fields{"cmd": append([]string{c}, args...)}).Debug("script step started running command")
 
 	cmd := exec.Command(c, args...)
 
@@ -100,10 +99,9 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 	}
 
 	if parentFlow.Autoenv {
-		l.Debugf("Autoenv is enabled")
 		autoEnv, err := parentFlow.GenerateAutoenv()
 		if err != nil {
-			log.Errorf("Failed to generate autoenv: %v", err)
+			log.Errorf("script step failed to generate autoenv: %v", err)
 		}
 		for name, value := range autoEnv {
 			mergedEnv[name] = value
@@ -115,30 +113,21 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 		}
 
 		cmd.Env = cmdEnv
-
-	} else {
-		l.Debugf("Autoenv is disabled")
 	}
 
 	if parentFlow.Autodir {
-		l.Debugf("Autodir is enabled")
 		parentKey, err := parentFlow.Key.Parent()
 		if parentKey != nil {
-			l.Debugf("full: %s", parentKey.String())
 			shortKey := parentKey.ShortString()
-			l.Debugf("short: %s", shortKey)
 			path := strings.Replace(shortKey, ".", "/", -1)
-			l.Debugf("Dir: %s", path)
 			if err != nil {
-				l.Debugf("%s does not have parent", parentFlow.Key.String())
+				log.Debugf("%s does not have parent", parentFlow.Key.String())
 			} else {
 				if _, err := os.Stat(path); err == nil {
 					cmd.Dir = path
 				}
 			}
 		}
-	} else {
-		l.Debugf("Autodir is disabled")
 	}
 
 	output := ""
@@ -213,7 +202,8 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 		stdoutEnds := false
 		stderrEnds := false
 
-		stdoutlog := log.WithFields(log.Fields{"prefix": "stdout"})
+		stdoutlog := log.WithFields(log.Fields{"stream": "stdout"})
+		stderrlog := log.WithFields(log.Fields{"stream": "stderr"})
 
 		// Coordinating stdout/stderr in this single place to not screw up message ordering
 		for {
@@ -230,7 +220,7 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 				}
 			case text, ok := <-channels.Stderr:
 				if ok {
-					l.WithFields(log.Fields{"stream": "stderr"}).Errorf("%s", text)
+					stderrlog.Info("%s", text)
 				} else {
 					stderrEnds = true
 				}
@@ -245,7 +235,7 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 	err := cmd.Wait()
 
 	if err != nil {
-		l.Fatalf("cmd.Wait: %v", err)
+		log.Fatalf("cmd.Wait: %v", err)
 		// Did the command fail because of an unsuccessful exit code
 		if exitError, ok := err.(*exec.ExitError); ok {
 			waitStatus = exitError.Sys().(syscall.WaitStatus)
@@ -254,7 +244,7 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 	} else {
 		// Command was successful
 		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
-		l.Debugf("exit status: %d", waitStatus.ExitStatus())
+		log.Debugf("script step finished command with status: %d", waitStatus.ExitStatus())
 	}
 
 	return strings.Trim(output, "\n "), nil

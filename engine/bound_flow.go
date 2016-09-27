@@ -58,11 +58,15 @@ func (t BoundFlow) GenerateAutoenvRecursively(path string, env map[string]interf
 }
 
 func (t *BoundFlow) Run(project *Application, caller ...Flow) (string, error) {
+	var ctx *log.Entry
+
 	if len(caller) > 0 {
-		log.Debugf("running flow `%s` via `%s`", t.Key.String(), caller[0].Key.String())
+		ctx = log.WithFields(log.Fields{"caller": caller[0].Key.ShortString()})
 	} else {
-		log.Infof("running flow: %s", t.Key.String())
+		ctx = log.WithFields(log.Fields{})
 	}
+
+	ctx.Debugf("flow %s started", t.Key.String())
 
 	var output StepStringOutput
 	var err error
@@ -78,6 +82,8 @@ func (t *BoundFlow) Run(project *Application, caller ...Flow) (string, error) {
 	if err != nil {
 		err = errors.Annotate(err, "Flow#Run failed while running a script")
 	}
+
+	ctx.Debugf("flow %s finished", t.Key.String())
 
 	return output.String, err
 }

@@ -1,8 +1,8 @@
 package sandbox
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -11,7 +11,7 @@ type Scope struct {
 }
 
 func NewScope(flowsInScope []*ScopedFlow) *Scope {
-	return &Scope {
+	return &Scope{
 		scopedFlowsInStack: flowsInScope,
 	}
 }

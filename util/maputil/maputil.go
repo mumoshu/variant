@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/juju/errors"
+	"log"
 )
 
 func GetValueAtPath(cache map[string]interface{}, keyComponents []string) (interface{}, error) {
@@ -80,4 +81,34 @@ func SetValueAtPath(cache map[string]interface{}, keyComponents []string, value 
 		}
 	}
 	return nil
+}
+
+func FlattenAsString(m map[string]interface{}) string {
+	result := ""
+
+	for k, v := range Flatten(m) {
+		result = fmt.Sprintf("%s %s=%s", result, k, v)
+	}
+
+	return result
+}
+
+func Flatten(input map[string]interface{}) map[string]string {
+	result := map[string]string{}
+
+	for k, strOrMap := range input {
+		if str, isStr := strOrMap.(string); isStr {
+			result[k] = str
+		} else if m, isMap := strOrMap.(map[string]interface{}); isMap {
+			for k2, v2 := range Flatten(m) {
+				result[fmt.Sprintf("%s.%s", k, k2)] = v2
+			}
+		} else if a, isArray := strOrMap.([]string); isArray {
+			result[k] = strings.Join(a, ",")
+		} else {
+			log.Panicf("maputil panics! unexpected type of value in map: input=%v, k=%v, v=%v", input, k, strOrMap)
+		}
+	}
+
+	return result
 }

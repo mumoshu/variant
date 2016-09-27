@@ -38,7 +38,7 @@ func (e ScopedFlow) Scope() *Scope {
 	stack := e.Stack
 	count := e.Stack.Size()
 
-	for i := 0; i < count; i ++ {
+	for i := 0; i < count; i++ {
 		expr := NewScopedFlow(stack)
 		result = append(result, expr)
 		stack, _ = stack.Pop()

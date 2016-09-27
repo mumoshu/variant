@@ -11,13 +11,13 @@ func NewStackFromFlows(f ...*Flow) *Stack {
 }
 
 func (s *Stack) Pop() (*Stack, *Flow) {
-	return &Stack {
-		flowsInStack: s.flowsInStack[0:len(s.flowsInStack)-1],
+	return &Stack{
+		flowsInStack: s.flowsInStack[0 : len(s.flowsInStack)-1],
 	}, s.flowsInStack[len(s.flowsInStack)-1]
 }
 
 func (s *Stack) Push(flow *Flow) *Stack {
-	return &Stack {
+	return &Stack{
 		flowsInStack: append(append([]*Flow{}, s.flowsInStack...), flow),
 	}
 }
@@ -29,13 +29,13 @@ func (s *Stack) Size() int {
 func (s *Stack) PushMulti(flows []*Flow) *Stack {
 	state := append([]*Flow{}, s.flowsInStack...)
 
-	return &Stack {
+	return &Stack{
 		flowsInStack: append(state, flows...),
 	}
 }
 
 func (s *Stack) Concat(other *Stack) *Stack {
-	return &Stack {
+	return &Stack{
 		flowsInStack: append(append([]*Flow{}, s.flowsInStack...), other.flowsInStack...),
 	}
 }
