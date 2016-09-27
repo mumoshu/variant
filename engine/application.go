@@ -54,9 +54,9 @@ func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flo
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"caller": caller[0].Key.ShortString()})
+		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString(), "caller": caller[0].Key.ShortString()})
 	} else {
-		ctx = log.WithFields(log.Fields{})
+		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString()})
 	}
 
 	ctx.Debugf("app started flow %s", flowKey.ShortString())
@@ -66,6 +66,7 @@ func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flo
 	if provided != "" {
 		ctx.Debugf("app skipped flow %s via provided value: %s", flowKey.ShortString(), provided)
 		ctx.Info(provided)
+		println(provided)
 		return provided, nil
 	}
 

@@ -56,8 +56,9 @@ func (p *CobraAdapter) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (
 					opp := len(stack) - 1 - i
 					stack[i], stack[opp] = stack[opp], stack[i]
 				}
-				log.Errorf("Command `%s` failed\n\nCaused by:\n%s", c, strings.Join(stack, "\n"))
-				log.Debugf("Stack:\n%v", errors.ErrorStack(errors.Trace(err)))
+				log.WithFields(log.Fields{"stack": errors.ErrorStack(err)}).Errorf("command %s failed", c)
+				//log.Errorf("Command `%s` failed\n\nCaused by:\n%s", c, strings.Join(stack, "\n"))
+				//log.Debugf("Stack:\n%v", errors.ErrorStack(errors.Trace(err)))
 				os.Exit(1)
 			}
 		}

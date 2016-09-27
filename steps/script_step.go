@@ -86,7 +86,9 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 	c := "sh"
 	args := []string{"-c", command}
 
-	log.WithFields(log.Fields{"cmd": append([]string{c}, args...)}).Debug("script step started running command")
+	ctx := log.WithFields(log.Fields{"cmd": append([]string{c}, args...)})
+
+	ctx.Debug("script step started")
 
 	cmd := exec.Command(c, args...)
 
@@ -235,12 +237,13 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 	err := cmd.Wait()
 
 	if err != nil {
-		log.Fatalf("cmd.Wait: %v", err)
+		ctx.Errorf("script step failed: %v", err)
 		// Did the command fail because of an unsuccessful exit code
 		if exitError, ok := err.(*exec.ExitError); ok {
 			waitStatus = exitError.Sys().(syscall.WaitStatus)
 			print([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
 		}
+		return "scripterror", errors.Annotate(err, "script step failed")
 	} else {
 		// Command was successful
 		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
