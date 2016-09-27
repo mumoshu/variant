@@ -112,3 +112,28 @@ func Flatten(input map[string]interface{}) map[string]string {
 
 	return result
 }
+
+func DeepMerge(dest map[string]interface{}, src map[string]interface{}) {
+	for k, v := range src {
+		if str, isStr := v.(string); isStr {
+			dest[k] = str
+		} else if arr, isArr := v.([]string); isArr {
+			dest[k] = arr
+		} else if m, isMap := v.(map[string]interface{}); isMap {
+			if _, destIsMap := dest[k].(map[string]interface{}); !destIsMap {
+				if dest[k] != nil {
+					log.Panicf("maputil manics! unexpected type of value in map: dest=%v, k=%v, dest[k]=%v", dest, k, dest[k])
+				}
+				dest[k] = map[string]interface{}{}
+			}
+			d, ok := dest[k].(map[string]interface{})
+
+			if !ok {
+				log.Panicf("maputil panics! unexpected state of d: %v", d)
+			}
+			DeepMerge(d, m)
+		} else {
+			log.Panicf("maputil panics! unexpected type of value in map: src=%v, k=%v, v=%v", src, k, v)
+		}
+	}
+}

@@ -135,9 +135,7 @@ func (p Application) InheritedInputValuesForFlowKey(flowKey FlowKey, args []stri
 			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.String())
 		}
 
-		for k, v := range inherited {
-			result[k] = v
-		}
+		maputil.DeepMerge(result, inherited)
 	}
 
 	return result, nil
