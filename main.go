@@ -148,27 +148,33 @@ func main() {
 	// See "How to merge two config files" https://github.com/spf13/viper/issues/181
 	viper.SetConfigName(rootFlowConfig.Name)
 	commonConfigFile := fmt.Sprintf("%s.yaml", rootFlowConfig.Name)
+	commonConfigMsg := fmt.Sprintf("loading config file %s...", commonConfigFile)
 	if fileutil.Exists(commonConfigFile) {
-		log.Debugf("Loading common configuration from %s.yaml", rootFlowConfig.Name)
 		if err := viper.MergeInConfig(); err != nil {
+			log.Errorf("%serror", commonConfigMsg)
 			panic(err)
 		}
+		log.Debugf("%sdone", commonConfigMsg)
 	} else {
-		log.Infof("%s does not exist. Skipping", commonConfigFile)
+		log.Debugf("%smissing")
 	}
 
 	env.SetAppName(commandName)
-	log.Debugf("Loading current env from %s", env.GetPath())
+	envMsg := fmt.Sprintf("loading env file %s...", env.GetPath())
 	envName, err := env.Get()
 	if err != nil {
-		log.Debugf("No env set, no additional config to load")
+		log.Debugf("%smissing", envMsg)
 	} else {
+		log.Debugf("%sdone", envMsg)
+
 		envConfigFile := fmt.Sprintf("config/environments/%s", envName)
+		envConfigMsg := fmt.Sprintf("loading config file %s.yaml...", envConfigFile)
 		viper.SetConfigName(envConfigFile)
-		log.Debugf("Loading env specific configuration from %s.yaml", envConfigFile)
 		if err := viper.MergeInConfig(); err != nil {
-			log.Infof("%s.yaml does not exist. Skipping", envConfigFile)
+			log.Errorf("%error", envConfigFile)
+			panic(err)
 		}
+		log.Debugf("%sdone", envConfigMsg)
 	}
 
 	//Set the environment prefix as app name

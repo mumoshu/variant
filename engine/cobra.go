@@ -47,8 +47,6 @@ func (p *CobraAdapter) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.app.UpdateLoggingConfiguration()
 
-			log.Debugf("Number of inputs: %v", len(flow.Inputs))
-
 			if _, err := p.app.RunFlowForKey(flowKey, args); err != nil {
 				c := strings.Join(strings.Split(flowKey.String(), "."), " ")
 				stack := strings.Split(errors.ErrorStack(err), "\n")
