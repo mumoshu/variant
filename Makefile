@@ -63,5 +63,8 @@ smoke8: build
 smoke9: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./or-step-test ok && (./or-step-test ng; [ $$? -eq 1 ]) && echo smoke9 passed.
 
+smoke10: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./if-test ok1 && ./if-test ok2 && ./if-test ok3 && (./if-test ng1; [ $$? -eq 1 ]) && (./if-test ng2; [ $$? -eq 1 ]) && echo smoke10 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9}
+	make smoke{1,2,3,4,5,6,7,8,9,10}

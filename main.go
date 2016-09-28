@@ -39,6 +39,7 @@ func main() {
 	engine.Register(steps.NewFlowStepLoader())
 	engine.Register(steps.NewScriptStepLoader())
 	engine.Register(steps.NewOrStepLoader())
+	engine.Register(steps.NewIfStepLoader())
 
 	var commandName string
 	var commandPath string

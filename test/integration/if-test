@@ -1,0 +1,52 @@
+#!/usr/bin/env var
+
+flows:
+  ok1:
+    steps:
+      - if:
+          - flow: succeed
+        then:
+          - flow: foo
+  ok2:
+    steps:
+      - or:
+          - if:
+            - flow: fail
+            then:
+            - flow: foo
+          - if:
+            - flow: succeed
+            then:
+            - flow: bar
+  ok3:
+    steps:
+      - or:
+          - if:
+            - flow: fail
+            then:
+            - flow: foo
+          - flow: bar
+
+  ng1:
+    steps:
+      - or:
+        - if:
+          - flow: fail
+          then:
+          - flow: foo
+
+  ng2:
+    steps:
+      - if:
+        - flow: fail
+        then:
+        - flow: foo
+
+  succeed:
+    script: echo true; exit 0
+  fail:
+    script: echo false; exit 1
+  foo:
+    script: echo foo
+  bar:
+    script: echo bar
