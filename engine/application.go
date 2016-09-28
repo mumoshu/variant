@@ -205,13 +205,13 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	for i, input := range flowDef.ResolvedInputs {
+	for _, input := range flowDef.ResolvedInputs {
 		ctx.Debugf("app sees flow depends on input %s", input.ShortName())
 
 		var arg *string
-		if len(args) >= i+1 {
-			ctx.Debugf("positional argument provided: %s", args[i])
-			arg = &args[i]
+		if i := input.ArgumentIndex; i != nil && len(args) >= *i+1 {
+			ctx.Debugf("app found positional argument: args[%d]=%s", input.ArgumentIndex, args[*i])
+			arg = &args[*i]
 		}
 
 		var provided string
