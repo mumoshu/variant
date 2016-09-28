@@ -1,20 +1,21 @@
 package steps
 
 import (
-	"../engine"
+	"../api/step"
+	"fmt"
 )
 
 type FlowStepLoader struct{}
 
-func (l FlowStepLoader) TryToLoad(stepConfig engine.StepConfig) engine.Step {
-	if flowKey, isStr := stepConfig.Flow.(string); isStr && flowKey != "" {
+func (l FlowStepLoader) LoadStep(stepConfig step.StepConfig, context step.LoadingContext) (step.Step, error) {
+	if flowKey, isStr := stepConfig.Get("flow").(string); isStr && flowKey != "" {
 		return FlowStep{
-			Name:          stepConfig.Name,
+			Name:          stepConfig.GetName(),
 			FlowKeyString: flowKey,
-		}
+		}, nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("could'nt load flow step")
 }
 
 func NewFlowStepLoader() FlowStepLoader {
@@ -26,9 +27,9 @@ type FlowStep struct {
 	FlowKeyString string
 }
 
-func (s FlowStep) Run(project *engine.Application, flow *engine.BoundFlow, caller ...engine.Flow) (engine.StepStringOutput, error) {
-	output, err := project.RunFlowForKeyString(s.FlowKeyString, []string{}, caller...)
-	return engine.StepStringOutput{String: output}, err
+func (s FlowStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
+	output, err := context.RunAnotherFlow(s.FlowKeyString)
+	return step.StepStringOutput{String: output}, err
 }
 
 func (s FlowStep) GetName() string {

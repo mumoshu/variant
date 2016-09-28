@@ -47,7 +47,9 @@ func (p *CobraAdapter) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.app.UpdateLoggingConfiguration()
 
-			if _, err := p.app.RunFlowForKey(flowKey, args); err != nil {
+			output, err := p.app.RunFlowForKey(flowKey, args)
+
+			if err != nil {
 				c := strings.Join(strings.Split(flowKey.String(), "."), " ")
 				stack := strings.Split(errors.ErrorStack(err), "\n")
 				for i := len(stack)/2 - 1; i >= 0; i-- {
@@ -59,6 +61,8 @@ func (p *CobraAdapter) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (
 				//log.Debugf("Stack:\n%v", errors.ErrorStack(errors.Trace(err)))
 				os.Exit(1)
 			}
+
+			println(output)
 		}
 	}
 

@@ -10,11 +10,17 @@ import (
 	"github.com/juju/errors"
 
 	"../util/maputil"
+
+	"../api/step"
 )
 
 type BoundFlow struct {
 	Flow
 	Vars map[string]interface{}
+}
+
+func (t BoundFlow) GetKey() step.Key {
+	return t.Key
 }
 
 func (t BoundFlow) GenerateAutoenv() (map[string]string, error) {
@@ -57,22 +63,24 @@ func (t BoundFlow) GenerateAutoenvRecursively(path string, env map[string]interf
 	return result, nil
 }
 
-func (t *BoundFlow) Run(project *Application, caller ...Flow) (string, error) {
+func (t *BoundFlow) Run(project *Application, caller ...step.Caller) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) > 0 {
-		ctx = log.WithFields(log.Fields{"caller": caller[0].Key.ShortString()})
+		ctx = log.WithFields(log.Fields{"caller": caller[0].GetKey().ShortString()})
 	} else {
 		ctx = log.WithFields(log.Fields{})
 	}
 
 	ctx.Debugf("flow %s started", t.Key.String())
 
-	var output StepStringOutput
+	var output step.StepStringOutput
 	var err error
 
+	context := NewExecutionContextImpl(*project, *t)
+
 	for _, step := range t.Steps {
-		output, err = step.Run(project, t, caller...)
+		output, err = step.Run(context)
 
 		if err != nil {
 			return "", errors.Annotate(err, "Flow#Run failed while running a script")

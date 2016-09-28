@@ -1,0 +1,19 @@
+#!/usr/bin/env var
+
+flows:
+  one:
+    script: "echo one; exit 1"
+  two:
+    script: "echo two; exit 0"
+
+  ok:
+    steps:
+    - or:
+      - flow: one
+      - flow: two
+
+  ng:
+    steps:
+    - or:
+      - flow: one
+      - flow: one

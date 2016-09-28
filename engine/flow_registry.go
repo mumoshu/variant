@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"../api/step"
 	"github.com/juju/errors"
 )
 
@@ -18,18 +19,18 @@ func (p *FlowRegistry) Flows() map[string]*Flow {
 	return p.flows
 }
 
-func (p *FlowRegistry) FindFlow(flowKey FlowKey) (*Flow, error) {
-	t := p.flows[flowKey.String()]
+func (p *FlowRegistry) FindFlow(flowKey step.Key) (*Flow, error) {
+	t := p.flows[flowKey.ShortString()]
 
 	if t == nil {
-		return nil, errors.Errorf("No Flow exists for the flow key `%s`", flowKey.String())
+		return nil, errors.Errorf("No Flow exists for the flow key `%s`", flowKey.ShortString())
 	}
 
 	return t, nil
 }
 
-func (p *FlowRegistry) RegisterFlow(flowKey FlowKey, flowDef *Flow) {
-	p.flows[flowKey.String()] = flowDef
+func (p *FlowRegistry) RegisterFlow(flowKey step.Key, flowDef *Flow) {
+	p.flows[flowKey.ShortString()] = flowDef
 }
 
 func (p *FlowRegistry) RegisterFlows(flow *Flow) {

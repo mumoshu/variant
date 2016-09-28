@@ -7,6 +7,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
 	"github.com/mitchellh/mapstructure"
+
+	"../api/step"
+	"../util/maputil"
 )
 
 type FlowConfig struct {
@@ -15,39 +18,33 @@ type FlowConfig struct {
 	Inputs      []*Input      `yaml:"inputs,omitempty"`
 	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
 	Script      string        `yaml:"script,omitempty"`
-	Steps       []Step        `yaml:"steps,omitempty"`
+	Steps       []step.Step   `yaml:"steps,omitempty"`
 	Autoenv     bool          `yaml:"autoenv,omitempty"`
 	Autodir     bool          `yaml:"autodir,omitempty"`
 	Interactive bool          `yaml:"interactive,omitempty"`
 }
 
 type FlowConfigV1 struct {
-	Name        string        `yaml:"name,omitempty"`
-	Description string        `yaml:"description,omitempty"`
-	Inputs      []*Input      `yaml:"inputs,omitempty"`
-	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
-	Script      string        `yaml:"script,omitempty"`
-	StepConfigs []*StepConfig `yaml:"steps,omitempty"`
-	Autoenv     bool          `yaml:"autoenv,omitempty"`
-	Autodir     bool          `yaml:"autodir,omitempty"`
-	Interactive bool          `yaml:"interactive,omitempty"`
+	Name        string                        `yaml:"name,omitempty"`
+	Description string                        `yaml:"description,omitempty"`
+	Inputs      []*Input                      `yaml:"inputs,omitempty"`
+	FlowConfigs []*FlowConfig                 `yaml:"flows,omitempty"`
+	Script      string                        `yaml:"script,omitempty"`
+	StepConfigs []map[interface{}]interface{} `yaml:"steps,omitempty"`
+	Autoenv     bool                          `yaml:"autoenv,omitempty"`
+	Autodir     bool                          `yaml:"autodir,omitempty"`
+	Interactive bool                          `yaml:"interactive,omitempty"`
 }
 
 type FlowConfigV2 struct {
-	Description string                 `yaml:"description,omitempty"`
-	Inputs      []*Input               `yaml:"inputs,omitempty"`
-	FlowConfigs map[string]*FlowConfig `yaml:"flows,omitempty"`
-	Script      string                 `yaml:"script,omitempty"`
-	StepConfigs []*StepConfig          `yaml:"steps,omitempty"`
-	Autoenv     bool                   `yaml:"autoenv,omitempty"`
-	Autodir     bool                   `yaml:"autodir,omitempty"`
-	Interactive bool                   `yaml:"interactive,omitempty"`
-}
-
-type StepConfig struct {
-	Name   string      `yaml:"name,omitempty"`
-	Script interface{} `yaml:"script,omitempty"`
-	Flow   interface{} `yaml:"flow,omitempty"`
+	Description string                        `yaml:"description,omitempty"`
+	Inputs      []*Input                      `yaml:"inputs,omitempty"`
+	FlowConfigs map[string]*FlowConfig        `yaml:"flows,omitempty"`
+	Script      string                        `yaml:"script,omitempty"`
+	StepConfigs []map[interface{}]interface{} `yaml:"steps,omitempty"`
+	Autoenv     bool                          `yaml:"autoenv,omitempty"`
+	Autodir     bool                          `yaml:"autodir,omitempty"`
+	Interactive bool                          `yaml:"interactive,omitempty"`
 }
 
 func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -63,7 +60,7 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		Autodir:     false,
 		Inputs:      []*Input{},
 		FlowConfigs: []*FlowConfig{},
-		StepConfigs: []*StepConfig{},
+		StepConfigs: []map[interface{}]interface{}{},
 	}
 
 	err := unmarshal(&v1)
@@ -100,7 +97,7 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			Interactive: false,
 			Inputs:      []*Input{},
 			FlowConfigs: map[string]*FlowConfig{},
-			StepConfigs: []*StepConfig{},
+			StepConfigs: []map[interface{}]interface{}{},
 		}
 
 		err = unmarshal(&v2)
@@ -140,7 +137,7 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			if !ok {
 				return fmt.Errorf("Not a map[interface{}]interface{}: v3[\"flows\"]'s type: %s, value: %s", reflect.TypeOf(v3["flows"]), v3["flows"])
 			}
-			flows, err := CastKeysToStrings(rawFlows)
+			flows, err := maputil.CastKeysToStrings(rawFlows)
 			if err != nil {
 				return errors.Annotate(err, "Failed to unmarshal as a map[string]interface{}")
 			}
@@ -181,82 +178,82 @@ func TransformV2FlowConfigMapToArray(v2 map[string]*FlowConfig) []*FlowConfig {
 	return result
 }
 
-type StepLoader interface {
-	TryToLoad(stepConfig StepConfig) Step
-}
+var stepLoaders []step.StepLoader
 
-var stepLoaders []StepLoader
-
-func Register(stepLoader StepLoader) {
+func Register(stepLoader step.StepLoader) {
 	stepLoaders = append(stepLoaders, stepLoader)
 }
 
 func init() {
-	stepLoaders = []StepLoader{}
+	stepLoaders = []step.StepLoader{}
 }
 
-func TryToLoad(stepConfig StepConfig) Step {
+type stepLoadingContextImpl struct{}
+
+func (s stepLoadingContextImpl) LoadStep(config step.StepConfig) (step.Step, error) {
+	step, err := LoadStep(config)
+	return step, err
+}
+
+func LoadStep(config step.StepConfig) (step.Step, error) {
+	var lastError error
+
+	lastError = nil
+
+	context := stepLoadingContextImpl{}
 	for _, loader := range stepLoaders {
-		s := loader.TryToLoad(stepConfig)
-		if s != nil {
-			return s
+		var s step.Step
+		s, lastError = loader.LoadStep(config, context)
+		if lastError == nil {
+			return s, nil
 		}
 	}
-	return nil
+	return nil, errors.Annotatef(lastError, "all loader failed to load step")
 }
 
-func readStepsFromStepConfigs(script string, stepConfigs []*StepConfig) ([]Step, error) {
-	result := []Step{}
+func readStepsFromStepConfigs(script string, stepConfigs []map[interface{}]interface{}) ([]step.Step, error) {
+	result := []step.Step{}
 
 	if script != "" {
 		if len(stepConfigs) > 0 {
 			return nil, fmt.Errorf("both script and steps exist.")
 		}
 
-		step := TryToLoad(StepConfig{
-			Name:   "script",
-			Script: script,
-		})
+		s, err := LoadStep(step.NewStepConfig(map[string]interface{}{
+			"name":   "script",
+			"script": script,
+		}))
 
-		if step == nil {
-			panic("No loader defined for script")
+		if err != nil {
+			log.Panicf("step failed to load: %v", err)
 		}
 
-		result = []Step{step}
+		result = []step.Step{s}
 	} else {
-
 		for i, stepConfig := range stepConfigs {
-			var step Step
-
 			defaultName := fmt.Sprintf("step-%d", i+1)
 
-			if stepConfig.Name == "" {
-				stepConfig.Name = defaultName
+			if stepConfig["name"] == "" || stepConfig["name"] == nil {
+				stepConfig["name"] = defaultName
 			}
 
-			step = TryToLoad(*stepConfig)
+			converted, castErr := maputil.CastKeysToStrings(stepConfig)
 
-			if step == nil {
-				return nil, fmt.Errorf("Error reading step[%d]: field named `flow` or `script` doesn't exist")
+			if castErr != nil {
+				panic(castErr)
 			}
 
-			result = append(result, step)
+			s, err := LoadStep(step.NewStepConfig(converted))
+
+			if err != nil {
+				return nil, errors.Annotatef(err, "Error reading step[%d]")
+			}
+
+			result = append(result, s)
 		}
 	}
 
 	return result, nil
-}
-
-func CastKeysToStrings(m map[interface{}]interface{}) (map[string]interface{}, error) {
-	r := map[string]interface{}{}
-	for k, v := range m {
-		str, ok := k.(string)
-		if !ok {
-			return nil, fmt.Errorf("Unexpected type %s for key %s", reflect.TypeOf(k), k)
-		}
-		r[str] = v
-	}
-	return r, nil
 }
 
 func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*FlowConfig {
@@ -282,7 +279,7 @@ func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*FlowConfig {
 			panic(fmt.Errorf("Not a map[interface{}]interface{}: %s", v))
 		}
 
-		s2i, err := CastKeysToStrings(i2i)
+		s2i, err := maputil.CastKeysToStrings(i2i)
 
 		if err != nil {
 			panic(errors.Annotate(err, "Unexpected structure"))

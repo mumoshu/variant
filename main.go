@@ -38,6 +38,7 @@ func init() {
 func main() {
 	engine.Register(steps.NewFlowStepLoader())
 	engine.Register(steps.NewScriptStepLoader())
+	engine.Register(steps.NewOrStepLoader())
 
 	var commandName string
 	var commandPath string

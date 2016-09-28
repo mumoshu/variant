@@ -6,6 +6,7 @@ import (
 
 	"github.com/juju/errors"
 	"log"
+	"reflect"
 )
 
 func GetValueAtPath(cache map[string]interface{}, keyComponents []string) (interface{}, error) {
@@ -136,4 +137,16 @@ func DeepMerge(dest map[string]interface{}, src map[string]interface{}) {
 			log.Panicf("maputil panics! unexpected type of value in map: src=%v, k=%v, v=%v", src, k, v)
 		}
 	}
+}
+
+func CastKeysToStrings(m map[interface{}]interface{}) (map[string]interface{}, error) {
+	r := map[string]interface{}{}
+	for k, v := range m {
+		str, ok := k.(string)
+		if !ok {
+			return nil, fmt.Errorf("Unexpected type %s for key %s", reflect.TypeOf(k), k)
+		}
+		r[str] = v
+	}
+	return r, nil
 }

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"../api/step"
 	"github.com/juju/errors"
 	"strings"
 )
@@ -17,10 +18,10 @@ func (t FlowKey) ShortString() string {
 	return strings.Join(t.Components[1:], ".")
 }
 
-func (t FlowKey) Parent() (*FlowKey, error) {
+func (t FlowKey) Parent() (step.Key, error) {
 	if len(t.Components) > 1 {
-		return &FlowKey{Components: t.Components[:len(t.Components)-1]}, nil
+		return FlowKey{Components: t.Components[:len(t.Components)-1]}, nil
 	} else {
-		return nil, errors.Errorf("FlowKey %v doesn't have a parent", t)
+		return FlowKey{}, errors.Errorf("FlowKey %v doesn't have a parent", t)
 	}
 }

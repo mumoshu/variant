@@ -7,6 +7,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
+	"../api/step"
 	"github.com/juju/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -16,7 +17,7 @@ func NewDefaultFlowConfig() *FlowConfig {
 		Inputs:      []*Input{},
 		FlowConfigs: []*FlowConfig{},
 		Autoenv:     false,
-		Steps:       []Step{},
+		Steps:       []step.Step{},
 	}
 }
 

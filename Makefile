@@ -57,5 +57,11 @@ smoke6: build
 smoke7: build
 	cd $(IT_DIR) && $(CMD) env set dev && $(CMD) test2
 
+smoke8: build
+	cd $(IT_DIR) && PATH=$(shell pwd)/dist/$(VERSION):$$PATH ./steps-test ok && echo smoke8 passed.
+
+smoke9: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./or-step-test ok && (./or-step-test ng; [ $$? -eq 1 ]) && echo smoke9 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7}
+	make smoke{1,2,3,4,5,6,7,8,9}

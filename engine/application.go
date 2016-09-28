@@ -11,6 +11,7 @@ import (
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/spf13/viper"
 
+	"../api/step"
 	"../util/maputil"
 )
 
@@ -45,16 +46,16 @@ func (p Application) UpdateLoggingConfiguration() {
 	}
 }
 
-func (p Application) RunFlowForKeyString(keyStr string, args []string, caller ...Flow) (string, error) {
+func (p Application) RunFlowForKeyString(keyStr string, args []string, caller ...step.Caller) (string, error) {
 	flowKey := p.FlowKeyCreator.CreateFlowKey(fmt.Sprintf("%s.%s", p.Name, keyStr))
 	return p.RunFlowForKey(flowKey, args, caller...)
 }
 
-func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flow) (string, error) {
+func (p Application) RunFlowForKey(flowKey step.Key, args []string, caller ...step.Caller) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString(), "caller": caller[0].Key.ShortString()})
+		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString(), "caller": caller[0].GetKey().ShortString()})
 	} else {
 		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString()})
 	}
@@ -113,14 +114,14 @@ func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flo
 	return output, error
 }
 
-func (p Application) InheritedInputValuesForFlowKey(flowKey FlowKey, args []string, caller ...Flow) (map[string]interface{}, error) {
+func (p Application) InheritedInputValuesForFlowKey(flowKey step.Key, args []string, caller ...step.Caller) (map[string]interface{}, error) {
 	result := map[string]interface{}{}
 
 	// TODO make this parents-first instead of children-first?
 	direct, err := p.DirectInputValuesForFlowKey(flowKey, args, caller...)
 
 	if err != nil {
-		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.String())
+		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.ShortString())
 	}
 
 	for k, v := range direct {
@@ -130,10 +131,10 @@ func (p Application) InheritedInputValuesForFlowKey(flowKey FlowKey, args []stri
 	parentKey, err := flowKey.Parent()
 
 	if err == nil {
-		inherited, err := p.InheritedInputValuesForFlowKey(*parentKey, []string{}, caller...)
+		inherited, err := p.InheritedInputValuesForFlowKey(parentKey, []string{}, caller...)
 
 		if err != nil {
-			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.String())
+			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.ShortString())
 		}
 
 		maputil.DeepMerge(result, inherited)
@@ -181,11 +182,11 @@ func (p Application) GetValueForConfigKey(k string) string {
 	return provided
 }
 
-func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string, caller ...Flow) (map[string]interface{}, error) {
+func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string, caller ...step.Caller) (map[string]interface{}, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"caller": caller[0].Key.ShortString(), "flow": flowKey.ShortString()})
+		ctx = log.WithFields(log.Fields{"caller": caller[0].GetKey().ShortString(), "flow": flowKey.ShortString()})
 	} else {
 		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString()})
 	}
@@ -194,7 +195,7 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 
 	var baseFlowKey string
 	if len(caller) > 0 {
-		baseFlowKey = caller[0].Key.ShortString()
+		baseFlowKey = caller[0].GetKey().ShortString()
 	} else {
 		baseFlowKey = ""
 	}

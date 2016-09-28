@@ -13,20 +13,22 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
 
-	"../engine"
+	"../api/step"
 )
 
 type ScriptStepLoader struct{}
 
-func (l ScriptStepLoader) TryToLoad(stepConfig engine.StepConfig) engine.Step {
-	if code, isStr := stepConfig.Script.(string); isStr && code != "" {
+func (l ScriptStepLoader) LoadStep(stepConfig step.StepConfig, context step.LoadingContext) (step.Step, error) {
+	code, isStr := stepConfig.Get("script").(string)
+
+	if isStr && code != "" {
 		return ScriptStep{
-			Name: stepConfig.Name,
+			Name: stepConfig.GetName(),
 			Code: code,
-		}
+		}, nil
 	}
 
-	return nil
+	return nil, fmt.Errorf("no script step found. script=%v, isStr=%v, config=%v", stepConfig.Get("script"), isStr, stepConfig)
 }
 
 func NewScriptStepLoader() ScriptStepLoader {
@@ -42,37 +44,37 @@ func (s ScriptStep) GetName() string {
 	return s.Name
 }
 
-func (s ScriptStep) Run(project *engine.Application, flow *engine.BoundFlow, caller ...engine.Flow) (engine.StepStringOutput, error) {
-	depended := len(caller) > 0
+func (s ScriptStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
+	depended := len(context.Caller()) > 0
 
-	t := template.New(fmt.Sprintf("%s.definition.yaml: %s.%s.script", flow.ProjectName, s.GetName(), flow.Key.ShortString()))
+	t := template.New(fmt.Sprintf("%s.definition.yaml: %s.%s.script", context.ProjectName(), s.GetName(), context.Key().ShortString()))
 	t.Option("missingkey=error")
 
-	tmpl, err := t.Funcs(flow.CreateFuncMap()).Parse(s.Code)
+	tmpl, err := t.Funcs(context.CreateFuncMap()).Parse(s.Code)
 	if err != nil {
 		log.Errorf("Error: %v", err)
 	}
 
 	var buff bytes.Buffer
-	if err := tmpl.Execute(&buff, flow.Vars); err != nil {
-		log.WithFields(log.Fields{"source": s.Code, "vars": flow.Vars}).Errorf("script step failed templating")
-		return engine.StepStringOutput{String: "scripterror"}, errors.Annotatef(err, "script step failed templating")
+	if err := tmpl.Execute(&buff, context.Vars()); err != nil {
+		log.WithFields(log.Fields{"source": s.Code, "vars": context.Vars}).Errorf("script step failed templating")
+		return step.StepStringOutput{String: "scripterror"}, errors.Annotatef(err, "script step failed templating")
 	}
 
 	script := buff.String()
 
-	output, err := s.RunScript(script, depended, flow)
+	output, err := s.RunScript(script, depended, context)
 
-	return engine.StepStringOutput{String: output}, err
+	return step.StepStringOutput{String: output}, err
 }
 
-func (t ScriptStep) RunScript(script string, depended bool, flow *engine.BoundFlow) (string, error) {
+func (t ScriptStep) RunScript(script string, depended bool, context step.ExecutionContext) (string, error) {
 	//commands := strings.Split(script, "\n")
 	commands := []string{script}
 	var lastOutput string
 	for _, command := range commands {
 		if command != "" {
-			output, err := t.RunCommand(command, depended, flow)
+			output, err := t.RunCommand(command, depended, context)
 			if err != nil {
 				return output, err
 			}
@@ -82,7 +84,7 @@ func (t ScriptStep) RunScript(script string, depended bool, flow *engine.BoundFl
 	return lastOutput, nil
 }
 
-func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine.BoundFlow) (string, error) {
+func (t ScriptStep) RunCommand(command string, depended bool, context step.ExecutionContext) (string, error) {
 	c := "sh"
 	args := []string{"-c", command}
 
@@ -100,8 +102,8 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 		mergedEnv[key] = value
 	}
 
-	if parentFlow.Autoenv {
-		autoEnv, err := parentFlow.GenerateAutoenv()
+	if context.Autoenv() {
+		autoEnv, err := context.GenerateAutoenv()
 		if err != nil {
 			log.Errorf("script step failed to generate autoenv: %v", err)
 		}
@@ -117,13 +119,13 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 		cmd.Env = cmdEnv
 	}
 
-	if parentFlow.Autodir {
-		parentKey, err := parentFlow.Key.Parent()
+	if context.Autodir() {
+		parentKey, err := context.Key().Parent()
 		if parentKey != nil {
 			shortKey := parentKey.ShortString()
 			path := strings.Replace(shortKey, ".", "/", -1)
 			if err != nil {
-				log.Debugf("%s does not have parent", parentFlow.Key.String())
+				log.Debugf("%s does not have parent", context.Key().ShortString())
 			} else {
 				if _, err := os.Stat(path); err == nil {
 					cmd.Dir = path
@@ -134,7 +136,7 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 
 	output := ""
 
-	if parentFlow.Interactive {
+	if context.Interactive() {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -212,11 +214,11 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 			select {
 			case text, ok := <-channels.Stdout:
 				if ok {
-					if depended {
-						stdoutlog.Debug(text)
-					} else {
-						stdoutlog.Info(text)
-					}
+					//if depended {
+					//	stdoutlog.Debug(text)
+					//} else {
+					stdoutlog.Info(text)
+					//}
 				} else {
 					stdoutEnds = true
 				}

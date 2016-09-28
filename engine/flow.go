@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"../api/step"
 	"github.com/spf13/cobra"
 )
 
@@ -11,4 +12,8 @@ type Flow struct {
 	ResolvedInputs []*ResolvedInput
 	Flows          []*Flow
 	Command        *cobra.Command
+}
+
+func (f Flow) GetKey() step.Key {
+	return f.Key
 }
