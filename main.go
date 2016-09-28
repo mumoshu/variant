@@ -167,14 +167,19 @@ func main() {
 	} else {
 		log.Debugf("%sdone", envMsg)
 
-		envConfigFile := fmt.Sprintf("config/environments/%s", envName)
-		envConfigMsg := fmt.Sprintf("loading config file %s.yaml...", envConfigFile)
-		viper.SetConfigName(envConfigFile)
-		if err := viper.MergeInConfig(); err != nil {
-			log.Errorf("%error", envConfigFile)
-			panic(err)
+		envConfigName := fmt.Sprintf("config/environments/%s", envName)
+		envConfigFile := fmt.Sprintf("%s.yaml", envConfigName)
+		envConfigMsg := fmt.Sprintf("loading config file %s...", envConfigFile)
+		viper.SetConfigName(envConfigName)
+		if fileutil.Exists(envConfigFile) {
+			if err := viper.MergeInConfig(); err != nil {
+				log.Errorf("%serror", envConfigMsg)
+				panic(err)
+			}
+			log.Debugf("%sdone", envConfigMsg)
+		} else {
+			log.Debugf("%smissing", envConfigMsg)
 		}
-		log.Debugf("%sdone", envConfigMsg)
 	}
 
 	//Set the environment prefix as app name
