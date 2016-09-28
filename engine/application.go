@@ -96,9 +96,9 @@ func (p Application) RunFlowForKey(flowKey FlowKey, args []string, caller ...Flo
 		Flow: *flowDef,
 	}
 
-	kv := maputil.FlattenAsString(vars)
+	kv := maputil.Flatten(vars)
 
-	ctx.Debugf("app bound variables for flow %s: %s", flowKey.ShortString(), kv)
+	ctx.WithField("variables", kv).Debugf("app bound variables for flow %s", flowKey.ShortString())
 
 	output, error := flow.Run(&p, caller...)
 
@@ -252,7 +252,7 @@ func (p Application) DirectInputValuesForFlowKey(flowKey FlowKey, args []string,
 
 	}
 
-	ctx.Debugf("app finished collecting inputs: %s", maputil.FlattenAsString(values))
+	ctx.WithField("values", values).Debugf("app finished collecting inputs")
 
 	return values, nil
 }
