@@ -222,7 +222,7 @@ func (t ScriptStep) RunCommand(command string, depended bool, parentFlow *engine
 				}
 			case text, ok := <-channels.Stderr:
 				if ok {
-					stderrlog.Info("%s", text)
+					stderrlog.Info(text)
 				} else {
 					stderrEnds = true
 				}
