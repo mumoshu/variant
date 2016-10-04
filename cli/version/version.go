@@ -5,6 +5,8 @@ type Version struct {
 	ApplicationVersion string `json:"application_version"`
 }
 
+var VERSION string
+
 func Get() (Version, error) {
-	return Version{FrameworkVersion: "0.0.5"}, nil
+	return Version{FrameworkVersion: VERSION}, nil
 }

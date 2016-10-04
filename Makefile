@@ -1,7 +1,7 @@
 CMD ?= $(shell pwd)/dist/$(VERSION)/var
 GITHUB_USER ?= mumoshu
 GITHUB_REPO ?= variant
-VERSION ?= v0.0.5
+VERSION ?= 0.0.6
 IT_DIR = test/integration
 
 define GO_FMT
@@ -28,10 +28,10 @@ build: dist/$(VERSION)
 dist/$(VERSION):
 	$(call GO_FMT)
 	mkdir -p dist/$(VERSION)
-	go build -o dist/$(VERSION)/var
+	go build -ldflags "-X '_$(shell pwd)/cli/version.VERSION=$(VERSION)'" -o dist/$(VERSION)/var .
 
 release: dist/$(VERSION)
-	ghr -u $(GITHUB_USER) -r $(GITHUB_REPO) -c master --prerelease $(VERSION) dist/$(VERSION)
+	ghr -u $(GITHUB_USER) -r $(GITHUB_REPO) -c master --prerelease v$(VERSION) dist/$(VERSION)
 
 publish-latest: dist/$(VERSION)
 	ghr -u $(GITHUB_USER) -r $(GITHUB_REPO) -c master --replace --prerelease latest dist/$(VERSION)
