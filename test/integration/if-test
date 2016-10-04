@@ -27,7 +27,7 @@ flows:
             - flow: foo
           - flow: bar
 
-  ng1:
+  ok4:
     steps:
       - or:
         - if:
@@ -35,12 +35,27 @@ flows:
           then:
           - flow: foo
 
-  ng2:
+  ok5:
     steps:
       - if:
         - flow: fail
         then:
         - flow: foo
+
+  ng1:
+    steps:
+      - if:
+        - flow: fail
+        then:
+        - flow: foo
+      - flow: fail
+
+  ng2:
+    steps:
+      - if:
+        - flow: succeed
+        then:
+        - flow: fail
 
   succeed:
     script: echo true; exit 0

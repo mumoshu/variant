@@ -125,13 +125,13 @@ func (s IfStep) Run(context step.ExecutionContext) (step.StepStringOutput, error
 	_, ifErr := run(s.If, context)
 
 	if ifErr != nil {
-		return step.StepStringOutput{String: "if step failed"}, errors.Annotatef(ifErr, "`if` steps failed")
+		return step.StepStringOutput{String: "if step failed"}, nil
 	}
 
 	thenOut, thenErr := run(s.Then, context)
 
 	if thenErr != nil {
-		return step.StepStringOutput{String: "if step failed"}, errors.Annotatef(thenErr, "`then` steps failed")
+		return step.StepStringOutput{String: "then step failed"}, errors.Annotatef(thenErr, "`then` steps failed")
 	}
 
 	return thenOut, nil
