@@ -28,6 +28,9 @@ build: dist/$(VERSION)
 dist/$(VERSION):
 	$(call GO_FMT)
 	mkdir -p dist/$(VERSION)
+	# $ go tool nm dist/v$(VERSION)/var | grep VERSION
+	#  8b0780 D _/Users/me/path/to/variant/cli/version.VERSION
+	#  6dff9c R _/Users/me/path/to/variant/cli/version.VERSION.str
 	go build -ldflags "-X '_$(shell pwd)/cli/version.VERSION=$(VERSION)'" -o dist/$(VERSION)/var .
 
 release: dist/$(VERSION)
