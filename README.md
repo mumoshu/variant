@@ -74,6 +74,7 @@ $ var version --output json | jq -c -r 'select(.msg == "version") | .framework_v
 
 * [How to write killer DevOps automation workflows](http://techbeacon.com/how-write-killer-devops-automation-workflows)
 * [progrium/bashstyle: Let's do Bash right!](https://github.com/progrium/bashstyle)
+* [ralish/bash-script-template: A best practices Bash script template with many useful functions](https://github.com/ralish/bash-script-template)
 
 ## Future Goals
 
