@@ -19,7 +19,7 @@ flows:
     description: webをデプロイする
     inputs:
     - name: target
-      argument_index: 0
+      argument-index: 0
     - name: mysql.host
       description: Webサーバの接続先となるMySQLホスト
     script: |
@@ -48,9 +48,9 @@ flows:
 - name: add
   inputs:
   - name: left
-    argument_index: 0
+    argument-index: 0
   - name: right
-    argument_index: 1
+    argument-index: 1
   script: |
     echo $(( {{.left}} + {{.right}} ))
 - name: test

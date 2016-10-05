@@ -6,5 +6,5 @@ type Input struct {
 	Description   string               `yaml:"description,omitempty"`
 	Candidates    []string             `yaml:"candidates,omitempty"`
 	Complete      string               `yaml:"complete,omitempty"`
-	ArgumentIndex *int                 `yaml:"argument_index,omitempty"`
+	ArgumentIndex *int                 `yaml:"argument-index,omitempty"`
 }
