@@ -1,6 +1,7 @@
 package engine
 
 import (
+	flowApi "../api/flow"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
@@ -47,7 +48,7 @@ func (p *CobraAdapter) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.app.UpdateLoggingConfiguration()
 
-			output, err := p.app.RunFlowForKey(flowKey, args)
+			output, err := p.app.RunFlowForKey(flowKey, args, flowApi.NewProvidedInputs())
 
 			if err != nil {
 				c := strings.Join(strings.Split(flowKey.String(), "."), " ")

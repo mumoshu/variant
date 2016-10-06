@@ -1,6 +1,9 @@
 package step
 
-import "text/template"
+import (
+	"../flow"
+	"text/template"
+)
 
 type ExecutionContext interface {
 	GenerateAutoenv() (map[string]string, error)
@@ -12,5 +15,5 @@ type ExecutionContext interface {
 	Autoenv() bool
 	Autodir() bool
 	Interactive() bool
-	RunAnotherFlow(key string) (string, error)
+	RunAnotherFlow(key string, provided flow.ProvidedInputs) (string, error)
 }

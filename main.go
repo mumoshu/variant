@@ -158,7 +158,7 @@ func main() {
 		}
 		log.Debugf("%sdone", commonConfigMsg)
 	} else {
-		log.Debugf("%smissing")
+		log.Debugf("%smissing", commonConfigMsg)
 	}
 
 	env.SetAppName(commandName)

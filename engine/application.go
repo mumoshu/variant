@@ -11,6 +11,7 @@ import (
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/spf13/viper"
 
+	"../api/flow"
 	"../api/step"
 	"../util/maputil"
 )
@@ -46,12 +47,12 @@ func (p Application) UpdateLoggingConfiguration() {
 	}
 }
 
-func (p Application) RunFlowForKeyString(keyStr string, args []string, caller ...step.Caller) (string, error) {
+func (p Application) RunFlowForKeyString(keyStr string, args []string, provided flow.ProvidedInputs, caller ...step.Caller) (string, error) {
 	flowKey := p.FlowKeyCreator.CreateFlowKey(fmt.Sprintf("%s.%s", p.Name, keyStr))
-	return p.RunFlowForKey(flowKey, args, caller...)
+	return p.RunFlowForKey(flowKey, args, provided, caller...)
 }
 
-func (p Application) RunFlowForKey(flowKey step.Key, args []string, caller ...step.Caller) (string, error) {
+func (p Application) RunFlowForKey(flowKey step.Key, args []string, providedInputs flow.ProvidedInputs, caller ...step.Caller) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
@@ -82,7 +83,7 @@ func (p Application) RunFlowForKey(flowKey step.Key, args []string, caller ...st
 	vars["env"] = p.Env
 	vars["cmd"] = p.CommandRelativePath
 
-	inputs, err := p.InheritedInputValuesForFlowKey(flowKey, args, caller...)
+	inputs, err := p.InheritedInputValuesForFlowKey(flowKey, args, providedInputs, caller...)
 
 	if err != nil {
 		return "", errors.Annotatef(err, "app failed running flow %s", flowKey.ShortString())
@@ -114,11 +115,11 @@ func (p Application) RunFlowForKey(flowKey step.Key, args []string, caller ...st
 	return output, error
 }
 
-func (p Application) InheritedInputValuesForFlowKey(flowKey step.Key, args []string, caller ...step.Caller) (map[string]interface{}, error) {
+func (p Application) InheritedInputValuesForFlowKey(flowKey step.Key, args []string, provided flow.ProvidedInputs, caller ...step.Caller) (map[string]interface{}, error) {
 	result := map[string]interface{}{}
 
 	// TODO make this parents-first instead of children-first?
-	direct, err := p.DirectInputValuesForFlowKey(flowKey, args, caller...)
+	direct, err := p.DirectInputValuesForFlowKey(flowKey, args, provided, caller...)
 
 	if err != nil {
 		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.ShortString())
@@ -131,7 +132,7 @@ func (p Application) InheritedInputValuesForFlowKey(flowKey step.Key, args []str
 	parentKey, err := flowKey.Parent()
 
 	if err == nil {
-		inherited, err := p.InheritedInputValuesForFlowKey(parentKey, []string{}, caller...)
+		inherited, err := p.InheritedInputValuesForFlowKey(parentKey, []string{}, provided, caller...)
 
 		if err != nil {
 			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.ShortString())
@@ -182,7 +183,7 @@ func (p Application) GetValueForConfigKey(k string) string {
 	return provided
 }
 
-func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string, caller ...step.Caller) (map[string]interface{}, error) {
+func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string, provided flow.ProvidedInputs, caller ...step.Caller) (map[string]interface{}, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
@@ -209,35 +210,39 @@ func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string
 	for _, input := range flowDef.ResolvedInputs {
 		ctx.Debugf("app sees flow depends on input %s", input.ShortName())
 
-		var arg *string
+		var positional *string
 		if i := input.ArgumentIndex; i != nil && len(args) >= *i+1 {
 			ctx.Debugf("app found positional argument: args[%d]=%s", input.ArgumentIndex, args[*i])
-			arg = &args[*i]
+			positional = &args[*i]
 		}
 
-		var provided string
+		var value string
 
-		if baseFlowKey != "" {
-			provided = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseFlowKey, input.ShortName()))
+		if v, err := provided.Get(input.Name); err == nil {
+			value = v
 		}
 
-		if provided == "" && strings.LastIndex(input.ShortName(), flowKey.ShortString()) == -1 {
-			provided = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", flowKey.ShortString(), input.ShortName()))
+		if value == "" && baseFlowKey != "" {
+			value = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseFlowKey, input.ShortName()))
 		}
 
-		if provided == "" {
-			provided = p.GetValueForConfigKey(input.ShortName())
+		if value == "" && strings.LastIndex(input.ShortName(), flowKey.ShortString()) == -1 {
+			value = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", flowKey.ShortString(), input.ShortName()))
+		}
+
+		if value == "" {
+			value = p.GetValueForConfigKey(input.ShortName())
 		}
 
 		pathComponents := strings.Split(input.Name, ".")
 
-		if arg != nil {
-			maputil.SetValueAtPath(values, pathComponents, *arg)
-		} else if provided == "" {
+		if positional != nil {
+			maputil.SetValueAtPath(values, pathComponents, *positional)
+		} else if value == "" {
 			var output interface{}
 			var err error
 			if output, err = maputil.GetValueAtPath(p.CachedFlowOutputs, pathComponents); output == nil {
-				output, err = p.RunFlowForKey(p.FlowKeyCreator.CreateFlowKeyFromResolvedInput(input), []string{}, *flowDef)
+				output, err = p.RunFlowForKey(p.FlowKeyCreator.CreateFlowKeyFromResolvedInput(input), []string{}, flow.NewProvidedInputs(), *flowDef)
 				if err != nil {
 					return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", input.ShortName())
 				}
@@ -248,7 +253,7 @@ func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string
 			}
 			maputil.SetValueAtPath(values, pathComponents, output)
 		} else {
-			maputil.SetValueAtPath(values, pathComponents, provided)
+			maputil.SetValueAtPath(values, pathComponents, value)
 		}
 
 	}

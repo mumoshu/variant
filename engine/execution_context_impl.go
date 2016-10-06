@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"../api/flow"
 	"../api/step"
 	"text/template"
 )
@@ -55,6 +56,6 @@ func (c ExecutionContextImpl) Interactive() bool {
 	return c.flow.Interactive
 }
 
-func (c ExecutionContextImpl) RunAnotherFlow(key string) (string, error) {
-	return c.app.RunFlowForKeyString(key, []string{}, c.Caller()...)
+func (c ExecutionContextImpl) RunAnotherFlow(key string, provided flow.ProvidedInputs) (string, error) {
+	return c.app.RunFlowForKeyString(key, []string{}, provided, c.Caller()...)
 }

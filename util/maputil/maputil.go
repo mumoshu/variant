@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
-	"log"
 	"reflect"
+	"strconv"
 )
 
 func GetValueAtPath(cache map[string]interface{}, keyComponents []string) (interface{}, error) {
@@ -40,6 +41,21 @@ func GetStringAtPath(m map[string]interface{}, key string) (string, error) {
 	rest := components[1:]
 	value, exists := m[head]
 	if !exists {
+
+		log.Debugf("maptuil fetched %s: %v", key, m[key])
+
+		if value, exists := m[key]; exists {
+			if str, ok := value.(string); ok {
+				return str, nil
+			} else if b, ok := value.(bool); ok {
+				return strconv.FormatBool(b), nil
+			} else if i, ok := value.(int); ok {
+				return strconv.Itoa(i), nil
+			} else {
+				return "", fmt.Errorf("maputil failed to parse string: %v", value)
+			}
+		}
+
 		return "", fmt.Errorf("No value for %s in %+v", head, m)
 	}
 

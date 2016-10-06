@@ -1,0 +1,41 @@
+#!/usr/bin/env var
+
+flows:
+  ok1:
+    steps:
+      - flow: math.add
+        inputs:
+          int.a: 1
+          int.b: 2
+
+  ok2:
+    steps:
+      - flow: str.concat
+        inputs:
+          str.a: foo
+          str.b: true
+
+
+  ng1:
+    steps:
+      - flow: math.add
+        inputs:
+          int.a: 1
+
+  math:
+    flows:
+      add:
+        inputs:
+        - name: int.a
+        - name: int.b
+        script: |
+          echo $(({{get "int.a"}} + {{get "int.b"}}))
+
+  str:
+    flows:
+      concat:
+        inputs:
+        - name: str.a
+        - name: str.b
+        script: |
+          echo "{{get "str.a"}}{{get "str.b"}}"

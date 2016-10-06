@@ -192,6 +192,7 @@ type stepLoadingContextImpl struct{}
 
 func (s stepLoadingContextImpl) LoadStep(config step.StepConfig) (step.Step, error) {
 	step, err := LoadStep(config)
+
 	return step, err
 }
 
@@ -204,6 +205,9 @@ func LoadStep(config step.StepConfig) (step.Step, error) {
 	for _, loader := range stepLoaders {
 		var s step.Step
 		s, lastError = loader.LoadStep(config, context)
+
+		log.WithField("step", s).Debugf("step loaded")
+
 		if lastError == nil {
 			return s, nil
 		}

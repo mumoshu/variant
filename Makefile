@@ -74,5 +74,13 @@ smoke10-ok: build
 smoke10-ng: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && (./if-test ng1; [ $$? -eq 1 ]) && (./if-test ng2; [ $$? -eq 1 ]) && echo smoke10-ng passed.
 
+smoke11: smoke11-ok smoke11-ng
+
+smoke11-ok: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./flow-step-inputs-test ok1 && ./flow-step-inputs-test ok2 && echo smoke11-ok passed.
+
+smoke11-ng: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && (./flow-step-inputs-test ng1; [ $$? -eq 1 ]) && echo smoke11-ng passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11}
