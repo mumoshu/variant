@@ -1,7 +1,7 @@
 CMD ?= $(shell pwd)/dist/$(VERSION)/var
 GITHUB_USER ?= mumoshu
 GITHUB_REPO ?= variant
-VERSION ?= 0.0.7
+VERSION ?= 0.0.8
 IT_DIR = test/integration
 
 define GO_FMT
@@ -82,5 +82,14 @@ smoke11-ok: build
 smoke11-ng: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && (./flow-step-inputs-test ng1; [ $$? -eq 1 ]) && echo smoke11-ng passed.
 
+smoke12: build
+	cd $(IT_DIR)/override-with-empty && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./test --logtostderr test > out && cat out | tee /dev/stderr | grep -v "bar" && echo smoke12 passed.
+
+smoke13: build
+	cd $(IT_DIR)/override-with-null && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./test --logtostderr test > out && cat out | tee /dev/stderr | grep "bar" && echo smoke13 passed.
+
+smoke14: build
+	cd $(IT_DIR)/override-with-null-from-env-config && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./test --logtostderr test > out && cat out | tee /dev/stderr | grep "baz" && echo smoke14 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14}

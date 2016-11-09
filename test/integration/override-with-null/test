@@ -1,0 +1,12 @@
+#!/usr/bin/env var
+flows:
+  foo:
+    flows:
+      bar:
+        script: |
+          echo bar
+  test:
+    inputs:
+    - name: foo.bar
+    script: |
+      echo {{get "foo.bar"}}

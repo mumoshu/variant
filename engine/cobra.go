@@ -63,7 +63,7 @@ func (p *CobraAdapter) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (
 				os.Exit(1)
 			}
 
-			println(output)
+			fmt.Println(output)
 		}
 	}
 
@@ -111,25 +111,26 @@ func (p *CobraAdapter) GenerateAllFlags() {
 
 			flagName := strings.Replace(name, ".", "-", -1)
 
-			var longerName string
+			var keyForConfigFromFlag string
 			if input.FlowKey.ShortString() == flow.Key.ShortString() {
-				longerName = input.ShortName()
+				keyForConfigFromFlag = input.ShortName()
 			} else {
-				longerName = fmt.Sprintf("%s.%s", flow.Key.ShortString(), input.ShortName())
+				keyForConfigFromFlag = fmt.Sprintf("%s.%s", flow.Key.ShortString(), input.ShortName())
 			}
+			keyForConfigFromFlag = fmt.Sprintf("flags.%s", keyForConfigFromFlag)
 
 			if len(flowConfig.FlowConfigs) == 0 {
 				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
 				//log.Debugf("Binding flag --%s to the config key %s", flagName, name)
 				//viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
-				log.Debugf("Binding flag --%s of the command %s to the input %s with the config key %s", flagName, flow.Key.ShortString(), input.Name, longerName)
-				viper.BindPFlag(longerName, cmd.Flags().Lookup(flagName))
+				log.Debugf("Binding flag --%s of the command %s to the input %s with the config key %s", flagName, flow.Key.ShortString(), input.Name, keyForConfigFromFlag)
+				viper.BindPFlag(keyForConfigFromFlag, cmd.Flags().Lookup(flagName))
 			} else {
 				cmd.PersistentFlags().StringP(flagName, "" /*string(input.Name[0])*/, "" /*default*/, description)
 				//log.Debugf("Binding persistent flag --%s to the config key %s", flagName, name)
 				//viper.BindPFlag(name, cmd.PersistentFlags().Lookup(flagName))
-				log.Debugf("Binding persistent flag --%s to the config key %s", flagName, longerName)
-				viper.BindPFlag(longerName, cmd.PersistentFlags().Lookup(flagName))
+				log.Debugf("Binding persistent flag --%s to the config key %s", flagName, keyForConfigFromFlag)
+				viper.BindPFlag(keyForConfigFromFlag, cmd.PersistentFlags().Lookup(flagName))
 			}
 		}
 	}

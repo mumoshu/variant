@@ -14,6 +14,7 @@ import (
 	"../api/flow"
 	"../api/step"
 	"../util/maputil"
+	"reflect"
 )
 
 type Application struct {
@@ -26,11 +27,16 @@ type Application struct {
 	FlowRegistry        *FlowRegistry
 	InputResolver       InputResolver
 	FlowKeyCreator      *FlowKeyCreator
+	LogToStderr         bool
 }
 
 func (p Application) UpdateLoggingConfiguration() {
 	if p.Verbose {
 		log.SetLevel(log.DebugLevel)
+	}
+
+	if p.LogToStderr {
+		log.SetOutput(os.Stderr)
 	}
 
 	commandName := path.Base(os.Args[0])
@@ -65,11 +71,12 @@ func (p Application) RunFlowForKey(flowKey step.Key, args []string, providedInpu
 
 	provided := p.GetValueForConfigKey(flowKey.ShortString())
 
-	if provided != "" {
-		ctx.Debugf("app skipped flow %s via provided value: %s", flowKey.ShortString(), provided)
-		ctx.Info(provided)
-		println(provided)
-		return provided, nil
+	if provided != nil {
+		p := *provided
+		ctx.Debugf("app skipped flow %s via provided value: %s", flowKey.ShortString(), p)
+		ctx.Info(p)
+		println(p)
+		return p, nil
 	}
 
 	flowDef, err := p.FlowRegistry.FindFlow(flowKey)
@@ -146,41 +153,58 @@ func (p Application) InheritedInputValuesForFlowKey(flowKey step.Key, args []str
 
 type AnyMap map[string]interface{}
 
-func (p Application) GetValueForConfigKey(k string) string {
+func (p Application) GetValueForConfigKey(k string) *string {
 	ctx := log.WithFields(log.Fields{"key": k})
 
 	lastIndex := strings.LastIndex(k, ".")
 
-	provided := ""
+	valueFromFlag := viper.GetString(fmt.Sprintf("flags.%s", k))
+
+	if valueFromFlag != "" {
+		return &valueFromFlag
+	}
 
 	if lastIndex != -1 {
 		a := []rune(k)
 		k1 := string(a[:lastIndex])
 		k2 := string(a[lastIndex+1:])
 
-		values := viper.GetStringMapString(k1)
+		ctx.Debugf("viper.Get(%v): %v", k1, viper.Get(k1))
 
-		ctx.Debugf("app fetched %s: %v", k1, values)
+		if viper.Get(k1) != nil {
 
-		var provided string
+			values := viper.Sub(k1)
 
-		if values != nil && values[k2] != "" {
-			provided = values[k2]
-		} else {
-			provided = ""
+			ctx.Debugf("app fetched %s: %v", k1, values)
+
+			var provided *string
+
+			if values != nil && values.Get(k2) != nil {
+				str := values.GetString(k2)
+				provided = &str
+			} else {
+				provided = nil
+			}
+
+			ctx.Debugf("app fetched %s[%s]: %s", k1, k2, provided)
+
+			if provided != nil {
+				return provided
+			}
 		}
-
-		ctx.Debugf("app fetched %s[%s]: %s", k1, k2, provided)
-
-		if provided != "" {
-			return provided
+		return nil
+	} else {
+		raw := viper.Get(k)
+		ctx.Debugf("app fetched raw value for key %s: %v", k, raw)
+		ctx.Debugf("type of value fetched: %v", reflect.TypeOf(raw))
+		if str, ok := raw.(string); ok {
+			return &str
+		} else if raw == nil {
+			return nil
+		} else {
+			panic(fmt.Sprintf("unexpected type of value fetched: %v", reflect.TypeOf(raw)))
 		}
 	}
-
-	provided = viper.GetString(k)
-	ctx.Debugf("app fetched string %s: %s", k, provided)
-
-	return provided
 }
 
 func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string, provided flow.ProvidedInputs, caller ...step.Caller) (map[string]interface{}, error) {
@@ -216,29 +240,29 @@ func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string
 			positional = &args[*i]
 		}
 
-		var value string
+		var nullableValue *string
 
 		if v, err := provided.Get(input.Name); err == nil {
-			value = v
+			nullableValue = &v
 		}
 
-		if value == "" && baseFlowKey != "" {
-			value = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseFlowKey, input.ShortName()))
+		if nullableValue == nil && baseFlowKey != "" {
+			nullableValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseFlowKey, input.ShortName()))
 		}
 
-		if value == "" && strings.LastIndex(input.ShortName(), flowKey.ShortString()) == -1 {
-			value = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", flowKey.ShortString(), input.ShortName()))
+		if nullableValue == nil && strings.LastIndex(input.ShortName(), flowKey.ShortString()) == -1 {
+			nullableValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", flowKey.ShortString(), input.ShortName()))
 		}
 
-		if value == "" {
-			value = p.GetValueForConfigKey(input.ShortName())
+		if nullableValue == nil {
+			nullableValue = p.GetValueForConfigKey(input.ShortName())
 		}
 
 		pathComponents := strings.Split(input.Name, ".")
 
 		if positional != nil {
 			maputil.SetValueAtPath(values, pathComponents, *positional)
-		} else if value == "" {
+		} else if nullableValue == nil {
 			var output interface{}
 			var err error
 			if output, err = maputil.GetValueAtPath(p.CachedFlowOutputs, pathComponents); output == nil {
@@ -253,7 +277,7 @@ func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string
 			}
 			maputil.SetValueAtPath(values, pathComponents, output)
 		} else {
-			maputil.SetValueAtPath(values, pathComponents, value)
+			maputil.SetValueAtPath(values, pathComponents, *nullableValue)
 		}
 
 	}

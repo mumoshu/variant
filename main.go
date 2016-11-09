@@ -23,15 +23,24 @@ func init() {
 	log.SetOutput(os.Stdout)
 
 	verbose := false
+	logtostderr := false
 	for _, e := range os.Environ() {
 		if strings.Contains(e, "VERBOSE=") {
 			verbose = true
+			break
+		}
+		if strings.Contains(e, "LOGTOSTDERR=") {
+			logtostderr = true
 			break
 		}
 	}
 
 	if verbose {
 		log.SetLevel(log.DebugLevel)
+	}
+
+	if logtostderr {
+		log.SetOutput(os.Stderr)
 	}
 }
 
@@ -128,6 +137,7 @@ func main() {
 
 	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().StringVarP(&(p.Output), "output", "o", "text", "Output format. One of: json|text|bunyan")
+	rootCmd.PersistentFlags().BoolVar(&(p.LogToStderr), "logtostderr", false, "write log messages to stderr")
 
 	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
 	rootCmd.ParseFlags(args)

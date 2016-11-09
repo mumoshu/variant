@@ -82,6 +82,8 @@ func SetValueAtPath(cache map[string]interface{}, keyComponents []string, value 
 
 	k = strings.Replace(k, "-", "_", -1)
 
+	log.Debugf("maptuil sets %v for %s", value, k)
+
 	if len(rest) == 0 {
 		cache[k] = value
 	} else {
