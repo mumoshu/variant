@@ -11,9 +11,9 @@ import (
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/spf13/viper"
 
-	"../api/flow"
-	"../api/step"
-	"../util/maputil"
+	"github.com/mumoshu/variant/api/flow"
+	"github.com/mumoshu/variant/api/step"
+	"github.com/mumoshu/variant/util/maputil"
 	"reflect"
 )
 

@@ -1,7 +1,7 @@
 package step
 
 import (
-	"../flow"
+	"github.com/mumoshu/variant/api/flow"
 	"text/template"
 )
 

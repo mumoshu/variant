@@ -13,7 +13,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
 
-	"../api/step"
+	"github.com/mumoshu/variant/api/step"
 )
 
 type ScriptStepLoader struct{}

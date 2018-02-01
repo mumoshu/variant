@@ -7,7 +7,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"../api/step"
+	"github.com/mumoshu/variant/api/step"
 	"github.com/juju/errors"
 	"gopkg.in/yaml.v2"
 )

@@ -1,7 +1,7 @@
 package engine
 
 import (
-	flowApi "../api/flow"
+	flowApi "github.com/mumoshu/variant/api/flow"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"

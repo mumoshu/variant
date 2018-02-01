@@ -19,8 +19,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	env "../cli/env"
-	subcommands "./env"
+	env "github.com/mumoshu/variant/cli/env"
+	subcommands "github.com/mumoshu/variant/cmd/env"
 )
 
 var EnvCmd = &cobra.Command{

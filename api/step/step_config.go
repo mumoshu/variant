@@ -1,7 +1,7 @@
 package step
 
 import (
-	"../../util/maputil"
+	"github.com/mumoshu/variant/util/maputil"
 	"github.com/Sirupsen/logrus"
 	log "github.com/Sirupsen/logrus"
 	"reflect"

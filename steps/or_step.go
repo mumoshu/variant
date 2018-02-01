@@ -1,8 +1,8 @@
 package steps
 
 import (
-	"../api/step"
-	"../util/maputil"
+	"github.com/mumoshu/variant/api/step"
+	"github.com/mumoshu/variant/util/maputil"
 	"fmt"
 	"github.com/juju/errors"
 	"log"

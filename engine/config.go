@@ -8,8 +8,8 @@ import (
 	"github.com/juju/errors"
 	"github.com/mitchellh/mapstructure"
 
-	"../api/step"
-	"../util/maputil"
+	"github.com/mumoshu/variant/api/step"
+	"github.com/mumoshu/variant/util/maputil"
 )
 
 type FlowConfig struct {

@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"github.com/juju/errors"
 
-	"../util/maputil"
+	"github.com/mumoshu/variant/util/maputil"
 
-	"../api/step"
+	"github.com/mumoshu/variant/api/step"
 )
 
 type BoundFlow struct {

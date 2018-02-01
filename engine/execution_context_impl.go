@@ -1,8 +1,8 @@
 package engine
 
 import (
-	"../api/flow"
-	"../api/step"
+	"github.com/mumoshu/variant/api/flow"
+	"github.com/mumoshu/variant/api/step"
 	"text/template"
 )
 

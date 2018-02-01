@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"../api/step"
+	"github.com/mumoshu/variant/api/step"
 	"github.com/juju/errors"
 	"strings"
 )
