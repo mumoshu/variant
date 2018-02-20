@@ -23,13 +23,18 @@ go get github.com/aktau/github-release
 COMMIT=$(git rev-parse HEAD)
 TAG=$(git describe --exact-match --abbrev=0 --tags "${COMMIT}" 2> /dev/null || true)
 
+if [ -z "${TAG}" ]; then
+  echo TAG is not set. Run git tag to tag a release 1>&2
+  exit 1
+fi
+
 github-release release -t $TAG -n $TAG -c $COMMIT || true
 
 name=variant
-for os in linux darwin;do
-  for arch in amd64;do
+for os in linux darwin; do
+  for arch in amd64; do
     releaseTar="${name}-${os}-${arch}".tar.gz
-    github-release upload -f $releaseTar -n $name -t $TAG
+    github-release upload -f $releaseTar -n $releaseTar -t $TAG
   done
 done
 
