@@ -23,7 +23,7 @@ go get github.com/aktau/github-release
 COMMIT=$(git rev-parse HEAD)
 TAG=$(git describe --exact-match --abbrev=0 --tags "${COMMIT}" 2> /dev/null || true)
 
-github-release release -t $TAG -n $TAG -c $COMMIT
+github-release release -t $TAG -n $TAG -c $COMMIT || true
 
 name=variant
 for os in linux darwin;do

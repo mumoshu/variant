@@ -17,7 +17,7 @@ for os in linux darwin;do
 	rm -rf "$releaseTar"
 	set -vx
 	pushd $output_folder
-	tar czvf $releaseTar ${name}
+	tar czvf ../$releaseTar ${name}
 	popd
 	rm -rf "$output_folder"
 	echo "${os}-${arch} --> ${releaseTar}"
