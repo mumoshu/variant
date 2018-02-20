@@ -25,6 +25,10 @@ clean:
 
 build: dist/$(VERSION)
 
+.PHONY: cross-build
+cross-build:
+	scripts/cross-build
+
 dist/$(VERSION):
 	$(call GO_FMT)
 	mkdir -p dist/$(VERSION)
