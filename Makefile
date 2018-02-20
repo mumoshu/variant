@@ -1,7 +1,7 @@
 CMD ?= $(shell pwd)/dist/$(VERSION)/var
 GITHUB_USER ?= mumoshu
 GITHUB_REPO ?= variant
-VERSION ?= 0.0.8
+VERSION ?= $(shell scripts/version)
 IT_DIR = test/integration
 
 define GO_FMT

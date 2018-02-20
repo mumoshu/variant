@@ -25,4 +25,8 @@ fi
 if [[ ! "${BUILD_GOARCH:-}" == "" ]];then
   export GOARCH=$BUILD_GOARCH
 fi
-go build -a -tags netgo -installsuffix netgo -o "$OUTPUT_PATH" ./
+PKG=$(cd $(dirname $0)/.. && pwd)
+PKG=${PKG#*go/src/}
+x=${PKG}/cli/version.VERSION=${VERSION}
+echo Setting $x
+go build -ldflags "-X $x" -a -tags netgo -installsuffix netgo -o "$OUTPUT_PATH" ./
