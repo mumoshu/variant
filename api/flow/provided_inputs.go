@@ -1,10 +1,10 @@
 package flow
 
 import (
-	"github.com/mumoshu/variant/util/maputil"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
+	"github.com/mumoshu/variant/util/maputil"
 )
 
 type ProvidedInputs struct {

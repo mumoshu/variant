@@ -1,10 +1,10 @@
 package engine
 
 import (
-	flowApi "github.com/mumoshu/variant/api/flow"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
+	flowApi "github.com/mumoshu/variant/api/flow"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"

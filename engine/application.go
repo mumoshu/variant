@@ -21,6 +21,7 @@ type Application struct {
 	Name                string
 	CommandRelativePath string
 	CachedFlowOutputs   map[string]interface{}
+	ConfigFile          string
 	Verbose             bool
 	Output              string
 	Env                 string

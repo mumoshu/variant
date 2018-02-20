@@ -1,9 +1,9 @@
 package steps
 
 import (
+	"fmt"
 	"github.com/mumoshu/variant/api/flow"
 	"github.com/mumoshu/variant/api/step"
-	"fmt"
 )
 
 type FlowStepLoader struct{}

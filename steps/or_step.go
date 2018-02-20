@@ -1,10 +1,10 @@
 package steps
 
 import (
-	"github.com/mumoshu/variant/api/step"
-	"github.com/mumoshu/variant/util/maputil"
 	"fmt"
 	"github.com/juju/errors"
+	"github.com/mumoshu/variant/api/step"
+	"github.com/mumoshu/variant/util/maputil"
 	"log"
 	"reflect"
 )

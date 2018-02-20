@@ -137,6 +137,7 @@ func main() {
 
 	rootCmd.PersistentFlags().BoolVarP(&(p.Verbose), "verbose", "v", false, "verbose output")
 	rootCmd.PersistentFlags().StringVarP(&(p.Output), "output", "o", "text", "Output format. One of: json|text|bunyan")
+	rootCmd.PersistentFlags().StringVarP(&(p.ConfigFile), "config-file", "c", "", "Path to config file")
 	rootCmd.PersistentFlags().BoolVar(&(p.LogToStderr), "logtostderr", false, "write log messages to stderr")
 
 	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
@@ -154,21 +155,30 @@ func main() {
 		log.Infof("%s does not exist", varfile)
 	}
 
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
+	if p.ConfigFile != "" {
+		viper.SetConfigFile(p.ConfigFile)
 
-	// See "How to merge two config files" https://github.com/spf13/viper/issues/181
-	viper.SetConfigName(rootFlowConfig.Name)
-	commonConfigFile := fmt.Sprintf("%s.yaml", rootFlowConfig.Name)
-	commonConfigMsg := fmt.Sprintf("loading config file %s...", commonConfigFile)
-	if fileutil.Exists(commonConfigFile) {
 		if err := viper.MergeInConfig(); err != nil {
-			log.Errorf("%serror", commonConfigMsg)
+			log.Errorf("%v", err)
 			panic(err)
 		}
-		log.Debugf("%sdone", commonConfigMsg)
 	} else {
-		log.Debugf("%smissing", commonConfigMsg)
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(".")
+
+		// See "How to merge two config files" https://github.com/spf13/viper/issues/181
+		viper.SetConfigName(rootFlowConfig.Name)
+		commonConfigFile := fmt.Sprintf("%s.yaml", rootFlowConfig.Name)
+		commonConfigMsg := fmt.Sprintf("loading config file %s...", commonConfigFile)
+		if fileutil.Exists(commonConfigFile) {
+			if err := viper.MergeInConfig(); err != nil {
+				log.Errorf("%serror", commonConfigMsg)
+				panic(err)
+			}
+			log.Debugf("%sdone", commonConfigMsg)
+		} else {
+			log.Debugf("%smissing", commonConfigMsg)
+		}
 	}
 
 	env.SetAppName(commandName)
