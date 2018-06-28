@@ -5,15 +5,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type Flow struct {
-	FlowConfig
-	Key            FlowKey
+type Task struct {
+	TaskConfig
+	Name           TaskName
 	ProjectName    string
 	ResolvedInputs []*ResolvedInput
-	Flows          []*Flow
+	Tasks          []*Task
 	Command        *cobra.Command
 }
 
-func (f Flow) GetKey() step.Key {
-	return f.Key
+func (f Task) GetKey() step.Key {
+	return f.Name
 }

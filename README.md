@@ -41,11 +41,11 @@ An input named `myinput` for the task `mytask` can be one of follows, in order o
 * Value of the configuration variable `mytask.myinput`
   * from the environment specific config file: `config/environments/<environment name>.yaml`
   * from the common config file: `<command name>.yaml`(normally `var.yaml`)
-* Output of the flow `myinput`
+* Output of the task `myinput`
 
 ## Using environments
 
-You can switch `environment` (or context) in which a flow is executed by running `var env set <env name>`.
+You can switch `environment` (or context) in which a task is executed by running `var env set <env name>`.
 
 ```
 $ var env set dev
@@ -78,7 +78,7 @@ $ var version --output json | jq -c -r 'select(.msg == "version") | .framework_v
 
 ## Future Goals
 
-* Runners to run flows in places other than the host running your Variant app
+* Runners to run tasks in places other than the host running your Variant app
   * Docker
   * Kubernetes
   * etc
@@ -88,7 +88,7 @@ $ var version --output json | jq -c -r 'select(.msg == "version") | .framework_v
     * maybe all the scripts referenced from scripts in the yaml
     * maybe all the commands run via the host runner
 * Integration with job queues
-  * to ensure your flows are run reliably, at-least-once, tolerating temporary failures
+  * to ensure your tasks are run reliably, at-least-once, tolerating temporary failures
 
 ## License
 

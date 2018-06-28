@@ -1,6 +1,6 @@
 inputs:
 - name: env
-flows:
+tasks:
   all:
     inputs:
     - name: web.deploy
@@ -9,7 +9,7 @@ flows:
       echo all
   web:
     description: web関連のコマンド
-    flows:
+    tasks:
       deploy:
         description: webをデプロイする
         inputs:
@@ -25,7 +25,7 @@ flows:
           MYSQL_HOST={{.mysql.host}} sh -c 'export | grep MYSQL_HOST'
         autoenv: true
   job:
-    flows:
+    tasks:
       deploy:
         inputs:
         - name: job-id
@@ -35,7 +35,7 @@ flows:
           export | grep JOB_ID
         autoenv: true
   mysql:
-    flows:
+    tasks:
       host:
         script: |
           echo mysql
@@ -57,7 +57,7 @@ flows:
       echo {{.mysql.host}}
       echo $MYSQL_HOST
   tests:
-    flows:
+    tasks:
       run:
         inputs:
         - name: a

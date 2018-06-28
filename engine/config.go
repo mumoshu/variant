@@ -12,11 +12,11 @@ import (
 	"github.com/mumoshu/variant/util/maputil"
 )
 
-type FlowConfig struct {
+type TaskConfig struct {
 	Name        string        `yaml:"name,omitempty"`
 	Description string        `yaml:"description,omitempty"`
 	Inputs      []*Input      `yaml:"inputs,omitempty"`
-	FlowConfigs []*FlowConfig `yaml:"flows,omitempty"`
+	TaskConfigs []*TaskConfig `yaml:"tasks,omitempty"`
 	Script      string        `yaml:"script,omitempty"`
 	Steps       []step.Step   `yaml:"steps,omitempty"`
 	Autoenv     bool          `yaml:"autoenv,omitempty"`
@@ -24,11 +24,11 @@ type FlowConfig struct {
 	Interactive bool          `yaml:"interactive,omitempty"`
 }
 
-type FlowConfigV1 struct {
+type TaskConfigV1 struct {
 	Name        string                        `yaml:"name,omitempty"`
 	Description string                        `yaml:"description,omitempty"`
 	Inputs      []*Input                      `yaml:"inputs,omitempty"`
-	FlowConfigs []*FlowConfig                 `yaml:"flows,omitempty"`
+	TaskConfigs []*TaskConfig                 `yaml:"tasks,omitempty"`
 	Script      string                        `yaml:"script,omitempty"`
 	StepConfigs []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
@@ -36,10 +36,10 @@ type FlowConfigV1 struct {
 	Interactive bool                          `yaml:"interactive,omitempty"`
 }
 
-type FlowConfigV2 struct {
+type TaskConfigV2 struct {
 	Description string                        `yaml:"description,omitempty"`
 	Inputs      []*Input                      `yaml:"inputs,omitempty"`
-	FlowConfigs map[string]*FlowConfig        `yaml:"flows,omitempty"`
+	TaskConfigs map[string]*TaskConfig        `yaml:"tasks,omitempty"`
 	Script      string                        `yaml:"script,omitempty"`
 	StepConfigs []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
@@ -47,7 +47,7 @@ type FlowConfigV2 struct {
 	Interactive bool                          `yaml:"interactive,omitempty"`
 }
 
-func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	v3 := map[string]interface{}{}
 	v3err := unmarshal(&v3)
 
@@ -55,18 +55,18 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	log.Debugf("Trying to parse v1 format")
 
-	v1 := FlowConfigV1{
+	v1 := TaskConfigV1{
 		Autoenv:     false,
 		Autodir:     false,
 		Inputs:      []*Input{},
-		FlowConfigs: []*FlowConfig{},
+		TaskConfigs: []*TaskConfig{},
 		StepConfigs: []map[interface{}]interface{}{},
 	}
 
 	err := unmarshal(&v1)
 
-	if v1.Name == "" && len(v1.FlowConfigs) == 0 {
-		e := fmt.Errorf("Not v1 format: Both `name` and `flows` are empty")
+	if v1.Name == "" && len(v1.TaskConfigs) == 0 {
+		e := fmt.Errorf("Not v1 format: Both `name` and `tasks` are empty")
 		log.Debugf("%s", e)
 		err = e
 	}
@@ -75,7 +75,7 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Name = v1.Name
 		t.Description = v1.Description
 		t.Inputs = v1.Inputs
-		t.FlowConfigs = v1.FlowConfigs
+		t.TaskConfigs = v1.TaskConfigs
 		t.Script = v1.Script
 		t.Autoenv = v1.Autoenv
 		t.Autodir = v1.Autodir
@@ -87,23 +87,23 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Steps = steps
 	}
 
-	var v2 *FlowConfigV2
+	var v2 *TaskConfigV2
 
 	if err != nil {
 		log.Debugf("Trying to parse v2 format")
-		v2 = &FlowConfigV2{
+		v2 = &TaskConfigV2{
 			Autoenv:     false,
 			Autodir:     false,
 			Interactive: false,
 			Inputs:      []*Input{},
-			FlowConfigs: map[string]*FlowConfig{},
+			TaskConfigs: map[string]*TaskConfig{},
 			StepConfigs: []map[interface{}]interface{}{},
 		}
 
 		err = unmarshal(&v2)
 
-		if len(v2.FlowConfigs) == 0 && v2.Script == "" && len(v2.StepConfigs) == 0 {
-			e := fmt.Errorf("Not v2 format: `flows`, `script`, `steps` are missing.")
+		if len(v2.TaskConfigs) == 0 && v2.Script == "" && len(v2.StepConfigs) == 0 {
+			e := fmt.Errorf("Not v2 format: `tasks`, `script`, `steps` are missing.")
 			log.Debugf("%s", e)
 			err = e
 		}
@@ -111,7 +111,7 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		if err == nil {
 			t.Description = v2.Description
 			t.Inputs = v2.Inputs
-			t.FlowConfigs = TransformV2FlowConfigMapToArray(v2.FlowConfigs)
+			t.TaskConfigs = TransformV2FlowConfigMapToArray(v2.TaskConfigs)
 			steps, err := readStepsFromStepConfigs(v2.Script, v2.StepConfigs)
 			if err != nil {
 				return errors.Annotatef(err, "Error while reading v2 config")
@@ -132,12 +132,12 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			return errors.Annotate(v3err, "Failed to unmarshal as a map.")
 		}
 
-		if v3["flows"] != nil {
-			rawFlows, ok := v3["flows"].(map[interface{}]interface{})
+		if v3["tasks"] != nil {
+			rawTasks, ok := v3["tasks"].(map[interface{}]interface{})
 			if !ok {
-				return fmt.Errorf("Not a map[interface{}]interface{}: v3[\"flows\"]'s type: %s, value: %s", reflect.TypeOf(v3["flows"]), v3["flows"])
+				return fmt.Errorf("Not a map[interface{}]interface{}: v3[\"tasks\"]'s type: %s, value: %s", reflect.TypeOf(v3["tasks"]), v3["tasks"])
 			}
-			flows, err := maputil.CastKeysToStrings(rawFlows)
+			tasks, err := maputil.CastKeysToStrings(rawTasks)
 			if err != nil {
 				return errors.Annotate(err, "Failed to unmarshal as a map[string]interface{}")
 			}
@@ -145,7 +145,7 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Autodir = false
 			t.Inputs = []*Input{}
 
-			t.FlowConfigs = TransformV3FlowConfigMapToArray(flows)
+			t.TaskConfigs = TransformV3FlowConfigMapToArray(tasks)
 
 			return nil
 		}
@@ -154,10 +154,10 @@ func (t *FlowConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return errors.Trace(err)
 }
 
-func (t *FlowConfig) CopyTo(other *FlowConfig) {
+func (t *TaskConfig) CopyTo(other *TaskConfig) {
 	other.Description = t.Description
 	other.Inputs = t.Inputs
-	other.FlowConfigs = t.FlowConfigs
+	other.TaskConfigs = t.TaskConfigs
 	other.Steps = t.Steps
 	other.Script = t.Script
 	other.Autoenv = t.Autoenv
@@ -165,10 +165,10 @@ func (t *FlowConfig) CopyTo(other *FlowConfig) {
 	other.Interactive = t.Interactive
 }
 
-func TransformV2FlowConfigMapToArray(v2 map[string]*FlowConfig) []*FlowConfig {
-	result := []*FlowConfig{}
+func TransformV2FlowConfigMapToArray(v2 map[string]*TaskConfig) []*TaskConfig {
+	result := []*TaskConfig{}
 	for name, t2 := range v2 {
-		t := &FlowConfig{}
+		t := &TaskConfig{}
 
 		t.Name = name
 		t2.CopyTo(t)
@@ -260,14 +260,14 @@ func readStepsFromStepConfigs(script string, stepConfigs []map[interface{}]inter
 	return result, nil
 }
 
-func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*FlowConfig {
-	result := []*FlowConfig{}
+func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*TaskConfig {
+	result := []*TaskConfig{}
 	for k, v := range v3 {
-		t := &FlowConfig{
+		t := &TaskConfig{
 			Autoenv:     false,
 			Autodir:     false,
 			Inputs:      []*Input{},
-			FlowConfigs: []*FlowConfig{},
+			TaskConfigs: []*TaskConfig{},
 		}
 
 		log.Debugf("Arrived %s: %v", k, v)
@@ -292,7 +292,7 @@ func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*FlowConfig {
 		leaf := s2i["script"] != nil
 
 		if !leaf {
-			t.FlowConfigs = TransformV3FlowConfigMapToArray(s2i)
+			t.TaskConfigs = TransformV3FlowConfigMapToArray(s2i)
 		} else {
 			log.Debugf("Not a nested map")
 			err = mapstructure.Decode(s2i, t)

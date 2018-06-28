@@ -9,7 +9,7 @@ import (
 )
 
 const minimalConfigYaml = `
-flows:
+tasks:
   foo:
     bar:
       script: foobar
@@ -17,21 +17,21 @@ flows:
 
 func TestMinimalConfigParsing(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
-	expected := &FlowConfig{
+	expected := &TaskConfig{
 		Inputs: []*Input{},
-		FlowConfigs: []*FlowConfig{
-			&FlowConfig{
+		TaskConfigs: []*TaskConfig{
+			&TaskConfig{
 				Autoenv: true,
 				Autodir: true,
 				Name:    "foo",
 				Inputs:  []*Input{},
-				FlowConfigs: []*FlowConfig{
-					&FlowConfig{
+				TaskConfigs: []*TaskConfig{
+					&TaskConfig{
 						Autoenv:     true,
 						Autodir:     true,
 						Name:        "bar",
 						Script:      "foobar",
-						FlowConfigs: []*FlowConfig{},
+						TaskConfigs: []*TaskConfig{},
 						Inputs:      []*Input{},
 					},
 				},
@@ -40,7 +40,7 @@ func TestMinimalConfigParsing(t *testing.T) {
 		Autoenv: true,
 		Autodir: true,
 	}
-	actual, err := ReadFlowConfigFromString(minimalConfigYaml)
+	actual, err := ReadTaskConfigFromString(minimalConfigYaml)
 
 	if err != nil {
 		t.Errorf("Error: %v", err)

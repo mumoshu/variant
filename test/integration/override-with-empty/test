@@ -1,7 +1,7 @@
 #!/usr/bin/env var
-flows:
+tasks:
   foo:
-    flows:
+    tasks:
       bar:
         script: |
           echo bar

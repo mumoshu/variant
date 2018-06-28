@@ -4,7 +4,7 @@ import "strings"
 
 type ResolvedInput struct {
 	Input
-	FlowKey  FlowKey
+	TaskKey  TaskName
 	FullName string
 }
 

@@ -45,7 +45,7 @@ func init() {
 }
 
 func main() {
-	engine.Register(steps.NewFlowStepLoader())
+	engine.Register(steps.NewTaskStepLoader())
 	engine.Register(steps.NewScriptStepLoader())
 	engine.Register(steps.NewOrStepLoader())
 	engine.Register(steps.NewIfStepLoader())
@@ -73,63 +73,63 @@ func main() {
 		varfile = environ["VARFILE"]
 	}
 
-	var rootFlowConfig *engine.FlowConfig
+	var rootTaskConfig *engine.TaskConfig
 
 	varfileExists := fileutil.Exists(varfile)
 
 	if varfileExists {
 
-		flowConfigFromFile, err := engine.ReadFlowConfigFromFile(varfile)
+		taskConfigFromFile, err := engine.ReadTaskConfigFromFile(varfile)
 
 		if err != nil {
 			log.Errorf(errors.ErrorStack(err))
 			panic(errors.Trace(err))
 		}
-		rootFlowConfig = flowConfigFromFile
+		rootTaskConfig = taskConfigFromFile
 	} else {
-		rootFlowConfig = engine.NewDefaultFlowConfig()
+		rootTaskConfig = engine.NewDefaultTaskConfig()
 	}
 
 	var err error
 
-	rootFlowConfig.Name = commandName
+	rootTaskConfig.Name = commandName
 
 	var envFromFile string
-	envFromFile, err = env.New(rootFlowConfig.Name).GetOrSet("dev")
+	envFromFile, err = env.New(rootTaskConfig.Name).GetOrSet("dev")
 	if err != nil {
 		panic(errors.Trace(err))
 	}
 
-	flowKeyCreator := engine.NewFlowKeyCreator(rootFlowConfig.Name)
+	taskNamer := engine.NewTaskNamer(rootTaskConfig.Name)
 
-	g := engine.NewFlowGenerator(flowKeyCreator)
+	g := engine.NewTaskGenerator(taskNamer)
 
-	rootFlow, err1 := g.GenerateFlow(rootFlowConfig, []string{}, rootFlowConfig.Name)
+	rootTask, err1 := g.GenerateTask(rootTaskConfig, []string{}, rootTaskConfig.Name)
 	if err1 != nil {
 		panic(err1)
 	}
 
-	flowRegistry := engine.NewFlowRegistry()
-	flowRegistry.RegisterFlows(rootFlow)
+	taskRegistry := engine.NewTaskRegistry()
+	taskRegistry.RegisterTasks(rootTask)
 
-	inputResolver := engine.NewRegistryBasedInputResolver(flowRegistry, flowKeyCreator)
+	inputResolver := engine.NewRegistryBasedInputResolver(taskRegistry, taskNamer)
 	inputResolver.ResolveInputs()
 
 	p := &engine.Application{
-		Name:                rootFlowConfig.Name,
+		Name:                rootTaskConfig.Name,
 		CommandRelativePath: commandPath,
-		CachedFlowOutputs:   map[string]interface{}{},
+		CachedTaskOutputs:   map[string]interface{}{},
 		Verbose:             false,
 		Output:              "text",
 		Env:                 envFromFile,
-		FlowKeyCreator:      flowKeyCreator,
-		FlowRegistry:        flowRegistry,
+		TaskNamer:           taskNamer,
+		TaskRegistry:        taskRegistry,
 		InputResolver:       inputResolver,
 	}
 
 	adapter := engine.NewCobraAdapter(p)
 
-	rootCmd, err := adapter.GenerateCommand(rootFlow, nil)
+	rootCmd, err := adapter.GenerateCommand(rootTask, nil)
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
@@ -167,8 +167,8 @@ func main() {
 		viper.AddConfigPath(".")
 
 		// See "How to merge two config files" https://github.com/spf13/viper/issues/181
-		viper.SetConfigName(rootFlowConfig.Name)
-		commonConfigFile := fmt.Sprintf("%s.yaml", rootFlowConfig.Name)
+		viper.SetConfigName(rootTaskConfig.Name)
+		commonConfigFile := fmt.Sprintf("%s.yaml", rootTaskConfig.Name)
 		commonConfigMsg := fmt.Sprintf("loading config file %s...", commonConfigFile)
 		if fileutil.Exists(commonConfigFile) {
 			if err := viper.MergeInConfig(); err != nil {

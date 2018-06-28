@@ -1,61 +1,61 @@
 #!/usr/bin/env var
 
-flows:
+tasks:
   ok1:
     steps:
       - if:
-          - flow: succeed
+          - task: succeed
         then:
-          - flow: foo
+          - task: foo
   ok2:
     steps:
       - or:
           - if:
-            - flow: fail
+            - task: fail
             then:
-            - flow: foo
+            - task: foo
           - if:
-            - flow: succeed
+            - task: succeed
             then:
-            - flow: bar
+            - task: bar
   ok3:
     steps:
       - or:
           - if:
-            - flow: fail
+            - task: fail
             then:
-            - flow: foo
-          - flow: bar
+            - task: foo
+          - task: bar
 
   ok4:
     steps:
       - or:
         - if:
-          - flow: fail
+          - task: fail
           then:
-          - flow: foo
+          - task: foo
 
   ok5:
     steps:
       - if:
-        - flow: fail
+        - task: fail
         then:
-        - flow: foo
+        - task: foo
 
   ng1:
     steps:
       - if:
-        - flow: fail
+        - task: fail
         then:
-        - flow: foo
-      - flow: fail
+        - task: foo
+      - task: fail
 
   ng2:
     steps:
       - if:
-        - flow: succeed
+        - task: succeed
         then:
-        - flow: fail
+        - task: fail
 
   succeed:
     script: echo true; exit 0

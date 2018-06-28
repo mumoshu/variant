@@ -4,7 +4,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
-	flowApi "github.com/mumoshu/variant/api/flow"
+	flowApi "github.com/mumoshu/variant/api/task"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -21,37 +21,37 @@ func NewCobraAdapter(app *Application) *CobraAdapter {
 	}
 }
 
-func (p *CobraAdapter) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (*cobra.Command, error) {
+func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (*cobra.Command, error) {
 	positionalArgs := ""
-	for i, input := range flow.Inputs {
-		if i != len(flow.Inputs)-1 {
+	for i, input := range task.Inputs {
+		if i != len(task.Inputs)-1 {
 			positionalArgs += fmt.Sprintf("[%s ", input.Name)
 		} else {
 			positionalArgs += fmt.Sprintf("[%s", input.Name)
 		}
 	}
-	for i := 0; i < len(flow.Inputs); i++ {
+	for i := 0; i < len(task.Inputs); i++ {
 		positionalArgs += "]"
 	}
 
 	var cmd = &cobra.Command{
-		Use: fmt.Sprintf("%s %s", flow.Name, positionalArgs),
+		Use: fmt.Sprintf("%s %s", task.Name.Simple(), positionalArgs),
 	}
-	if flow.Description != "" {
-		cmd.Short = flow.Description
-		cmd.Long = flow.Description
+	if task.Description != "" {
+		cmd.Short = task.Description
+		cmd.Long = task.Description
 	}
 
-	flowKey := flow.Key
+	taskName := task.Name
 
-	if len(flow.Steps) > 0 {
+	if len(task.Steps) > 0 {
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.app.UpdateLoggingConfiguration()
 
-			output, err := p.app.RunFlowForKey(flowKey, args, flowApi.NewProvidedInputs())
+			output, err := p.app.RunTaskForKey(taskName, args, flowApi.NewProvidedInputs())
 
 			if err != nil {
-				c := strings.Join(strings.Split(flowKey.String(), "."), " ")
+				c := strings.Join(strings.Split(taskName.String(), "."), " ")
 				stack := strings.Split(errors.ErrorStack(err), "\n")
 				for i := len(stack)/2 - 1; i >= 0; i-- {
 					opp := len(stack) - 1 - i
@@ -71,27 +71,27 @@ func (p *CobraAdapter) GenerateCommand(flow *Flow, rootCommand *cobra.Command) (
 		rootCommand.AddCommand(cmd)
 	}
 
-	log.WithFields(log.Fields{"prefix": flowKey.String()}).Debug("is a flow")
+	log.WithFields(log.Fields{"prefix": taskName.String()}).Debug("is a task")
 
-	for _, f := range flow.Flows {
+	for _, f := range task.Tasks {
 		p.GenerateCommand(f, cmd)
 	}
 
-	flow.Command = cmd
+	task.Command = cmd
 
 	return cmd, nil
 }
 
-func (p *CobraAdapter) Flows() map[string]*Flow {
-	return p.app.Flows()
+func (p *CobraAdapter) Tasks() map[string]*Task {
+	return p.app.Tasks()
 }
 
 func (p *CobraAdapter) GenerateAllFlags() {
-	for _, flow := range p.Flows() {
+	for _, flow := range p.Tasks() {
 		for _, input := range flow.ResolvedInputs {
-			log.Debugf("Configuring flag and config key for flow %s's input: %s", flow.Key.String(), input.Name)
+			log.Debugf("Configuring flag and config key for task %s's input: %s", flow.Name.String(), input.Name)
 
-			flowConfig := flow.FlowConfig
+			flowConfig := flow.TaskConfig
 			cmd := flow.Command
 			var description string
 			if input.Description != "" {
@@ -101,7 +101,7 @@ func (p *CobraAdapter) GenerateAllFlags() {
 			}
 
 			var name string
-			if input.FlowKey.String() == flow.Key.String() {
+			if input.TaskKey.String() == flow.Name.String() {
 				name = input.Name
 			} else {
 				name = input.ShortName()
@@ -112,18 +112,18 @@ func (p *CobraAdapter) GenerateAllFlags() {
 			flagName := strings.Replace(name, ".", "-", -1)
 
 			var keyForConfigFromFlag string
-			if input.FlowKey.ShortString() == flow.Key.ShortString() {
+			if input.TaskKey.ShortString() == flow.Name.ShortString() {
 				keyForConfigFromFlag = input.ShortName()
 			} else {
-				keyForConfigFromFlag = fmt.Sprintf("%s.%s", flow.Key.ShortString(), input.ShortName())
+				keyForConfigFromFlag = fmt.Sprintf("%s.%s", flow.Name.ShortString(), input.ShortName())
 			}
 			keyForConfigFromFlag = fmt.Sprintf("flags.%s", keyForConfigFromFlag)
 
-			if len(flowConfig.FlowConfigs) == 0 {
+			if len(flowConfig.TaskConfigs) == 0 {
 				cmd.Flags().StringP(flagName, "" /*string(input.Name[0])*/, "", description)
 				//log.Debugf("Binding flag --%s to the config key %s", flagName, name)
 				//viper.BindPFlag(name, cmd.Flags().Lookup(flagName))
-				log.Debugf("Binding flag --%s of the command %s to the input %s with the config key %s", flagName, flow.Key.ShortString(), input.Name, keyForConfigFromFlag)
+				log.Debugf("Binding flag --%s of the command %s to the input %s with the config key %s", flagName, flow.Name.ShortString(), input.Name, keyForConfigFromFlag)
 				viper.BindPFlag(keyForConfigFromFlag, cmd.Flags().Lookup(flagName))
 			} else {
 				cmd.PersistentFlags().StringP(flagName, "" /*string(input.Name[0])*/, "" /*default*/, description)

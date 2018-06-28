@@ -12,29 +12,29 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func NewDefaultFlowConfig() *FlowConfig {
-	return &FlowConfig{
+func NewDefaultTaskConfig() *TaskConfig {
+	return &TaskConfig{
 		Inputs:      []*Input{},
-		FlowConfigs: []*FlowConfig{},
+		TaskConfigs: []*TaskConfig{},
 		Autoenv:     false,
 		Steps:       []step.Step{},
 	}
 }
 
-func ReadFlowConfigFromString(data string) (*FlowConfig, error) {
-	err, t := ReadFlowConfigFromBytes([]byte(data))
+func ReadTaskConfigFromString(data string) (*TaskConfig, error) {
+	err, t := ReadTaskConfigFromBytes([]byte(data))
 	return err, t
 }
 
-func ReadFlowConfigFromBytes(data []byte) (*FlowConfig, error) {
-	c := NewDefaultFlowConfig()
+func ReadTaskConfigFromBytes(data []byte) (*TaskConfig, error) {
+	c := NewDefaultTaskConfig()
 	if err := yaml.Unmarshal(data, c); err != nil {
 		return nil, errors.Annotatef(err, "yaml.Unmarshal failed: %v", err)
 	}
 	return c, nil
 }
 
-func ReadFlowConfigFromFile(path string) (*FlowConfig, error) {
+func ReadTaskConfigFromFile(path string) (*TaskConfig, error) {
 	log.Debugf("Loading %s", path)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -49,7 +49,7 @@ func ReadFlowConfigFromFile(path string) (*FlowConfig, error) {
 
 	log.Debugf("%s", string(yamlBytes))
 
-	t, err := ReadFlowConfigFromBytes(yamlBytes)
+	t, err := ReadTaskConfigFromBytes(yamlBytes)
 
 	if err != nil {
 		return nil, errors.Annotatef(err, "Error while loading %s", path)

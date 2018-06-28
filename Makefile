@@ -5,8 +5,8 @@ VERSION ?= $(shell scripts/version)
 IT_DIR = test/integration
 
 define GO_FMT
-test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -d {} + | tee /dev/stderr)" || \
-test -z "$$(find . -path ./ -prune -type f -o -name '*.go' -exec gofmt -w {} + | tee /dev/stderr)"
+test -z "$$(find . -path ./vendor -prune -type f -o -name '*.go' -exec gofmt -d {} + | tee /dev/stderr)" || \
+test -z "$$(find . -path ./vendor -prune -type f -o -name '*.go' -exec gofmt -w {} + | tee /dev/stderr)"
 endef
 
 reinstall-local: dist/$(VERSION)
@@ -81,10 +81,10 @@ smoke10-ng: build
 smoke11: smoke11-ok smoke11-ng
 
 smoke11-ok: build
-	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./flow-step-inputs-test ok1 && ./flow-step-inputs-test ok2 && echo smoke11-ok passed.
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./task-step-inputs-test ok1 && ./task-step-inputs-test ok2 && echo smoke11-ok passed.
 
 smoke11-ng: build
-	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && (./flow-step-inputs-test ng1; [ $$? -eq 1 ]) && echo smoke11-ng passed.
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && (./task-step-inputs-test ng1; [ $$? -eq 1 ]) && echo smoke11-ng passed.
 
 smoke12: build
 	cd $(IT_DIR)/override-with-empty && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./test --logtostderr test > out && cat out | tee /dev/stderr | grep -v "bar" && echo smoke12 passed.

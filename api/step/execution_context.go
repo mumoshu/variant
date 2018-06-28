@@ -1,7 +1,7 @@
 package step
 
 import (
-	"github.com/mumoshu/variant/api/flow"
+	"github.com/mumoshu/variant/api/task"
 	"text/template"
 )
 
@@ -15,5 +15,5 @@ type ExecutionContext interface {
 	Autoenv() bool
 	Autodir() bool
 	Interactive() bool
-	RunAnotherFlow(key string, provided flow.ProvidedInputs) (string, error)
+	RunAnotherTask(key string, provided task.ProvidedInputs) (string, error)
 }

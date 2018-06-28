@@ -1,4 +1,4 @@
-flows:
+tasks:
   foo:
     bar:
       description: |

@@ -1,2 +1,7 @@
 .idea
 .envrc
+*~
+.*env
+dist
+test/integration/*/out
+\#*\#

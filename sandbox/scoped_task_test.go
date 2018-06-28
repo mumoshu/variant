@@ -55,7 +55,7 @@ func TestPath(t *testing.T) {
 	}
 
 	expr := ScopedFlow{
-		Stack: NewStackFromFlows(a, b),
+		Stack: NewStackFromTasks(a, b),
 	}
 
 	h := TestHelper{t: t}
@@ -66,12 +66,12 @@ func TestMinimalConfigParsing(t *testing.T) {
 	const data = `
 name: root
 script: root
-flows:
+tasks:
 - name: a
-  flows:
+  tasks:
   - name: a
     script: echo .a.a
-    flows:
+    tasks:
     - name: a
       script: echo .a.a.a
   - name: b
@@ -98,7 +98,7 @@ env:
 	flow_a_a := Flow{
 		Name:   "a",
 		Script: "echo .a.a",
-		Flows: []Flow{
+		Tasks: []Flow{
 			flow_a_a_a,
 		},
 	}
@@ -120,7 +120,7 @@ env:
 
 	flow_a := Flow{
 		Name: "a",
-		Flows: []Flow{
+		Tasks: []Flow{
 			flow_a_a,
 			flow_a_b,
 			flow_a_c,
@@ -134,7 +134,7 @@ env:
 
 	flow_root := Flow{
 		Name: "root",
-		Flows: []Flow{
+		Tasks: []Flow{
 			flow_a,
 			flow_c,
 		},

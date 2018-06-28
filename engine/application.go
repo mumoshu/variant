@@ -11,8 +11,8 @@ import (
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/spf13/viper"
 
-	"github.com/mumoshu/variant/api/flow"
 	"github.com/mumoshu/variant/api/step"
+	"github.com/mumoshu/variant/api/task"
 	"github.com/mumoshu/variant/util/maputil"
 	"reflect"
 )
@@ -20,14 +20,14 @@ import (
 type Application struct {
 	Name                string
 	CommandRelativePath string
-	CachedFlowOutputs   map[string]interface{}
+	CachedTaskOutputs   map[string]interface{}
 	ConfigFile          string
 	Verbose             bool
 	Output              string
 	Env                 string
-	FlowRegistry        *FlowRegistry
+	TaskRegistry        *TaskRegistry
 	InputResolver       InputResolver
-	FlowKeyCreator      *FlowKeyCreator
+	TaskNamer           *TaskNamer
 	LogToStderr         bool
 }
 
@@ -54,36 +54,36 @@ func (p Application) UpdateLoggingConfiguration() {
 	}
 }
 
-func (p Application) RunFlowForKeyString(keyStr string, args []string, provided flow.ProvidedInputs, caller ...step.Caller) (string, error) {
-	flowKey := p.FlowKeyCreator.CreateFlowKey(fmt.Sprintf("%s.%s", p.Name, keyStr))
-	return p.RunFlowForKey(flowKey, args, provided, caller...)
+func (p Application) RunTaskForKeyString(keyStr string, args []string, provided task.ProvidedInputs, caller ...step.Caller) (string, error) {
+	taskKey := p.TaskNamer.FromString(fmt.Sprintf("%s.%s", p.Name, keyStr))
+	return p.RunTaskForKey(taskKey, args, provided, caller...)
 }
 
-func (p Application) RunFlowForKey(flowKey step.Key, args []string, providedInputs flow.ProvidedInputs, caller ...step.Caller) (string, error) {
+func (p Application) RunTaskForKey(taskKey step.Key, args []string, providedInputs task.ProvidedInputs, caller ...step.Caller) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString(), "caller": caller[0].GetKey().ShortString()})
+		ctx = log.WithFields(log.Fields{"task": taskKey.ShortString(), "caller": caller[0].GetKey().ShortString()})
 	} else {
-		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString()})
+		ctx = log.WithFields(log.Fields{"task": taskKey.ShortString()})
 	}
 
-	ctx.Debugf("app started flow %s", flowKey.ShortString())
+	ctx.Debugf("app started task %s", taskKey.ShortString())
 
-	provided := p.GetValueForConfigKey(flowKey.ShortString())
+	provided := p.GetValueForConfigKey(taskKey.ShortString())
 
 	if provided != nil {
 		p := *provided
-		ctx.Debugf("app skipped flow %s via provided value: %s", flowKey.ShortString(), p)
+		ctx.Debugf("app skipped task %s via provided value: %s", taskKey.ShortString(), p)
 		ctx.Info(p)
 		println(p)
 		return p, nil
 	}
 
-	flowDef, err := p.FlowRegistry.FindFlow(flowKey)
+	taskDef, err := p.TaskRegistry.FindTask(taskKey)
 
 	if err != nil {
-		return "", errors.Annotatef(err, "app failed finding flow %s", flowKey.ShortString())
+		return "", errors.Annotatef(err, "app failed finding task %s", taskKey.ShortString())
 	}
 
 	vars := map[string](interface{}){}
@@ -91,59 +91,59 @@ func (p Application) RunFlowForKey(flowKey step.Key, args []string, providedInpu
 	vars["env"] = p.Env
 	vars["cmd"] = p.CommandRelativePath
 
-	inputs, err := p.InheritedInputValuesForFlowKey(flowKey, args, providedInputs, caller...)
+	inputs, err := p.InheritedInputValuesForTaskKey(taskKey, args, providedInputs, caller...)
 
 	if err != nil {
-		return "", errors.Annotatef(err, "app failed running flow %s", flowKey.ShortString())
+		return "", errors.Annotatef(err, "app failed running task %s", taskKey.ShortString())
 	}
 
 	for k, v := range inputs {
 		vars[k] = v
 	}
 
-	flow := &BoundFlow{
+	task := &BoundTask{
 		Vars: vars,
-		Flow: *flowDef,
+		Task: *taskDef,
 	}
 
 	kv := maputil.Flatten(vars)
 
-	ctx.WithField("variables", kv).Debugf("app bound variables for flow %s", flowKey.ShortString())
+	ctx.WithField("variables", kv).Debugf("app bound variables for task %s", taskKey.ShortString())
 
-	output, error := flow.Run(&p, caller...)
+	output, error := task.Run(&p, caller...)
 
-	ctx.Debugf("app received output from flow %s: %s", flowKey.ShortString(), output)
+	ctx.Debugf("app received output from task %s: %s", taskKey.ShortString(), output)
 
 	if error != nil {
-		error = errors.Annotatef(error, "app failed running flow %s", flowKey.ShortString())
+		error = errors.Annotatef(error, "app failed running task %s", taskKey.ShortString())
 	}
 
-	ctx.Debugf("app finished running flow %s", flowKey.ShortString())
+	ctx.Debugf("app finished running task %s", taskKey.ShortString())
 
 	return output, error
 }
 
-func (p Application) InheritedInputValuesForFlowKey(flowKey step.Key, args []string, provided flow.ProvidedInputs, caller ...step.Caller) (map[string]interface{}, error) {
+func (p Application) InheritedInputValuesForTaskKey(taskKey step.Key, args []string, provided task.ProvidedInputs, caller ...step.Caller) (map[string]interface{}, error) {
 	result := map[string]interface{}{}
 
 	// TODO make this parents-first instead of children-first?
-	direct, err := p.DirectInputValuesForFlowKey(flowKey, args, provided, caller...)
+	direct, err := p.DirectInputValuesForTaskKey(taskKey, args, provided, caller...)
 
 	if err != nil {
-		return nil, errors.Annotatef(err, "One or more inputs for flow %s failed", flowKey.ShortString())
+		return nil, errors.Annotatef(err, "One or more inputs for task %s failed", taskKey.ShortString())
 	}
 
 	for k, v := range direct {
 		result[k] = v
 	}
 
-	parentKey, err := flowKey.Parent()
+	parentKey, err := taskKey.Parent()
 
 	if err == nil {
-		inherited, err := p.InheritedInputValuesForFlowKey(parentKey, []string{}, provided, caller...)
+		inherited, err := p.InheritedInputValuesForTaskKey(parentKey, []string{}, provided, caller...)
 
 		if err != nil {
-			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", flowKey.ShortString())
+			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", taskKey.ShortString())
 		}
 
 		maputil.DeepMerge(result, inherited)
@@ -208,32 +208,32 @@ func (p Application) GetValueForConfigKey(k string) *string {
 	}
 }
 
-func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string, provided flow.ProvidedInputs, caller ...step.Caller) (map[string]interface{}, error) {
+func (p Application) DirectInputValuesForTaskKey(taskKey step.Key, args []string, provided task.ProvidedInputs, caller ...step.Caller) (map[string]interface{}, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"caller": caller[0].GetKey().ShortString(), "flow": flowKey.ShortString()})
+		ctx = log.WithFields(log.Fields{"caller": caller[0].GetKey().ShortString(), "task": taskKey.ShortString()})
 	} else {
-		ctx = log.WithFields(log.Fields{"flow": flowKey.ShortString()})
+		ctx = log.WithFields(log.Fields{"task": taskKey.ShortString()})
 	}
 
 	values := map[string]interface{}{}
 
-	var baseFlowKey string
+	var baseTaskKey string
 	if len(caller) > 0 {
-		baseFlowKey = caller[0].GetKey().ShortString()
+		baseTaskKey = caller[0].GetKey().ShortString()
 	} else {
-		baseFlowKey = ""
+		baseTaskKey = ""
 	}
 
 	ctx.Debugf("app started collecting inputs")
 
-	flowDef, err := p.FlowRegistry.FindFlow(flowKey)
+	taskDef, err := p.TaskRegistry.FindTask(taskKey)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
-	for _, input := range flowDef.ResolvedInputs {
-		ctx.Debugf("app sees flow depends on input %s", input.ShortName())
+	for _, input := range taskDef.ResolvedInputs {
+		ctx.Debugf("app sees task depends on input %s", input.ShortName())
 
 		var positional *string
 		if i := input.ArgumentIndex; i != nil && len(args) >= *i+1 {
@@ -247,12 +247,12 @@ func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string
 			nullableValue = &v
 		}
 
-		if nullableValue == nil && baseFlowKey != "" {
-			nullableValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseFlowKey, input.ShortName()))
+		if nullableValue == nil && baseTaskKey != "" {
+			nullableValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseTaskKey, input.ShortName()))
 		}
 
-		if nullableValue == nil && strings.LastIndex(input.ShortName(), flowKey.ShortString()) == -1 {
-			nullableValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", flowKey.ShortString(), input.ShortName()))
+		if nullableValue == nil && strings.LastIndex(input.ShortName(), taskKey.ShortString()) == -1 {
+			nullableValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", taskKey.ShortString(), input.ShortName()))
 		}
 
 		if nullableValue == nil {
@@ -266,12 +266,12 @@ func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string
 		} else if nullableValue == nil {
 			var output interface{}
 			var err error
-			if output, err = maputil.GetValueAtPath(p.CachedFlowOutputs, pathComponents); output == nil {
-				output, err = p.RunFlowForKey(p.FlowKeyCreator.CreateFlowKeyFromResolvedInput(input), []string{}, flow.NewProvidedInputs(), *flowDef)
+			if output, err = maputil.GetValueAtPath(p.CachedTaskOutputs, pathComponents); output == nil {
+				output, err = p.RunTaskForKey(p.TaskNamer.FromResolvedInput(input), []string{}, task.NewProvidedInputs(), *taskDef)
 				if err != nil {
-					return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a flow for it`", input.ShortName())
+					return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
 				}
-				maputil.SetValueAtPath(p.CachedFlowOutputs, pathComponents, output)
+				maputil.SetValueAtPath(p.CachedTaskOutputs, pathComponents, output)
 			}
 			if err != nil {
 				return nil, errors.Trace(err)
@@ -288,6 +288,6 @@ func (p Application) DirectInputValuesForFlowKey(flowKey step.Key, args []string
 	return values, nil
 }
 
-func (p *Application) Flows() map[string]*Flow {
-	return p.FlowRegistry.Flows()
+func (p *Application) Tasks() map[string]*Task {
+	return p.TaskRegistry.Tasks()
 }

@@ -1,49 +1,49 @@
 package sandbox
 
 type Stack struct {
-	flowsInStack []*Flow
+	tasksInStack []*Flow
 }
 
-func NewStackFromFlows(f ...*Flow) *Stack {
+func NewStackFromTasks(f ...*Flow) *Stack {
 	return &Stack{
-		flowsInStack: f,
+		tasksInStack: f,
 	}
 }
 
 func (s *Stack) Pop() (*Stack, *Flow) {
 	return &Stack{
-		flowsInStack: s.flowsInStack[0 : len(s.flowsInStack)-1],
-	}, s.flowsInStack[len(s.flowsInStack)-1]
+		tasksInStack: s.tasksInStack[0 : len(s.tasksInStack)-1],
+	}, s.tasksInStack[len(s.tasksInStack)-1]
 }
 
 func (s *Stack) Push(flow *Flow) *Stack {
 	return &Stack{
-		flowsInStack: append(append([]*Flow{}, s.flowsInStack...), flow),
+		tasksInStack: append(append([]*Flow{}, s.tasksInStack...), flow),
 	}
 }
 
 func (s *Stack) Size() int {
-	return len(s.flowsInStack)
+	return len(s.tasksInStack)
 }
 
-func (s *Stack) PushMulti(flows []*Flow) *Stack {
-	state := append([]*Flow{}, s.flowsInStack...)
+func (s *Stack) PushMulti(tasks []*Flow) *Stack {
+	state := append([]*Flow{}, s.tasksInStack...)
 
 	return &Stack{
-		flowsInStack: append(state, flows...),
+		tasksInStack: append(state, tasks...),
 	}
 }
 
 func (s *Stack) Concat(other *Stack) *Stack {
 	return &Stack{
-		flowsInStack: append(append([]*Flow{}, s.flowsInStack...), other.flowsInStack...),
+		tasksInStack: append(append([]*Flow{}, s.tasksInStack...), other.tasksInStack...),
 	}
 }
 
 func (s *Stack) FromBottom() []*Flow {
-	return s.flowsInStack
+	return s.tasksInStack
 }
 
 func (s *Stack) Top() *Flow {
-	return s.flowsInStack[len(s.flowsInStack)-1]
+	return s.tasksInStack[len(s.tasksInStack)-1]
 }

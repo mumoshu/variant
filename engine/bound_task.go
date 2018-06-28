@@ -14,16 +14,16 @@ import (
 	"github.com/mumoshu/variant/api/step"
 )
 
-type BoundFlow struct {
-	Flow
+type BoundTask struct {
+	Task
 	Vars map[string]interface{}
 }
 
-func (t BoundFlow) GetKey() step.Key {
-	return t.Key
+func (t BoundTask) GetKey() step.Key {
+	return t.Name
 }
 
-func (t BoundFlow) GenerateAutoenv() (map[string]string, error) {
+func (t BoundTask) GenerateAutoenv() (map[string]string, error) {
 	replacer := strings.NewReplacer("-", "_", ".", "_")
 	toEnvName := func(parName string) string {
 		return strings.ToUpper(replacer.Replace(parName))
@@ -31,7 +31,7 @@ func (t BoundFlow) GenerateAutoenv() (map[string]string, error) {
 	return t.GenerateAutoenvRecursively("", t.Vars, toEnvName)
 }
 
-func (t BoundFlow) GenerateAutoenvRecursively(path string, env map[string]interface{}, toEnvName func(string) string) (map[string]string, error) {
+func (t BoundTask) GenerateAutoenvRecursively(path string, env map[string]interface{}, toEnvName func(string) string) (map[string]string, error) {
 	logger := log.WithFields(log.Fields{"path": path})
 	result := map[string]string{}
 	for k, v := range env {
@@ -63,7 +63,7 @@ func (t BoundFlow) GenerateAutoenvRecursively(path string, env map[string]interf
 	return result, nil
 }
 
-func (t *BoundFlow) Run(project *Application, caller ...step.Caller) (string, error) {
+func (t *BoundTask) Run(project *Application, caller ...step.Caller) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) > 0 {
@@ -72,7 +72,7 @@ func (t *BoundFlow) Run(project *Application, caller ...step.Caller) (string, er
 		ctx = log.WithFields(log.Fields{})
 	}
 
-	ctx.Debugf("flow %s started", t.Key.String())
+	ctx.Debugf("task %s started", t.Name.String())
 
 	var output step.StepStringOutput
 	var err error
@@ -83,20 +83,20 @@ func (t *BoundFlow) Run(project *Application, caller ...step.Caller) (string, er
 		output, err = step.Run(context)
 
 		if err != nil {
-			return "", errors.Annotate(err, "Flow#Run failed while running a script")
+			return "", errors.Annotate(err, "Task#Run failed while running a script")
 		}
 	}
 
 	if err != nil {
-		err = errors.Annotate(err, "Flow#Run failed while running a script")
+		err = errors.Annotate(err, "Task#Run failed while running a script")
 	}
 
-	ctx.Debugf("flow %s finished", t.Key.String())
+	ctx.Debugf("task %s finished", t.Name.String())
 
 	return output.String, err
 }
 
-func (f BoundFlow) CreateFuncMap() template.FuncMap {
+func (f BoundTask) CreateFuncMap() template.FuncMap {
 	get := func(key string) (interface{}, error) {
 		val, err := maputil.GetStringAtPath(f.Vars, key)
 

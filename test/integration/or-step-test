@@ -1,6 +1,6 @@
 #!/usr/bin/env var
 
-flows:
+tasks:
   one:
     script: "echo one; exit 1"
   two:
@@ -9,11 +9,11 @@ flows:
   ok:
     steps:
     - or:
-      - flow: one
-      - flow: two
+      - task: one
+      - task: two
 
   ng:
     steps:
     - or:
-      - flow: one
-      - flow: one
+      - task: one
+      - task: one

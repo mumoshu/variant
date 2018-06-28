@@ -1,9 +1,9 @@
 #!/usr/bin/env var
 
-flows:
+tasks:
   ok:
     steps:
-    - flow: bar1
+    - task: bar1
     - script: echo foo
   bar1:
     script: echo bar

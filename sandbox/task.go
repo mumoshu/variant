@@ -13,7 +13,7 @@ type Flow struct {
 	Name   string  `yaml:"name,omitempty"`
 	Inputs []Input `yaml:"inputs,omitempty"`
 	// i.e. symbol table
-	Flows  []Flow            `yaml:"flows,omitempty"`
+	Tasks  []Flow            `yaml:"tasks,omitempty"`
 	Script string            `yaml:"script,omitempty"`
 	Env    map[string]string `yaml:"env,omitempty"`
 }
@@ -45,7 +45,7 @@ func (f Flow) GetName() string {
 }
 
 func (f Flow) AsRoot() *ScopedFlow {
-	return NewScopedFlow(NewStackFromFlows(&f))
+	return NewScopedFlow(NewStackFromTasks(&f))
 }
 
 func (f Flow) FindExprAtPath(path string) (*ScopedFlow, error) {
@@ -65,7 +65,7 @@ func (f Flow) FindFlowByPathComponents(components []string) (*ScopedFlow, error)
 }
 
 func (f Flow) BuildStackUntil(components []string) (*Stack, error) {
-	current := NewStackFromFlows(&f)
+	current := NewStackFromTasks(&f)
 
 	if len(components) == 0 {
 		panic("Path components are empty. Possibly a bug!")
@@ -73,7 +73,7 @@ func (f Flow) BuildStackUntil(components []string) (*Stack, error) {
 
 	targetChildName := components[0]
 
-	for _, next := range f.Flows {
+	for _, next := range f.Tasks {
 		if next.Name == targetChildName {
 			if len(components) == 1 {
 				return current.Push(&next), nil
