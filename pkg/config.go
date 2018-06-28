@@ -1,4 +1,4 @@
-package engine
+package variant
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	"github.com/juju/errors"
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/mumoshu/variant/api/step"
-	"github.com/mumoshu/variant/util/maputil"
+	"github.com/mumoshu/variant/pkg/api/step"
+	"github.com/mumoshu/variant/pkg/util/maputil"
 )
 
 type TaskConfig struct {

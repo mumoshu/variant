@@ -1,4 +1,4 @@
-package engine
+package variant
 
 type Parameter struct {
 	Name     string `yaml:"name,omitempty"`

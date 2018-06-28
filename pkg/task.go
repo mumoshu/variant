@@ -1,7 +1,7 @@
-package engine
+package variant
 
 import (
-	"github.com/mumoshu/variant/api/step"
+	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/spf13/cobra"
 )
 

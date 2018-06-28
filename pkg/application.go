@@ -1,4 +1,4 @@
-package engine
+package variant
 
 import (
 	"fmt"
@@ -11,9 +11,9 @@ import (
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/spf13/viper"
 
-	"github.com/mumoshu/variant/api/step"
-	"github.com/mumoshu/variant/api/task"
-	"github.com/mumoshu/variant/util/maputil"
+	"github.com/mumoshu/variant/pkg/api/step"
+	"github.com/mumoshu/variant/pkg/api/task"
+	"github.com/mumoshu/variant/pkg/util/maputil"
 	"reflect"
 )
 

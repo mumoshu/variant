@@ -1,4 +1,4 @@
-package engine
+package variant
 
 import (
 	log "github.com/Sirupsen/logrus"

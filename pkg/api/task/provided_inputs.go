@@ -4,7 +4,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
-	"github.com/mumoshu/variant/util/maputil"
+	"github.com/mumoshu/variant/pkg/util/maputil"
 )
 
 type ProvidedInputs struct {

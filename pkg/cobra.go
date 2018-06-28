@@ -1,10 +1,10 @@
-package engine
+package variant
 
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
-	flowApi "github.com/mumoshu/variant/api/task"
+	flowApi "github.com/mumoshu/variant/pkg/api/task"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"

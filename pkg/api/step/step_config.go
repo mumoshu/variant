@@ -3,7 +3,7 @@ package step
 import (
 	"github.com/Sirupsen/logrus"
 	log "github.com/Sirupsen/logrus"
-	"github.com/mumoshu/variant/util/maputil"
+	"github.com/mumoshu/variant/pkg/util/maputil"
 	"reflect"
 )
 

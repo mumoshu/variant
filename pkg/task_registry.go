@@ -1,8 +1,8 @@
-package engine
+package variant
 
 import (
 	"github.com/juju/errors"
-	"github.com/mumoshu/variant/api/step"
+	"github.com/mumoshu/variant/pkg/api/step"
 )
 
 type TaskRegistry struct {

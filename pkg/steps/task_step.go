@@ -2,8 +2,8 @@ package steps
 
 import (
 	"fmt"
-	"github.com/mumoshu/variant/api/step"
-	"github.com/mumoshu/variant/api/task"
+	"github.com/mumoshu/variant/pkg/api/step"
+	"github.com/mumoshu/variant/pkg/api/task"
 )
 
 type TaskStepLoader struct{}

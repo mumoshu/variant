@@ -1,4 +1,4 @@
-package engine
+package variant
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"github.com/juju/errors"
-	"github.com/mumoshu/variant/api/step"
+	"github.com/mumoshu/variant/pkg/api/step"
 	"gopkg.in/yaml.v2"
 )
 

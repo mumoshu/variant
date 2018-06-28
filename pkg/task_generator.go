@@ -1,4 +1,4 @@
-package engine
+package variant
 
 import (
 	"github.com/juju/errors"

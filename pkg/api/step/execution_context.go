@@ -1,7 +1,7 @@
 package step
 
 import (
-	"github.com/mumoshu/variant/api/task"
+	"github.com/mumoshu/variant/pkg/api/task"
 	"text/template"
 )
 

@@ -11,12 +11,12 @@ import (
 	"github.com/juju/errors"
 	"github.com/spf13/viper"
 
-	"github.com/mumoshu/variant/cli/env"
 	"github.com/mumoshu/variant/cmd"
-	"github.com/mumoshu/variant/engine"
-	"github.com/mumoshu/variant/steps"
-	"github.com/mumoshu/variant/util/envutil"
-	"github.com/mumoshu/variant/util/fileutil"
+	engine "github.com/mumoshu/variant/pkg"
+	"github.com/mumoshu/variant/pkg/cli/env"
+	"github.com/mumoshu/variant/pkg/steps"
+	"github.com/mumoshu/variant/pkg/util/envutil"
+	"github.com/mumoshu/variant/pkg/util/fileutil"
 )
 
 func init() {

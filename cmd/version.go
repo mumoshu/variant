@@ -18,7 +18,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/mumoshu/variant/cli/version"
+	"github.com/mumoshu/variant/pkg/cli/version"
 )
 
 func VersionCmd(log *logrus.Logger) *cobra.Command {
