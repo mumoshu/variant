@@ -1,0 +1,35 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    steps:
+    - task: run
+  run:
+    parameters:
+    - name: param1
+      default: param1_default
+    - name: param2
+      required: true
+    options:
+    - name: opt_str_1
+      required: true
+    - name: opt_str_2
+      default: opt2_default
+    - name: opt_bool_1
+      type: boolean
+      required: true
+    - name: opt_bool_2
+      type: boolean
+      default: true
+    - name: opt_int_1
+      type: integer
+      required: true
+    - name: opt_int_2
+      type: integer
+      default: 100
+    script: |
+      echo param1={{ get "param1" }} param2={{ get "param2" }} \
+        opt_str_1={{ get "opt_str_1" }} opt_str_2={{ get "opt_str_2" }} \
+        opt_bool_1={{ get "opt_bool_1" }} opt_bool_2={{ get "opt_bool_2" }} \
+        opt_int_1={{get "opt_int_1" }} opt_int_2={{get "opt_int_2" }}
+

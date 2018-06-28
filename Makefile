@@ -98,5 +98,8 @@ smoke14: build
 smoke15: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./params-and-opts --logtostderr test > out && cat out | tee /dev/stderr | grep "param1=myparam1 param2=myparam2 opt1=myopt1" && echo smoke15 passed.
 
+smoke16: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./input-validation run param1x param2x --opt_str_1=optstr1 --opt_bool_1=true --opt_int_1=10 --logtostderr > out && cat out | tee /dev/stderr | grep "param1=param1x param2=param2x opt_str_1=optstr1 opt_str_2=opt2_default opt_bool_1=true opt_bool_2=true opt_int_1=10 opt_int_2=100" && echo smoke16 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16}

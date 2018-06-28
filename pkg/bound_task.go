@@ -54,8 +54,10 @@ func (t BoundTask) GenerateAutoenvRecursively(path string, env map[string]interf
 		} else {
 			if stringV, ok := v.(string); ok {
 				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = stringV
+			} else if v == nil {
+				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = ""
 			} else {
-				return nil, errors.Errorf("The value for the key %s was neither a `map[string]interface{}` nor a `string`: %v", k, v)
+				return nil, errors.Errorf("The value for the key %s was neither a `map[string]interface{}` nor a `string`: %v(%#v)", k, v, v)
 			}
 		}
 	}
@@ -98,7 +100,10 @@ func (t *BoundTask) Run(project *Application, caller ...step.Caller) (string, er
 
 func (f BoundTask) CreateFuncMap() template.FuncMap {
 	get := func(key string) (interface{}, error) {
-		val, err := maputil.GetStringAtPath(f.Vars, key)
+
+		sep := "."
+		components := strings.Split(strings.Replace(key, "-", "_", -1), sep)
+		val, err := maputil.GetValueAtPath(f.Vars, components)
 
 		if err != nil {
 			return nil, errors.Trace(err)

@@ -14,7 +14,9 @@ import (
 	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/mumoshu/variant/pkg/api/task"
 	"github.com/mumoshu/variant/pkg/util/maputil"
+	"github.com/xeipuuv/gojsonschema"
 	"reflect"
+	"strconv"
 )
 
 type Application struct {
@@ -73,7 +75,7 @@ func (p Application) RunTaskForKey(taskKey step.Key, args []string, providedInpu
 	provided := p.GetValueForConfigKey(taskKey.ShortString())
 
 	if provided != nil {
-		p := *provided
+		p := fmt.Sprintf("%v", provided)
 		ctx.Debugf("app skipped task %s via provided value: %s", taskKey.ShortString(), p)
 		ctx.Info(p)
 		println(p)
@@ -107,6 +109,23 @@ func (p Application) RunTaskForKey(taskKey step.Key, args []string, providedInpu
 	}
 
 	kv := maputil.Flatten(vars)
+
+	s, err := jsonschemaFromInputs(taskDef.Inputs)
+	if err != nil {
+		return "", errors.Annotatef(err, "app failed while generating jsonschema from: %v", taskDef.Inputs)
+	}
+	doc := gojsonschema.NewGoLoader(kv)
+	result, err := s.Validate(doc)
+	if result.Valid() {
+		log.Debugf("all the inputs are valid")
+	} else {
+		log.Errorf("one or more inputs are not valid in %v:", kv)
+		for _, err := range result.Errors() {
+			// Err implements the ResultError interface
+			log.Errorf("- %s", err)
+		}
+		return "", errors.Annotatef(err, "app failed validating inputs: %v", doc)
+	}
 
 	ctx.WithField("variables", kv).Debugf("app bound variables for task %s", taskKey.ShortString())
 
@@ -154,15 +173,18 @@ func (p Application) InheritedInputValuesForTaskKey(taskKey step.Key, args []str
 
 type AnyMap map[string]interface{}
 
-func (p Application) GetValueForConfigKey(k string) *string {
+func (p Application) GetValueForConfigKey(k string) interface{} {
 	ctx := log.WithFields(log.Fields{"key": k})
 
 	lastIndex := strings.LastIndex(k, ".")
 
-	valueFromFlag := viper.GetString(fmt.Sprintf("flags.%s", k))
-
-	if valueFromFlag != "" {
-		return &valueFromFlag
+	valueFromFlag := viper.Get(fmt.Sprintf("flags.%s", k))
+	if valueFromFlag != nil {
+		if str, ok := valueFromFlag.(string); ok && str == "" {
+			return nil
+		}
+		ctx.Debugf("GetValueForConfigKey(%s): %v", k, valueFromFlag)
+		return valueFromFlag
 	}
 
 	if lastIndex != -1 {
@@ -178,11 +200,10 @@ func (p Application) GetValueForConfigKey(k string) *string {
 
 			ctx.Debugf("app fetched %s: %v", k1, values)
 
-			var provided *string
+			var provided interface{}
 
 			if values != nil && values.Get(k2) != nil {
-				str := values.GetString(k2)
-				provided = &str
+				provided = values.Get(k2)
 			} else {
 				provided = nil
 			}
@@ -198,11 +219,13 @@ func (p Application) GetValueForConfigKey(k string) *string {
 		raw := viper.Get(k)
 		ctx.Debugf("app fetched raw value for key %s: %v", k, raw)
 		ctx.Debugf("type of value fetched: %v", reflect.TypeOf(raw))
-		if str, ok := raw.(string); ok {
-			return &str
-		} else if raw == nil {
+		if raw == nil {
 			return nil
-		} else {
+		}
+		switch raw.(type) {
+		case string, int, int64, bool:
+			return raw
+		default:
 			panic(fmt.Sprintf("unexpected type of value fetched: %v", reflect.TypeOf(raw)))
 		}
 	}
@@ -235,16 +258,16 @@ func (p Application) DirectInputValuesForTaskKey(taskKey step.Key, args []string
 	for _, input := range taskDef.ResolvedInputs {
 		ctx.Debugf("app sees task depends on input %s", input.ShortName())
 
-		var positional *string
+		var positional interface{}
 		if i := input.ArgumentIndex; i != nil && len(args) >= *i+1 {
 			ctx.Debugf("app found positional argument: args[%d]=%s", input.ArgumentIndex, args[*i])
-			positional = &args[*i]
+			positional = args[*i]
 		}
 
-		var nullableValue *string
+		var nullableValue interface{}
 
 		if v, err := provided.Get(input.Name); err == nil {
-			nullableValue = &v
+			nullableValue = v
 		}
 
 		if nullableValue == nil && baseTaskKey != "" {
@@ -258,11 +281,59 @@ func (p Application) DirectInputValuesForTaskKey(taskKey step.Key, args []string
 		if nullableValue == nil {
 			nullableValue = p.GetValueForConfigKey(input.ShortName())
 		}
+		log.Debugf("nullableValue=%v", nullableValue)
+		if nullableValue != nil {
+			log.Debugf("converting type of %v", nullableValue)
+			switch input.TypeName() {
+			case "string":
+				log.Debugf("string=%v", nullableValue)
+				nullableValue = nullableValue
+			case "integer":
+				log.Debugf("integer=%v", nullableValue)
+				s := nullableValue.(string)
+				nullableValue, err = strconv.Atoi(s)
+				if err != nil {
+					return nil, errors.Annotatef(err, "%v can't be casted to integer", s)
+				}
+			case "boolean":
+				log.Debugf("boolean=%v", nullableValue)
+				s := nullableValue.(string)
+				switch s {
+				case "true":
+					nullableValue = true
+				case "false":
+					nullableValue = false
+				default:
+					return nil, fmt.Errorf("%v can't be parsed as boolean", s)
+				}
+			default:
+				log.Debugf("foobar")
+				return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", input.TypeName())
+			}
+			log.Debugf("value after type conversion=%v", nullableValue)
+		}
+
+		if nullableValue == nil && input.Default != nil {
+			switch input.TypeName() {
+			case "string":
+				nullableValue = input.DefaultAsString()
+			case "integer":
+				nullableValue = input.DefaultAsInt()
+			case "boolean":
+				nullableValue = input.DefaultAsBool()
+			default:
+				return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", input.TypeName())
+			}
+		}
+
+		if nullableValue == nil && input.Name == "env" {
+			nullableValue = ""
+		}
 
 		pathComponents := strings.Split(input.Name, ".")
 
 		if positional != nil {
-			maputil.SetValueAtPath(values, pathComponents, *positional)
+			maputil.SetValueAtPath(values, pathComponents, positional)
 		} else if nullableValue == nil {
 			var output interface{}
 			var err error
@@ -278,7 +349,7 @@ func (p Application) DirectInputValuesForTaskKey(taskKey step.Key, args []string
 			}
 			maputil.SetValueAtPath(values, pathComponents, output)
 		} else {
-			maputil.SetValueAtPath(values, pathComponents, *nullableValue)
+			maputil.SetValueAtPath(values, pathComponents, nullableValue)
 		}
 
 	}
@@ -290,4 +361,23 @@ func (p Application) DirectInputValuesForTaskKey(taskKey step.Key, args []string
 
 func (p *Application) Tasks() map[string]*Task {
 	return p.TaskRegistry.Tasks()
+}
+
+func jsonschemaFromInputs(inputs []*InputConfig) (*gojsonschema.Schema, error) {
+	required := []string{}
+	props := map[string]map[string]interface{}{}
+	for _, input := range inputs {
+		props[input.Name] = input.JSONSchema()
+
+		if input.Required() {
+			required = append(required, input.Name)
+		}
+	}
+	goschema := map[string]interface{}{
+		"type":       "object",
+		"properties": props,
+		"required":   required,
+	}
+	schemaLoader := gojsonschema.NewGoLoader(goschema)
+	return gojsonschema.NewSchema(schemaLoader)
 }

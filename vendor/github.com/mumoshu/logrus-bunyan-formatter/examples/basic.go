@@ -1,9 +1,9 @@
 package main
 
 import (
+       "os"
 	"github.com/Sirupsen/logrus"
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
-	"os"
 )
 
 var log = logrus.New()

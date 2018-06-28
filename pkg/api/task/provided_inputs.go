@@ -19,10 +19,13 @@ func NewProvidedInputs(raw ...map[string]interface{}) ProvidedInputs {
 	}
 }
 
-func (in ProvidedInputs) Get(key string) (string, error) {
+func (in ProvidedInputs) Get(key string) (interface{}, error) {
 	var err error
 
 	result, internalError := maputil.GetStringAtPath(in, key)
+	if result == "" {
+		return nil, nil
+	}
 
 	log.WithField("raw", in).Debugf("provided input fetched %s: %v", key, result)
 

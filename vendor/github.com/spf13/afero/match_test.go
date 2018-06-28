@@ -172,6 +172,7 @@ func TestGlobSymlink(t *testing.T) {
 	}
 }
 
+
 func TestGlobError(t *testing.T) {
 	for _, fs := range Fss {
 		_, err := Glob(fs, "[7]")

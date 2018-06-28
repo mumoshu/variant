@@ -83,10 +83,14 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Inputs = v1.Inputs
 		} else {
 			for i, p := range v1.Parameters {
+				c := i
 				input := &InputConfig{
 					Name:          p.Name,
 					Description:   p.Description,
-					ArgumentIndex: &i,
+					ArgumentIndex: &c,
+					Type:          p.Type,
+					Default:       p.Default,
+					Remainings:    p.Remainings,
 				}
 				t.Inputs = append(t.Inputs, input)
 			}
@@ -94,6 +98,9 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				input := &InputConfig{
 					Name:        o.Name,
 					Description: o.Description,
+					Type:        o.Type,
+					Default:     o.Default,
+					Remainings:  o.Remainings,
 				}
 				t.Inputs = append(t.Inputs, input)
 			}
@@ -137,10 +144,14 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				t.Inputs = v2.Inputs
 			} else {
 				for i, p := range v2.Parameters {
+					c := i
 					input := &InputConfig{
 						Name:          p.Name,
 						Description:   p.Description,
-						ArgumentIndex: &i,
+						ArgumentIndex: &c,
+						Type:          p.Type,
+						Default:       p.Default,
+						Remainings:    p.Remainings,
 					}
 					t.Inputs = append(t.Inputs, input)
 				}
@@ -148,6 +159,9 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 					input := &InputConfig{
 						Name:        o.Name,
 						Description: o.Description,
+						Type:        o.Type,
+						Default:     o.Default,
+						Remainings:  o.Remainings,
 					}
 					t.Inputs = append(t.Inputs, input)
 				}

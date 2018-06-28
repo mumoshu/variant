@@ -65,13 +65,9 @@ func GetStringAtPath(m map[string]interface{}, key string) (string, error) {
 	if !isStr {
 		if !isMap {
 			return "", fmt.Errorf("Not map or string: %s in %+v", head, m)
+		} else {
+			return GetStringAtPath(next, strings.Join(rest, sep))
 		}
-
-		if len(rest) == 0 {
-			return "", fmt.Errorf("%s in %+v is a map but no more key to recurse", head, m)
-		}
-
-		return GetStringAtPath(next, strings.Join(rest, sep))
 	}
 
 	return result, nil
@@ -82,7 +78,13 @@ func SetValueAtPath(cache map[string]interface{}, keyComponents []string, value 
 
 	k = strings.Replace(k, "-", "_", -1)
 
-	log.Debugf("maptuil sets %v for %s", value, k)
+	var humanReadableValue string
+	if value != nil {
+		humanReadableValue = fmt.Sprintf("%#v", value)
+	} else {
+		humanReadableValue = "<nil>"
+	}
+	log.Debugf("maptuil sets %v for %s(%s)", humanReadableValue, k, strings.Join(keyComponents, "."))
 
 	if len(rest) == 0 {
 		cache[k] = value
@@ -112,20 +114,16 @@ func FlattenAsString(m map[string]interface{}) string {
 	return result
 }
 
-func Flatten(input map[string]interface{}) map[string]string {
-	result := map[string]string{}
+func Flatten(input map[string]interface{}) map[string]interface{} {
+	result := map[string]interface{}{}
 
-	for k, strOrMap := range input {
-		if str, isStr := strOrMap.(string); isStr {
-			result[k] = str
-		} else if m, isMap := strOrMap.(map[string]interface{}); isMap {
+	for k, valOrMap := range input {
+		if m, isMap := valOrMap.(map[string]interface{}); isMap {
 			for k2, v2 := range Flatten(m) {
 				result[fmt.Sprintf("%s.%s", k, k2)] = v2
 			}
-		} else if a, isArray := strOrMap.([]string); isArray {
-			result[k] = strings.Join(a, ",")
 		} else {
-			log.Panicf("maputil panics! unexpected type of value in map: input=%v, k=%v, v=%v", input, k, strOrMap)
+			result[k] = valOrMap
 		}
 	}
 
@@ -134,11 +132,7 @@ func Flatten(input map[string]interface{}) map[string]string {
 
 func DeepMerge(dest map[string]interface{}, src map[string]interface{}) {
 	for k, v := range src {
-		if str, isStr := v.(string); isStr {
-			dest[k] = str
-		} else if arr, isArr := v.([]string); isArr {
-			dest[k] = arr
-		} else if m, isMap := v.(map[string]interface{}); isMap {
+		if m, isMap := v.(map[string]interface{}); isMap {
 			if _, destIsMap := dest[k].(map[string]interface{}); !destIsMap {
 				if dest[k] != nil {
 					log.Panicf("maputil manics! unexpected type of value in map: dest=%v, k=%v, dest[k]=%v", dest, k, dest[k])
@@ -151,8 +145,10 @@ func DeepMerge(dest map[string]interface{}, src map[string]interface{}) {
 				log.Panicf("maputil panics! unexpected state of d: %v", d)
 			}
 			DeepMerge(d, m)
+		} else if arr, isArr := v.([]string); isArr {
+			dest[k] = arr
 		} else {
-			log.Panicf("maputil panics! unexpected type of value in map: src=%v, k=%v, v=%v", src, k, v)
+			dest[k] = v
 		}
 	}
 }
