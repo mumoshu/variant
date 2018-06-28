@@ -3,5 +3,5 @@
 *~
 .*env
 dist
-test/integration/*/out
+test/integration/**/out
 \#*\#

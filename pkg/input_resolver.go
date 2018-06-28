@@ -59,9 +59,9 @@ func (r *RegistryBasedInputResolver) ResolveInputsForTaskKey(currentTaskKey Task
 		}
 
 		variable := &ResolvedInput{
-			TaskKey:  currentTaskKey,
-			FullName: fmt.Sprintf("%s.%s", currentTaskKey.String(), input.Name),
-			Input:    *input,
+			TaskKey:     currentTaskKey,
+			FullName:    fmt.Sprintf("%s.%s", currentTaskKey.String(), input.Name),
+			InputConfig: *input,
 		}
 
 		ctx.WithFields(log.Fields{"full": variable.FullName, "task": variable.TaskKey.String()}).Debugf("has var %s. short=%s", variable.Name, variable.ShortName())

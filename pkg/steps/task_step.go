@@ -10,10 +10,15 @@ type TaskStepLoader struct{}
 
 func (l TaskStepLoader) LoadStep(stepConfig step.StepConfig, context step.LoadingContext) (step.Step, error) {
 	if taskKey, isStr := stepConfig.Get("task").(string); isStr && taskKey != "" {
+		inputs := task.NewProvidedInputs(stepConfig.GetStringMapOrEmpty("inputs"))
+		if len(inputs) == 0 {
+			inputs = task.NewProvidedInputs(stepConfig.GetStringMapOrEmpty("arguments"))
+		}
+
 		return TaskStep{
 			Name:           stepConfig.GetName(),
 			TaskKeyString:  taskKey,
-			ProvidedInputs: task.NewProvidedInputs(stepConfig.GetStringMapOrEmpty("inputs")),
+			ProvidedInputs: inputs,
 		}, nil
 	}
 

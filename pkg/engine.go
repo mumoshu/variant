@@ -14,7 +14,7 @@ import (
 
 func NewDefaultTaskConfig() *TaskConfig {
 	return &TaskConfig{
-		Inputs:      []*Input{},
+		Inputs:      []*InputConfig{},
 		TaskConfigs: []*TaskConfig{},
 		Autoenv:     false,
 		Steps:       []step.Step{},

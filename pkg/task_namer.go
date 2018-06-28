@@ -21,7 +21,7 @@ func (p TaskNamer) FromResolvedInput(variable *ResolvedInput) TaskName {
 	return p.FromInputName(variable.Name)
 }
 
-func (p TaskNamer) FromInput(input *Input) TaskName {
+func (p TaskNamer) FromInput(input *InputConfig) TaskName {
 	return p.FromInputName(input.Name)
 }
 

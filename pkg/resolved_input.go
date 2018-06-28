@@ -3,7 +3,7 @@ package variant
 import "strings"
 
 type ResolvedInput struct {
-	Input
+	InputConfig
 	TaskKey  TaskName
 	FullName string
 }

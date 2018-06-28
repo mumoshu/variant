@@ -1,0 +1,18 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    steps:
+    - task: run
+      arguments:
+        param1: myparam1
+        param2: myparam2
+        opt1: myopt1
+  run:
+    parameters:
+    - name: param1
+    - name: param2
+    options:
+    - name: opt1
+    script: |
+      echo param1={{ get "param1" }} param2={{ get "param2" }} opt1={{ get "opt1" }}

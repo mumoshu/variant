@@ -95,5 +95,8 @@ smoke13: build
 smoke14: build
 	cd $(IT_DIR)/override-with-null-from-env-config && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./test --logtostderr test > out && cat out | tee /dev/stderr | grep "baz" && echo smoke14 passed.
 
+smoke15: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./params-and-opts --logtostderr test > out && cat out | tee /dev/stderr | grep "param1=myparam1 param2=myparam2 opt1=myopt1" && echo smoke15 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}

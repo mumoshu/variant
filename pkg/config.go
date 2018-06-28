@@ -13,21 +13,23 @@ import (
 )
 
 type TaskConfig struct {
-	Name        string        `yaml:"name,omitempty"`
-	Description string        `yaml:"description,omitempty"`
-	Inputs      []*Input      `yaml:"inputs,omitempty"`
-	TaskConfigs []*TaskConfig `yaml:"tasks,omitempty"`
-	Script      string        `yaml:"script,omitempty"`
-	Steps       []step.Step   `yaml:"steps,omitempty"`
-	Autoenv     bool          `yaml:"autoenv,omitempty"`
-	Autodir     bool          `yaml:"autodir,omitempty"`
-	Interactive bool          `yaml:"interactive,omitempty"`
+	Name        string         `yaml:"name,omitempty"`
+	Description string         `yaml:"description,omitempty"`
+	Inputs      []*InputConfig `yaml:"inputs,omitempty"`
+	TaskConfigs []*TaskConfig  `yaml:"tasks,omitempty"`
+	Script      string         `yaml:"script,omitempty"`
+	Steps       []step.Step    `yaml:"steps,omitempty"`
+	Autoenv     bool           `yaml:"autoenv,omitempty"`
+	Autodir     bool           `yaml:"autodir,omitempty"`
+	Interactive bool           `yaml:"interactive,omitempty"`
 }
 
 type TaskConfigV1 struct {
 	Name        string                        `yaml:"name,omitempty"`
 	Description string                        `yaml:"description,omitempty"`
-	Inputs      []*Input                      `yaml:"inputs,omitempty"`
+	Inputs      []*InputConfig                `yaml:"inputs,omitempty"`
+	Parameters  []*ParameterConfig            `yaml:"parameters,omitempty"`
+	Options     []*OptionConfig               `yaml:"options,omitempty"`
 	TaskConfigs []*TaskConfig                 `yaml:"tasks,omitempty"`
 	Script      string                        `yaml:"script,omitempty"`
 	StepConfigs []map[interface{}]interface{} `yaml:"steps,omitempty"`
@@ -38,7 +40,9 @@ type TaskConfigV1 struct {
 
 type TaskConfigV2 struct {
 	Description string                        `yaml:"description,omitempty"`
-	Inputs      []*Input                      `yaml:"inputs,omitempty"`
+	Inputs      []*InputConfig                `yaml:"inputs,omitempty"`
+	Parameters  []*ParameterConfig            `yaml:"parameters,omitempty"`
+	Options     []*OptionConfig               `yaml:"options,omitempty"`
 	TaskConfigs map[string]*TaskConfig        `yaml:"tasks,omitempty"`
 	Script      string                        `yaml:"script,omitempty"`
 	StepConfigs []map[interface{}]interface{} `yaml:"steps,omitempty"`
@@ -58,7 +62,7 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	v1 := TaskConfigV1{
 		Autoenv:     false,
 		Autodir:     false,
-		Inputs:      []*Input{},
+		Inputs:      []*InputConfig{},
 		TaskConfigs: []*TaskConfig{},
 		StepConfigs: []map[interface{}]interface{}{},
 	}
@@ -75,6 +79,25 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Name = v1.Name
 		t.Description = v1.Description
 		t.Inputs = v1.Inputs
+		if len(v1.Inputs) > 0 {
+			t.Inputs = v1.Inputs
+		} else {
+			for i, p := range v1.Parameters {
+				input := &InputConfig{
+					Name:          p.Name,
+					Description:   p.Description,
+					ArgumentIndex: &i,
+				}
+				t.Inputs = append(t.Inputs, input)
+			}
+			for _, o := range v1.Options {
+				input := &InputConfig{
+					Name:        o.Name,
+					Description: o.Description,
+				}
+				t.Inputs = append(t.Inputs, input)
+			}
+		}
 		t.TaskConfigs = v1.TaskConfigs
 		t.Script = v1.Script
 		t.Autoenv = v1.Autoenv
@@ -95,7 +118,7 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			Autoenv:     false,
 			Autodir:     false,
 			Interactive: false,
-			Inputs:      []*Input{},
+			Inputs:      []*InputConfig{},
 			TaskConfigs: map[string]*TaskConfig{},
 			StepConfigs: []map[interface{}]interface{}{},
 		}
@@ -110,7 +133,25 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 		if err == nil {
 			t.Description = v2.Description
-			t.Inputs = v2.Inputs
+			if len(v2.Inputs) > 0 {
+				t.Inputs = v2.Inputs
+			} else {
+				for i, p := range v2.Parameters {
+					input := &InputConfig{
+						Name:          p.Name,
+						Description:   p.Description,
+						ArgumentIndex: &i,
+					}
+					t.Inputs = append(t.Inputs, input)
+				}
+				for _, o := range v2.Options {
+					input := &InputConfig{
+						Name:        o.Name,
+						Description: o.Description,
+					}
+					t.Inputs = append(t.Inputs, input)
+				}
+			}
 			t.TaskConfigs = TransformV2FlowConfigMapToArray(v2.TaskConfigs)
 			steps, err := readStepsFromStepConfigs(v2.Script, v2.StepConfigs)
 			if err != nil {
@@ -143,7 +184,7 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			}
 			t.Autoenv = false
 			t.Autodir = false
-			t.Inputs = []*Input{}
+			t.Inputs = []*InputConfig{}
 
 			t.TaskConfigs = TransformV3FlowConfigMapToArray(tasks)
 
@@ -266,7 +307,7 @@ func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*TaskConfig {
 		t := &TaskConfig{
 			Autoenv:     false,
 			Autodir:     false,
-			Inputs:      []*Input{},
+			Inputs:      []*InputConfig{},
 			TaskConfigs: []*TaskConfig{},
 		}
 
