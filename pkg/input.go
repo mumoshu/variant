@@ -2,12 +2,12 @@ package variant
 
 import "strings"
 
-type ResolvedInput struct {
+type Input struct {
 	InputConfig
 	TaskKey  TaskName
 	FullName string
 }
 
-func (v *ResolvedInput) ShortName() string {
+func (v *Input) ShortName() string {
 	return strings.SplitN(v.FullName, ".", 2)[1]
 }

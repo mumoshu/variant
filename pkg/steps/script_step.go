@@ -18,7 +18,7 @@ import (
 
 type ScriptStepLoader struct{}
 
-func (l ScriptStepLoader) LoadStep(stepConfig step.StepConfig, context step.LoadingContext) (step.Step, error) {
+func (l ScriptStepLoader) LoadStep(stepConfig step.StepDef, context step.LoadingContext) (step.Step, error) {
 	code, isStr := stepConfig.Get("script").(string)
 
 	if isStr && code != "" {

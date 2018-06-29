@@ -11,7 +11,7 @@ import (
 
 type OrStepLoader struct{}
 
-func (l OrStepLoader) LoadStep(config step.StepConfig, context step.LoadingContext) (step.Step, error) {
+func (l OrStepLoader) LoadStep(config step.StepDef, context step.LoadingContext) (step.Step, error) {
 	data := config.Get("or")
 
 	if data == nil {

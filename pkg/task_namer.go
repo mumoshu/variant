@@ -17,7 +17,7 @@ func (p TaskNamer) FromString(flowKeyStr string) TaskName {
 	return TaskName{Components: c}
 }
 
-func (p TaskNamer) FromResolvedInput(variable *ResolvedInput) TaskName {
+func (p TaskNamer) FromResolvedInput(variable *Input) TaskName {
 	return p.FromInputName(variable.Name)
 }
 

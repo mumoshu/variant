@@ -11,7 +11,7 @@ import (
 
 type IfStepLoader struct{}
 
-func (l IfStepLoader) LoadStep(config step.StepConfig, context step.LoadingContext) (step.Step, error) {
+func (l IfStepLoader) LoadStep(config step.StepDef, context step.LoadingContext) (step.Step, error) {
 	ifData := config.Get("if")
 
 	if ifData == nil {

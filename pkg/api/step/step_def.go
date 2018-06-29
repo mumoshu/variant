@@ -7,18 +7,18 @@ import (
 	"reflect"
 )
 
-type StepConfigImpl struct {
+type stepDefImpl struct {
 	raw map[string]interface{}
 }
 
-type StepConfig interface {
+type StepDef interface {
 	GetName() string
 	Raw() map[string]interface{}
 	Get(key string) interface{}
 	GetStringMapOrEmpty(key string) map[string]interface{}
 }
 
-func (c StepConfigImpl) GetName() string {
+func (c stepDefImpl) GetName() string {
 	str, ok := c.raw["name"].(string)
 
 	if !ok {
@@ -28,15 +28,15 @@ func (c StepConfigImpl) GetName() string {
 	return str
 }
 
-func (c StepConfigImpl) Raw() map[string]interface{} {
+func (c stepDefImpl) Raw() map[string]interface{} {
 	return c.raw
 }
 
-func (c StepConfigImpl) Get(key string) interface{} {
+func (c stepDefImpl) Get(key string) interface{} {
 	return c.raw[key]
 }
 
-func (c StepConfigImpl) GetStringMapOrEmpty(key string) map[string]interface{} {
+func (c stepDefImpl) GetStringMapOrEmpty(key string) map[string]interface{} {
 	ctx := log.WithField("raw", c.raw[key]).WithField("key", key).WithField("type", reflect.TypeOf(c.raw[key]))
 
 	rawMap, expected := c.Get(key).(map[interface{}]interface{})
@@ -56,8 +56,8 @@ func (c StepConfigImpl) GetStringMapOrEmpty(key string) map[string]interface{} {
 	}
 }
 
-func NewStepConfig(raw map[string]interface{}) StepConfig {
-	return StepConfigImpl{
+func NewStepConfig(raw map[string]interface{}) StepDef {
+	return stepDefImpl{
 		raw: raw,
 	}
 }

@@ -17,22 +17,22 @@ tasks:
 
 func TestMinimalConfigParsing(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
-	expected := &TaskConfig{
+	expected := &TaskDef{
 		Inputs: []*InputConfig{},
-		TaskConfigs: []*TaskConfig{
-			&TaskConfig{
+		TaskDefs: []*TaskDef{
+			&TaskDef{
 				Autoenv: true,
 				Autodir: true,
 				Name:    "foo",
 				Inputs:  []*InputConfig{},
-				TaskConfigs: []*TaskConfig{
-					&TaskConfig{
-						Autoenv:     true,
-						Autodir:     true,
-						Name:        "bar",
-						Script:      "foobar",
-						TaskConfigs: []*TaskConfig{},
-						Inputs:      []*InputConfig{},
+				TaskDefs: []*TaskDef{
+					&TaskDef{
+						Autoenv:  true,
+						Autodir:  true,
+						Name:     "bar",
+						Script:   "foobar",
+						TaskDefs: []*TaskDef{},
+						Inputs:   []*InputConfig{},
 					},
 				},
 			},

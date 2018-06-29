@@ -12,11 +12,11 @@ import (
 	"github.com/mumoshu/variant/pkg/util/maputil"
 )
 
-type TaskConfig struct {
+type TaskDef struct {
 	Name        string         `yaml:"name,omitempty"`
 	Description string         `yaml:"description,omitempty"`
 	Inputs      []*InputConfig `yaml:"inputs,omitempty"`
-	TaskConfigs []*TaskConfig  `yaml:"tasks,omitempty"`
+	TaskDefs    []*TaskDef     `yaml:"tasks,omitempty"`
 	Script      string         `yaml:"script,omitempty"`
 	Steps       []step.Step    `yaml:"steps,omitempty"`
 	Autoenv     bool           `yaml:"autoenv,omitempty"`
@@ -24,34 +24,34 @@ type TaskConfig struct {
 	Interactive bool           `yaml:"interactive,omitempty"`
 }
 
-type TaskConfigV1 struct {
+type TaskDefV1 struct {
 	Name        string                        `yaml:"name,omitempty"`
 	Description string                        `yaml:"description,omitempty"`
 	Inputs      []*InputConfig                `yaml:"inputs,omitempty"`
 	Parameters  []*ParameterConfig            `yaml:"parameters,omitempty"`
 	Options     []*OptionConfig               `yaml:"options,omitempty"`
-	TaskConfigs []*TaskConfig                 `yaml:"tasks,omitempty"`
+	TaskDefs    []*TaskDef                    `yaml:"tasks,omitempty"`
 	Script      string                        `yaml:"script,omitempty"`
-	StepConfigs []map[interface{}]interface{} `yaml:"steps,omitempty"`
+	StepDefs    []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
 	Autodir     bool                          `yaml:"autodir,omitempty"`
 	Interactive bool                          `yaml:"interactive,omitempty"`
 }
 
-type TaskConfigV2 struct {
+type TaskDefV2 struct {
 	Description string                        `yaml:"description,omitempty"`
 	Inputs      []*InputConfig                `yaml:"inputs,omitempty"`
 	Parameters  []*ParameterConfig            `yaml:"parameters,omitempty"`
 	Options     []*OptionConfig               `yaml:"options,omitempty"`
-	TaskConfigs map[string]*TaskConfig        `yaml:"tasks,omitempty"`
+	TaskDefs    map[string]*TaskDef           `yaml:"tasks,omitempty"`
 	Script      string                        `yaml:"script,omitempty"`
-	StepConfigs []map[interface{}]interface{} `yaml:"steps,omitempty"`
+	StepDefs    []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
 	Autodir     bool                          `yaml:"autodir,omitempty"`
 	Interactive bool                          `yaml:"interactive,omitempty"`
 }
 
-func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	v3 := map[string]interface{}{}
 	v3err := unmarshal(&v3)
 
@@ -59,17 +59,17 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	log.Debugf("Trying to parse v1 format")
 
-	v1 := TaskConfigV1{
-		Autoenv:     false,
-		Autodir:     false,
-		Inputs:      []*InputConfig{},
-		TaskConfigs: []*TaskConfig{},
-		StepConfigs: []map[interface{}]interface{}{},
+	v1 := TaskDefV1{
+		Autoenv:  false,
+		Autodir:  false,
+		Inputs:   []*InputConfig{},
+		TaskDefs: []*TaskDef{},
+		StepDefs: []map[interface{}]interface{}{},
 	}
 
 	err := unmarshal(&v1)
 
-	if v1.Name == "" && len(v1.TaskConfigs) == 0 {
+	if v1.Name == "" && len(v1.TaskDefs) == 0 {
 		e := fmt.Errorf("Not v1 format: Both `name` and `tasks` are empty")
 		log.Debugf("%s", e)
 		err = e
@@ -105,34 +105,34 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				t.Inputs = append(t.Inputs, input)
 			}
 		}
-		t.TaskConfigs = v1.TaskConfigs
+		t.TaskDefs = v1.TaskDefs
 		t.Script = v1.Script
 		t.Autoenv = v1.Autoenv
 		t.Autodir = v1.Autodir
 		t.Interactive = v1.Interactive
-		steps, err := readStepsFromStepConfigs(v1.Script, v1.StepConfigs)
+		steps, err := readStepsFromStepDefs(v1.Script, v1.StepDefs)
 		if err != nil {
 			return errors.Annotatef(err, "Error while reading v1 config")
 		}
 		t.Steps = steps
 	}
 
-	var v2 *TaskConfigV2
+	var v2 *TaskDefV2
 
 	if err != nil {
 		log.Debugf("Trying to parse v2 format")
-		v2 = &TaskConfigV2{
+		v2 = &TaskDefV2{
 			Autoenv:     false,
 			Autodir:     false,
 			Interactive: false,
 			Inputs:      []*InputConfig{},
-			TaskConfigs: map[string]*TaskConfig{},
-			StepConfigs: []map[interface{}]interface{}{},
+			TaskDefs:    map[string]*TaskDef{},
+			StepDefs:    []map[interface{}]interface{}{},
 		}
 
 		err = unmarshal(&v2)
 
-		if len(v2.TaskConfigs) == 0 && v2.Script == "" && len(v2.StepConfigs) == 0 {
+		if len(v2.TaskDefs) == 0 && v2.Script == "" && len(v2.StepDefs) == 0 {
 			e := fmt.Errorf("Not v2 format: `tasks`, `script`, `steps` are missing.")
 			log.Debugf("%s", e)
 			err = e
@@ -166,8 +166,8 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 					t.Inputs = append(t.Inputs, input)
 				}
 			}
-			t.TaskConfigs = TransformV2FlowConfigMapToArray(v2.TaskConfigs)
-			steps, err := readStepsFromStepConfigs(v2.Script, v2.StepConfigs)
+			t.TaskDefs = TransformV2FlowConfigMapToArray(v2.TaskDefs)
+			steps, err := readStepsFromStepDefs(v2.Script, v2.StepDefs)
 			if err != nil {
 				return errors.Annotatef(err, "Error while reading v2 config")
 			}
@@ -200,7 +200,7 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Autodir = false
 			t.Inputs = []*InputConfig{}
 
-			t.TaskConfigs = TransformV3FlowConfigMapToArray(tasks)
+			t.TaskDefs = TransformV3TaskDefMapToArray(tasks)
 
 			return nil
 		}
@@ -209,10 +209,10 @@ func (t *TaskConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return errors.Trace(err)
 }
 
-func (t *TaskConfig) CopyTo(other *TaskConfig) {
+func (t *TaskDef) CopyTo(other *TaskDef) {
 	other.Description = t.Description
 	other.Inputs = t.Inputs
-	other.TaskConfigs = t.TaskConfigs
+	other.TaskDefs = t.TaskDefs
 	other.Steps = t.Steps
 	other.Script = t.Script
 	other.Autoenv = t.Autoenv
@@ -220,10 +220,10 @@ func (t *TaskConfig) CopyTo(other *TaskConfig) {
 	other.Interactive = t.Interactive
 }
 
-func TransformV2FlowConfigMapToArray(v2 map[string]*TaskConfig) []*TaskConfig {
-	result := []*TaskConfig{}
+func TransformV2FlowConfigMapToArray(v2 map[string]*TaskDef) []*TaskDef {
+	result := []*TaskDef{}
 	for name, t2 := range v2 {
-		t := &TaskConfig{}
+		t := &TaskDef{}
 
 		t.Name = name
 		t2.CopyTo(t)
@@ -245,13 +245,13 @@ func init() {
 
 type stepLoadingContextImpl struct{}
 
-func (s stepLoadingContextImpl) LoadStep(config step.StepConfig) (step.Step, error) {
+func (s stepLoadingContextImpl) LoadStep(config step.StepDef) (step.Step, error) {
 	step, err := LoadStep(config)
 
 	return step, err
 }
 
-func LoadStep(config step.StepConfig) (step.Step, error) {
+func LoadStep(config step.StepDef) (step.Step, error) {
 	var lastError error
 
 	lastError = nil
@@ -270,11 +270,11 @@ func LoadStep(config step.StepConfig) (step.Step, error) {
 	return nil, errors.Annotatef(lastError, "all loader failed to load step")
 }
 
-func readStepsFromStepConfigs(script string, stepConfigs []map[interface{}]interface{}) ([]step.Step, error) {
+func readStepsFromStepDefs(script string, stepDefs []map[interface{}]interface{}) ([]step.Step, error) {
 	result := []step.Step{}
 
 	if script != "" {
-		if len(stepConfigs) > 0 {
+		if len(stepDefs) > 0 {
 			return nil, fmt.Errorf("both script and steps exist.")
 		}
 
@@ -289,7 +289,7 @@ func readStepsFromStepConfigs(script string, stepConfigs []map[interface{}]inter
 
 		result = []step.Step{s}
 	} else {
-		for i, stepConfig := range stepConfigs {
+		for i, stepConfig := range stepDefs {
 			defaultName := fmt.Sprintf("step-%d", i+1)
 
 			if stepConfig["name"] == "" || stepConfig["name"] == nil {
@@ -315,14 +315,14 @@ func readStepsFromStepConfigs(script string, stepConfigs []map[interface{}]inter
 	return result, nil
 }
 
-func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*TaskConfig {
-	result := []*TaskConfig{}
+func TransformV3TaskDefMapToArray(v3 map[string]interface{}) []*TaskDef {
+	result := []*TaskDef{}
 	for k, v := range v3 {
-		t := &TaskConfig{
-			Autoenv:     false,
-			Autodir:     false,
-			Inputs:      []*InputConfig{},
-			TaskConfigs: []*TaskConfig{},
+		t := &TaskDef{
+			Autoenv:  false,
+			Autodir:  false,
+			Inputs:   []*InputConfig{},
+			TaskDefs: []*TaskDef{},
 		}
 
 		log.Debugf("Arrived %s: %v", k, v)
@@ -347,7 +347,7 @@ func TransformV3FlowConfigMapToArray(v3 map[string]interface{}) []*TaskConfig {
 		leaf := s2i["script"] != nil
 
 		if !leaf {
-			t.TaskConfigs = TransformV3FlowConfigMapToArray(s2i)
+			t.TaskDefs = TransformV3TaskDefMapToArray(s2i)
 		} else {
 			log.Debugf("Not a nested map")
 			err = mapstructure.Decode(s2i, t)

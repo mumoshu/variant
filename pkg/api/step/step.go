@@ -10,7 +10,7 @@ type Caller interface {
 }
 
 type LoadingContext interface {
-	LoadStep(config StepConfig) (Step, error)
+	LoadStep(config StepDef) (Step, error)
 }
 
 type Step interface {

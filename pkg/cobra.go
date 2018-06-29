@@ -4,7 +4,7 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/juju/errors"
-	flowApi "github.com/mumoshu/variant/pkg/api/task"
+	taskapi "github.com/mumoshu/variant/pkg/api/task"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -49,7 +49,7 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.app.UpdateLoggingConfiguration()
 
-			output, err := p.app.RunTaskForKey(taskName, args, flowApi.NewProvidedInputs())
+			output, err := p.app.RunTask(taskName, args, taskapi.NewArguments())
 
 			if err != nil {
 				c := strings.Join(strings.Split(taskName.String(), "."), " ")
@@ -92,7 +92,7 @@ func (p *CobraAdapter) GenerateAllFlags() {
 		for _, input := range task.ResolvedInputs {
 			log.Debugf("Configuring flag and config key for task %s's input: %s", task.Name.String(), input.Name)
 
-			flowConfig := task.TaskConfig
+			flowConfig := task.TaskDef
 			cmd := task.Command
 			var description string
 			if input.Description != "" {
@@ -121,7 +121,7 @@ func (p *CobraAdapter) GenerateAllFlags() {
 			keyForConfigFromFlag = fmt.Sprintf("flags.%s", keyForConfigFromFlag)
 
 			var flagset *pflag.FlagSet
-			if len(flowConfig.TaskConfigs) == 0 {
+			if len(flowConfig.TaskDefs) == 0 {
 				flagset = cmd.Flags()
 				log.Debugf("Binding flag --%s of the command %s to the input %s with the config key %s", flagName, task.Name.ShortString(), input.Name, keyForConfigFromFlag)
 			} else {
@@ -134,7 +134,7 @@ func (p *CobraAdapter) GenerateAllFlags() {
 			viper.BindPFlag(keyForConfigFromFlag, flagset.Lookup(flagName))
 			//
 			//if input.Required() {
-			//	if len(flowConfig.TaskConfigs) == 0 {
+			//	if len(flowConfig.TaskDefs) == 0 {
 			//		cmd.MarkFlagRequired(flagName)
 			//	} else {
 			//		cmd.MarkPersistentFlagRequired(flagName)

@@ -7,8 +7,8 @@ import (
 
 type InputResolver interface {
 	ResolveInputs()
-	ResolveInputsForTask(flowDef *Task) []*ResolvedInput
-	ResolveInputsForTaskKey(currentTaskKey TaskName, path string) []*ResolvedInput
+	ResolveInputsForTask(flowDef *Task) []*Input
+	ResolveInputsForTaskKey(currentTaskKey TaskName, path string) []*Input
 }
 
 type RegistryBasedInputResolver struct {
@@ -30,12 +30,12 @@ func (r *RegistryBasedInputResolver) ResolveInputs() {
 	}
 }
 
-func (r *RegistryBasedInputResolver) ResolveInputsForTask(flowDef *Task) []*ResolvedInput {
+func (r *RegistryBasedInputResolver) ResolveInputsForTask(flowDef *Task) []*Input {
 	return r.ResolveInputsForTaskKey(flowDef.Name, "")
 }
 
-func (r *RegistryBasedInputResolver) ResolveInputsForTaskKey(currentTaskKey TaskName, path string) []*ResolvedInput {
-	result := []*ResolvedInput{}
+func (r *RegistryBasedInputResolver) ResolveInputsForTaskKey(currentTaskKey TaskName, path string) []*Input {
+	inputs := []*Input{}
 
 	ctx := log.WithFields(log.Fields{"prefix": fmt.Sprintf("%s", currentTaskKey.String())})
 
@@ -44,7 +44,7 @@ func (r *RegistryBasedInputResolver) ResolveInputsForTaskKey(currentTaskKey Task
 	if err != nil {
 		allTasks := r.registry.AllTaskKeys()
 		ctx.Debugf("is not a Task in: %v", allTasks)
-		return []*ResolvedInput{}
+		return []*Input{}
 	}
 
 	for _, input := range currentTask.Inputs {
@@ -55,19 +55,19 @@ func (r *RegistryBasedInputResolver) ResolveInputsForTaskKey(currentTaskKey Task
 		vars := r.ResolveInputsForTaskKey(childKey, fmt.Sprintf("%s.", currentTaskKey.String()))
 
 		for _, v := range vars {
-			result = append(result, v)
+			inputs = append(inputs, v)
 		}
 
-		variable := &ResolvedInput{
+		input := &Input{
 			TaskKey:     currentTaskKey,
 			FullName:    fmt.Sprintf("%s.%s", currentTaskKey.String(), input.Name),
 			InputConfig: *input,
 		}
 
-		ctx.WithFields(log.Fields{"full": variable.FullName, "task": variable.TaskKey.String()}).Debugf("has var %s. short=%s", variable.Name, variable.ShortName())
+		ctx.WithFields(log.Fields{"full": input.FullName, "task": input.TaskKey.String()}).Debugf("has var %s. short=%s", input.Name, input.ShortName())
 
-		result = append(result, variable)
+		inputs = append(inputs, input)
 	}
 
-	return result
+	return inputs
 }

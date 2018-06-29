@@ -73,7 +73,7 @@ func main() {
 		varfile = environ["VARFILE"]
 	}
 
-	var rootTaskConfig *engine.TaskConfig
+	var rootTaskConfig *engine.TaskDef
 
 	varfileExists := fileutil.Exists(varfile)
 
@@ -102,9 +102,9 @@ func main() {
 
 	taskNamer := engine.NewTaskNamer(rootTaskConfig.Name)
 
-	g := engine.NewTaskGenerator(taskNamer)
+	g := engine.NewTaskCreator(taskNamer)
 
-	rootTask, err1 := g.GenerateTask(rootTaskConfig, []string{}, rootTaskConfig.Name)
+	rootTask, err1 := g.Create(rootTaskConfig, []string{}, rootTaskConfig.Name)
 	if err1 != nil {
 		panic(err1)
 	}

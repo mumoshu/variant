@@ -15,5 +15,5 @@ type ExecutionContext interface {
 	Autoenv() bool
 	Autodir() bool
 	Interactive() bool
-	RunAnotherTask(key string, provided task.ProvidedInputs) (string, error)
+	RunAnotherTask(key string, provided task.Arguments) (string, error)
 }

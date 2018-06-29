@@ -14,24 +14,38 @@ import (
 	"github.com/mumoshu/variant/pkg/api/step"
 )
 
-type BoundTask struct {
-	Task
-	Vars map[string]interface{}
+type TaskRunner struct {
+	*Task
+	Values map[string]interface{}
 }
 
-func (t BoundTask) GetKey() step.Key {
-	return t.Name
+type stepCaller struct {
+	task *Task
 }
 
-func (t BoundTask) GenerateAutoenv() (map[string]string, error) {
+func (c stepCaller) GetKey() step.Key {
+	return c.task.Name.AsStepKey()
+}
+
+func (t TaskRunner) AsStepCaller() step.Caller {
+	return stepCaller{
+		task: t.Task,
+	}
+}
+
+func (t TaskRunner) GetKey() step.Key {
+	return t.Name.AsStepKey()
+}
+
+func (t TaskRunner) GenerateAutoenv() (map[string]string, error) {
 	replacer := strings.NewReplacer("-", "_", ".", "_")
 	toEnvName := func(parName string) string {
 		return strings.ToUpper(replacer.Replace(parName))
 	}
-	return t.GenerateAutoenvRecursively("", t.Vars, toEnvName)
+	return t.GenerateAutoenvRecursively("", t.Values, toEnvName)
 }
 
-func (t BoundTask) GenerateAutoenvRecursively(path string, env map[string]interface{}, toEnvName func(string) string) (map[string]string, error) {
+func (t TaskRunner) GenerateAutoenvRecursively(path string, env map[string]interface{}, toEnvName func(string) string) (map[string]string, error) {
 	logger := log.WithFields(log.Fields{"path": path})
 	result := map[string]string{}
 	for k, v := range env {
@@ -65,7 +79,7 @@ func (t BoundTask) GenerateAutoenvRecursively(path string, env map[string]interf
 	return result, nil
 }
 
-func (t *BoundTask) Run(project *Application, caller ...step.Caller) (string, error) {
+func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) > 0 {
@@ -79,7 +93,7 @@ func (t *BoundTask) Run(project *Application, caller ...step.Caller) (string, er
 	var output step.StepStringOutput
 	var err error
 
-	context := NewExecutionContextImpl(*project, *t)
+	context := NewStepExecutionContext(*project, *t)
 
 	for _, step := range t.Steps {
 		output, err = step.Run(context)
@@ -98,12 +112,12 @@ func (t *BoundTask) Run(project *Application, caller ...step.Caller) (string, er
 	return output.String, err
 }
 
-func (f BoundTask) CreateFuncMap() template.FuncMap {
+func (f TaskRunner) CreateFuncMap() template.FuncMap {
 	get := func(key string) (interface{}, error) {
 
 		sep := "."
 		components := strings.Split(strings.Replace(key, "-", "_", -1), sep)
-		val, err := maputil.GetValueAtPath(f.Vars, components)
+		val, err := maputil.GetValueAtPath(f.Values, components)
 
 		if err != nil {
 			return nil, errors.Trace(err)

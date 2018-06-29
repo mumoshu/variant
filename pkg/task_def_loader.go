@@ -12,21 +12,21 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func NewDefaultTaskConfig() *TaskConfig {
-	return &TaskConfig{
-		Inputs:      []*InputConfig{},
-		TaskConfigs: []*TaskConfig{},
-		Autoenv:     false,
-		Steps:       []step.Step{},
+func NewDefaultTaskConfig() *TaskDef {
+	return &TaskDef{
+		Inputs:   []*InputConfig{},
+		TaskDefs: []*TaskDef{},
+		Autoenv:  false,
+		Steps:    []step.Step{},
 	}
 }
 
-func ReadTaskConfigFromString(data string) (*TaskConfig, error) {
+func ReadTaskConfigFromString(data string) (*TaskDef, error) {
 	err, t := ReadTaskConfigFromBytes([]byte(data))
 	return err, t
 }
 
-func ReadTaskConfigFromBytes(data []byte) (*TaskConfig, error) {
+func ReadTaskConfigFromBytes(data []byte) (*TaskDef, error) {
 	c := NewDefaultTaskConfig()
 	if err := yaml.Unmarshal(data, c); err != nil {
 		return nil, errors.Annotatef(err, "yaml.Unmarshal failed: %v", err)
@@ -34,7 +34,7 @@ func ReadTaskConfigFromBytes(data []byte) (*TaskConfig, error) {
 	return c, nil
 }
 
-func ReadTaskConfigFromFile(path string) (*TaskConfig, error) {
+func ReadTaskConfigFromFile(path string) (*TaskDef, error) {
 	log.Debugf("Loading %s", path)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {

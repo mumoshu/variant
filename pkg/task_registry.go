@@ -2,7 +2,6 @@ package variant
 
 import (
 	"github.com/juju/errors"
-	"github.com/mumoshu/variant/pkg/api/step"
 )
 
 type TaskRegistry struct {
@@ -19,24 +18,24 @@ func (p *TaskRegistry) Tasks() map[string]*Task {
 	return p.tasks
 }
 
-func (p *TaskRegistry) FindTask(flowKey step.Key) (*Task, error) {
-	t := p.tasks[flowKey.ShortString()]
+func (p *TaskRegistry) FindTask(name TaskName) (*Task, error) {
+	t := p.tasks[name.ShortString()]
 
 	if t == nil {
-		return nil, errors.Errorf("No Task exists for the task key `%s`", flowKey.ShortString())
+		return nil, errors.Errorf("No Task exists for the task name `%s`", name.ShortString())
 	}
 
 	return t, nil
 }
 
-func (p *TaskRegistry) RegisterTask(flowKey step.Key, flowDef *Task) {
-	p.tasks[flowKey.ShortString()] = flowDef
+func (p *TaskRegistry) put(key TaskName, task *Task) {
+	p.tasks[key.ShortString()] = task
 }
 
-func (p *TaskRegistry) RegisterTasks(flow *Task) {
-	p.RegisterTask(flow.Name, flow)
+func (p *TaskRegistry) RegisterTasks(task *Task) {
+	p.put(task.Name, task)
 
-	for _, child := range flow.Tasks {
+	for _, child := range task.Tasks {
 		p.RegisterTasks(child)
 	}
 }

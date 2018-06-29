@@ -1,19 +1,18 @@
 package variant
 
 import (
-	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/spf13/cobra"
 )
 
 type Task struct {
-	TaskConfig
+	TaskDef
 	Name           TaskName
 	ProjectName    string
-	ResolvedInputs []*ResolvedInput
+	ResolvedInputs []*Input
 	Tasks          []*Task
 	Command        *cobra.Command
 }
 
-func (f Task) GetKey() step.Key {
+func (f Task) GetKey() TaskName {
 	return f.Name
 }

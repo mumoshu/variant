@@ -8,11 +8,11 @@ import (
 
 type TaskStepLoader struct{}
 
-func (l TaskStepLoader) LoadStep(stepConfig step.StepConfig, context step.LoadingContext) (step.Step, error) {
+func (l TaskStepLoader) LoadStep(stepConfig step.StepDef, context step.LoadingContext) (step.Step, error) {
 	if taskKey, isStr := stepConfig.Get("task").(string); isStr && taskKey != "" {
-		inputs := task.NewProvidedInputs(stepConfig.GetStringMapOrEmpty("inputs"))
+		inputs := task.NewArguments(stepConfig.GetStringMapOrEmpty("inputs"))
 		if len(inputs) == 0 {
-			inputs = task.NewProvidedInputs(stepConfig.GetStringMapOrEmpty("arguments"))
+			inputs = task.NewArguments(stepConfig.GetStringMapOrEmpty("arguments"))
 		}
 
 		return TaskStep{
@@ -32,7 +32,7 @@ func NewTaskStepLoader() TaskStepLoader {
 type TaskStep struct {
 	Name           string
 	TaskKeyString  string
-	ProvidedInputs task.ProvidedInputs
+	ProvidedInputs task.Arguments
 }
 
 func (s TaskStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
