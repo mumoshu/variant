@@ -16,6 +16,7 @@ type LoadingContext interface {
 type Step interface {
 	GetName() string
 	Run(context ExecutionContext) (StepStringOutput, error)
+	Silent() bool
 }
 
 type StepStringOutput struct {

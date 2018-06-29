@@ -2,16 +2,13 @@ package steps
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/juju/errors"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
-	"text/template"
-
-	log "github.com/Sirupsen/logrus"
-	"github.com/juju/errors"
 
 	"github.com/mumoshu/variant/pkg/api/step"
 )
@@ -21,10 +18,13 @@ type ScriptStepLoader struct{}
 func (l ScriptStepLoader) LoadStep(stepConfig step.StepDef, context step.LoadingContext) (step.Step, error) {
 	code, isStr := stepConfig.Get("script").(string)
 
+	log.Debugf("step config: %v", stepConfig)
+
 	if isStr && code != "" {
 		return ScriptStep{
-			Name: stepConfig.GetName(),
-			Code: code,
+			Name:   stepConfig.GetName(),
+			Code:   code,
+			silent: stepConfig.Silent(),
 		}, nil
 	}
 
@@ -36,8 +36,13 @@ func NewScriptStepLoader() ScriptStepLoader {
 }
 
 type ScriptStep struct {
-	Name string
-	Code string
+	Name   string
+	Code   string
+	silent bool
+}
+
+func (s ScriptStep) Silent() bool {
+	return s.silent
 }
 
 func (s ScriptStep) GetName() string {
@@ -47,21 +52,11 @@ func (s ScriptStep) GetName() string {
 func (s ScriptStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
 	depended := len(context.Caller()) > 0
 
-	t := template.New(fmt.Sprintf("%s.definition.yaml: %s.%s.script", context.ProjectName(), s.GetName(), context.Key().ShortString()))
-	t.Option("missingkey=error")
-
-	tmpl, err := t.Funcs(context.CreateFuncMap()).Parse(s.Code)
+	script, err := context.Render(s.Code, s.GetName())
 	if err != nil {
-		log.Errorf("Error: %v", err)
-	}
-
-	var buff bytes.Buffer
-	if err := tmpl.Execute(&buff, context.Vars()); err != nil {
 		log.WithFields(log.Fields{"source": s.Code, "vars": context.Vars}).Errorf("script step failed templating")
 		return step.StepStringOutput{String: "scripterror"}, errors.Annotatef(err, "script step failed templating")
 	}
-
-	script := buff.String()
 
 	output, err := s.RunScript(script, depended, context)
 

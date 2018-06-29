@@ -2,21 +2,19 @@ package variant
 
 import (
 	"strings"
-	"text/template"
 
 	log "github.com/Sirupsen/logrus"
 
 	"fmt"
 	"github.com/juju/errors"
 
-	"github.com/mumoshu/variant/pkg/util/maputil"
-
 	"github.com/mumoshu/variant/pkg/api/step"
 )
 
 type TaskRunner struct {
 	*Task
-	Values map[string]interface{}
+	Values   map[string]interface{}
+	Template *TaskTemplate
 }
 
 type stepCaller struct {
@@ -31,6 +29,15 @@ func (t TaskRunner) AsStepCaller() step.Caller {
 	return stepCaller{
 		task: t.Task,
 	}
+}
+
+func NewTaskRunner(taskDef *Task, taskTemplate *TaskTemplate, vars map[string]interface{}) (TaskRunner, error) {
+	runner := TaskRunner{
+		Values:   vars,
+		Task:     taskDef,
+		Template: taskTemplate,
+	}
+	return runner, nil
 }
 
 func (t TaskRunner) GetKey() step.Key {
@@ -91,16 +98,30 @@ func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) 
 	ctx.Debugf("task %s started", t.Name.String())
 
 	var output step.StepStringOutput
+	var lastout step.StepStringOutput
 	var err error
 
-	context := NewStepExecutionContext(*project, *t)
+	context := NewStepExecutionContext(*project, *t, t.Template)
 
-	for _, step := range t.Steps {
-		output, err = step.Run(context)
+	for _, s := range t.Steps {
+		lastout, err = s.Run(context)
 
 		if err != nil {
 			return "", errors.Annotate(err, "Task#Run failed while running a script")
 		}
+
+		if !s.Silent() && len(lastout.String) > 0 {
+			var sep string
+			if output.String != "" && !strings.HasSuffix(output.String, "\n") {
+				sep = "\n"
+			}
+			output = step.StepStringOutput{
+				output.String + sep + lastout.String,
+			}
+		}
+	}
+	if output.String == "" {
+		output = lastout
 	}
 
 	if err != nil {
@@ -110,30 +131,4 @@ func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) 
 	ctx.Debugf("task %s finished", t.Name.String())
 
 	return output.String, err
-}
-
-func (f TaskRunner) CreateFuncMap() template.FuncMap {
-	get := func(key string) (interface{}, error) {
-
-		sep := "."
-		components := strings.Split(strings.Replace(key, "-", "_", -1), sep)
-		val, err := maputil.GetValueAtPath(f.Values, components)
-
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
-		return val, nil
-	}
-
-	escapeDoubleQuotes := func(str string) (interface{}, error) {
-		val := strings.Replace(str, "\"", "\\\"", -1)
-		return val, nil
-	}
-
-	fns := template.FuncMap{
-		"get":                get,
-		"escapeDoubleQuotes": escapeDoubleQuotes,
-	}
-
-	return fns
 }

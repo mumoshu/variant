@@ -1,6 +1,9 @@
 package variant
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 type InputConfig struct {
 	Name          string                 `yaml:"name,omitempty"`
@@ -35,6 +38,22 @@ func (c *InputConfig) DefaultAsInt() int {
 		v = getOrDefault(c.Default, reflect.Int, 0).(int)
 	}
 	return v
+}
+
+func (c *InputConfig) DefaultAsArray() ([]interface{}, error) {
+	v, ok := getOrDefault(c.Default, reflect.Slice, []interface{}{}).([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("default value is not a slice: %v", c.Default)
+	}
+	return v, nil
+}
+
+func (c *InputConfig) DefaultAsObject() (map[string]interface{}, error) {
+	v, ok := getOrDefault(c.Default, reflect.Map, map[string]interface{}{}).(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("default value is not a map: %v", c.Default)
+	}
+	return v, nil
 }
 
 func (c *InputConfig) TypeName() string {

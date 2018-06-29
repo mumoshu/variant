@@ -11,6 +11,7 @@ import (
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/spf13/viper"
 
+	"encoding/json"
 	"github.com/mumoshu/variant/pkg/api/task"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/xeipuuv/gojsonschema"
@@ -55,12 +56,12 @@ func (p Application) UpdateLoggingConfiguration() {
 	}
 }
 
-func (p Application) RunTaskForKeyString(keyStr string, args []string, provided task.Arguments, caller ...*Task) (string, error) {
+func (p Application) RunTaskForKeyString(keyStr string, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (string, error) {
 	taskKey := p.TaskNamer.FromString(fmt.Sprintf("%s.%s", p.Name, keyStr))
-	return p.RunTask(taskKey, args, provided, caller...)
+	return p.RunTask(taskKey, args, arguments, scope, caller...)
 }
 
-func (p Application) RunTask(taskName TaskName, args []string, providedInputs task.Arguments, caller ...*Task) (string, error) {
+func (p Application) RunTask(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
@@ -92,7 +93,7 @@ func (p Application) RunTask(taskName TaskName, args []string, providedInputs ta
 	vars["env"] = p.Env
 	vars["cmd"] = p.CommandRelativePath
 
-	inputs, err := p.InheritedInputValuesForTaskKey(taskName, args, providedInputs, caller...)
+	inputs, err := p.InheritedInputValuesForTaskKey(taskName, args, arguments, scope, caller...)
 
 	if err != nil {
 		return "", errors.Annotatef(err, "app failed running task %s", taskName.ShortString())
@@ -100,11 +101,6 @@ func (p Application) RunTask(taskName TaskName, args []string, providedInputs ta
 
 	for k, v := range inputs {
 		vars[k] = v
-	}
-
-	task := &TaskRunner{
-		Values: vars,
-		Task:   taskDef,
 	}
 
 	kv := maputil.Flatten(vars)
@@ -128,7 +124,13 @@ func (p Application) RunTask(taskName TaskName, args []string, providedInputs ta
 
 	ctx.WithField("variables", kv).Debugf("app bound variables for task %s", taskName.ShortString())
 
-	output, error := task.Run(&p, caller...)
+	taskTemplate := NewTaskTemplate(taskDef, vars)
+	taskRunner, err := NewTaskRunner(taskDef, taskTemplate, vars)
+	if err != nil {
+		return "", errors.Annotatef(err, "failed to initialize task runner")
+	}
+
+	output, error := taskRunner.Run(&p, caller...)
 
 	ctx.Debugf("app received output from task %s: %s", taskName.ShortString(), output)
 
@@ -141,11 +143,11 @@ func (p Application) RunTask(taskName TaskName, args []string, providedInputs ta
 	return output, error
 }
 
-func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []string, provided task.Arguments, caller ...*Task) (map[string]interface{}, error) {
+func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (map[string]interface{}, error) {
 	result := map[string]interface{}{}
 
 	// TODO make this parents-first instead of children-first?
-	direct, err := p.DirectInputValuesForTaskKey(taskName, args, provided, caller...)
+	direct, err := p.DirectInputValuesForTaskKey(taskName, args, arguments, scope, caller...)
 
 	if err != nil {
 		return nil, errors.Annotatef(err, "One or more inputs for task %s failed", taskName.ShortString())
@@ -158,7 +160,7 @@ func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []st
 	parentKey, err := taskName.Parent()
 
 	if err == nil {
-		inherited, err := p.InheritedInputValuesForTaskKey(parentKey, []string{}, provided, caller...)
+		inherited, err := p.InheritedInputValuesForTaskKey(parentKey, []string{}, arguments, map[string]interface{}{}, caller...)
 
 		if err != nil {
 			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", taskName.ShortString())
@@ -230,7 +232,7 @@ func (p Application) GetValueForConfigKey(k string) interface{} {
 	}
 }
 
-func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []string, arguments task.Arguments, caller ...*Task) (map[string]interface{}, error) {
+func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (map[string]interface{}, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
@@ -258,100 +260,133 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 	for _, input := range currentTask.ResolvedInputs {
 		ctx.Debugf("app sees task depends on input %s", input.ShortName())
 
-		var positional interface{}
-		if i := input.ArgumentIndex; i != nil && len(args) >= *i+1 {
-			ctx.Debugf("app found positional argument: args[%d]=%s", input.ArgumentIndex, args[*i])
-			positional = args[*i]
-		}
-
+		var tmplValue interface{}
 		var value interface{}
 
-		if v, err := arguments.Get(input.Name); err == nil {
-			value = v
+		if i := input.ArgumentIndex; i != nil && len(args) >= *i+1 {
+			ctx.Debugf("app found positional argument: args[%d]=%s", input.ArgumentIndex, args[*i])
+			tmplValue = args[*i]
 		}
 
-		if value == nil && baseTaskKey != "" {
-			value = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseTaskKey, input.ShortName()))
+		if tmplValue == nil {
+			if v, err := arguments.Get(input.Name); err == nil {
+				tmplValue = v
+			}
 		}
 
-		if value == nil && strings.LastIndex(input.ShortName(), taskName.ShortString()) == -1 {
-			value = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", taskName.ShortString(), input.ShortName()))
+		if tmplValue == nil && baseTaskKey != "" {
+			tmplValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseTaskKey, input.ShortName()))
 		}
 
-		if value == nil {
-			value = p.GetValueForConfigKey(input.ShortName())
+		if tmplValue == nil && strings.LastIndex(input.ShortName(), taskName.ShortString()) == -1 {
+			tmplValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", taskName.ShortString(), input.ShortName()))
 		}
-		log.Debugf("value=%v", value)
-		if value != nil {
-			log.Debugf("converting type of %v", value)
-			switch input.TypeName() {
-			case "string":
-				log.Debugf("string=%v", value)
-				value = value
-			case "integer":
-				log.Debugf("integer=%v", value)
-				s := value.(string)
-				value, err = strconv.Atoi(s)
-				if err != nil {
-					return nil, errors.Annotatef(err, "%v can't be casted to integer", s)
-				}
-			case "boolean":
-				log.Debugf("boolean=%v", value)
-				s := value.(string)
-				switch s {
-				case "true":
-					value = true
-				case "false":
-					value = false
+
+		if tmplValue == nil {
+			tmplValue = p.GetValueForConfigKey(input.ShortName())
+		}
+
+		if tmplValue == nil {
+			if input.Default != nil {
+				switch input.TypeName() {
+				case "string":
+					value = input.DefaultAsString()
+				case "integer":
+					value = input.DefaultAsInt()
+				case "boolean":
+					value = input.DefaultAsBool()
+				case "array":
+					v, err := input.DefaultAsArray()
+					if err != nil {
+						return nil, errors.Annotatef(err, "failed to parse default value as array: %v", input.Default)
+					}
+					value = v
+				case "object":
+					v, err := input.DefaultAsObject()
+					if err != nil {
+						return nil, errors.Annotatef(err, "failed to parse default value as map: %v", input.Default)
+					}
+					value = v
 				default:
-					return nil, fmt.Errorf("%v can't be parsed as boolean", s)
+					return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", input.TypeName())
 				}
-			default:
-				log.Debugf("foobar")
-				return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", input.TypeName())
+			} else if input.Name == "env" {
+				value = ""
 			}
-			log.Debugf("value after type conversion=%v", value)
-		}
-
-		if value == nil && input.Default != nil {
-			switch input.TypeName() {
-			case "string":
-				value = input.DefaultAsString()
-			case "integer":
-				value = input.DefaultAsInt()
-			case "boolean":
-				value = input.DefaultAsBool()
-			default:
-				return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", input.TypeName())
-			}
-		}
-
-		if value == nil && input.Name == "env" {
-			value = ""
 		}
 
 		pathComponents := strings.Split(input.Name, ".")
 
-		if positional != nil {
-			maputil.SetValueAtPath(values, pathComponents, positional)
-		} else if value == nil {
-			var output interface{}
-			var err error
-			if output, err = maputil.GetValueAtPath(p.CachedTaskOutputs, pathComponents); output == nil {
-				output, err = p.RunTask(p.TaskNamer.FromResolvedInput(input), []string{}, task.NewArguments(), currentTask)
-				if err != nil {
-					return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
+		if value == nil {
+			// Missed all the value sources(default, args, params, options)
+			if tmplValue == nil {
+				var output interface{}
+				var err error
+				if output, err = maputil.GetValueAtPath(p.CachedTaskOutputs, pathComponents); output == nil {
+					tmplValue, err = p.RunTask(p.TaskNamer.FromResolvedInput(input), []string{}, task.NewArguments(), map[string]interface{}{}, currentTask)
+					if err != nil {
+						return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
+					}
+					maputil.SetValueAtPath(p.CachedTaskOutputs, pathComponents, tmplValue)
 				}
-				maputil.SetValueAtPath(p.CachedTaskOutputs, pathComponents, output)
+				if err != nil {
+					return nil, errors.Trace(err)
+				}
 			}
-			if err != nil {
-				return nil, errors.Trace(err)
+			// Now that the tmplValue exists, render add type it
+			log.Debugf("tmplValue=%v", tmplValue)
+			if tmplValue != nil {
+				var renderedValue string
+				{
+					expr := tmplValue.(string)
+					taskTemplate := NewTaskTemplate(currentTask, scope)
+					log.Debugf("rendering %s", expr)
+					r, err := taskTemplate.Render(expr, input.Name)
+					if err != nil {
+						return nil, errors.Annotate(err, "failed to render task template")
+					}
+					renderedValue = r
+				}
+
+				log.Debugf("converting type of %v", renderedValue)
+				switch input.TypeName() {
+				case "string":
+					log.Debugf("string=%v", renderedValue)
+					value = renderedValue
+				case "integer":
+					log.Debugf("integer=%v", renderedValue)
+					value, err = strconv.Atoi(renderedValue)
+					if err != nil {
+						return nil, errors.Annotatef(err, "%v can't be casted to integer", renderedValue)
+					}
+				case "boolean":
+					log.Debugf("boolean=%v", renderedValue)
+					switch renderedValue {
+					case "true":
+						value = true
+					case "false":
+						value = false
+					default:
+						return nil, fmt.Errorf("%v can't be parsed as boolean", renderedValue)
+					}
+				case "array", "object":
+					log.Debugf("converting this to either array or object=%v", tmplValue)
+					var dst interface{}
+					if err := json.Unmarshal([]byte(renderedValue), &dst); err != nil {
+						return nil, errors.Annotatef(err, "failed converting: failed to parse %s as json", renderedValue)
+					}
+					value = dst
+				default:
+					log.Debugf("foobar")
+					return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", input.TypeName())
+				}
+				log.Debugf("value after type conversion=%v", value)
+			} else {
+				// the dependent task succeeded with no output
 			}
-			maputil.SetValueAtPath(values, pathComponents, output)
-		} else {
-			maputil.SetValueAtPath(values, pathComponents, value)
 		}
 
+		maputil.SetValueAtPath(values, pathComponents, value)
 	}
 
 	ctx.WithField("values", values).Debugf("app finished collecting inputs")
@@ -367,10 +402,11 @@ func jsonschemaFromInputs(inputs []*InputConfig) (*gojsonschema.Schema, error) {
 	required := []string{}
 	props := map[string]map[string]interface{}{}
 	for _, input := range inputs {
-		props[input.Name] = input.JSONSchema()
+		name := strings.Replace(input.Name, "-", "_", -1)
+		props[name] = input.JSONSchema()
 
 		if input.Required() {
-			required = append(required, input.Name)
+			required = append(required, name)
 		}
 	}
 	goschema := map[string]interface{}{

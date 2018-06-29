@@ -16,6 +16,7 @@ type StepDef interface {
 	Raw() map[string]interface{}
 	Get(key string) interface{}
 	GetStringMapOrEmpty(key string) map[string]interface{}
+	Silent() bool
 }
 
 func (c stepDefImpl) GetName() string {
@@ -54,6 +55,14 @@ func (c stepDefImpl) GetStringMapOrEmpty(key string) map[string]interface{} {
 
 		return result
 	}
+}
+
+func (c stepDefImpl) Silent() bool {
+	silent, ok := c.raw["silent"].(bool)
+	if !ok {
+		silent = false
+	}
+	return silent
 }
 
 func NewStepConfig(raw map[string]interface{}) StepDef {

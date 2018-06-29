@@ -2,7 +2,6 @@ package step
 
 import (
 	"github.com/mumoshu/variant/pkg/api/task"
-	"text/template"
 )
 
 type ExecutionContext interface {
@@ -10,10 +9,9 @@ type ExecutionContext interface {
 	Caller() []Caller
 	Key() Key
 	Vars() map[string]interface{}
-	CreateFuncMap() template.FuncMap
-	ProjectName() string
 	Autoenv() bool
 	Autodir() bool
 	Interactive() bool
-	RunAnotherTask(key string, provided task.Arguments) (string, error)
+	Render(expr string, name string) (string, error)
+	RunAnotherTask(key string, arguments task.Arguments, scope map[string]interface{}) (string, error)
 }

@@ -25,8 +25,9 @@ func (l OrStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 	}
 
 	result := OrStep{
-		Name:  config.GetName(),
-		Steps: []step.Step{},
+		Name:   config.GetName(),
+		Steps:  []step.Step{},
+		silent: config.Silent(),
 	}
 
 	for i, s := range steps {
@@ -61,8 +62,9 @@ func NewOrStepLoader() OrStepLoader {
 }
 
 type OrStep struct {
-	Name  string
-	Steps []step.Step
+	Name   string
+	Steps  []step.Step
+	silent bool
 }
 
 func (s OrStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
@@ -81,4 +83,8 @@ func (s OrStep) Run(context step.ExecutionContext) (step.StepStringOutput, error
 
 func (s OrStep) GetName() string {
 	return s.Name
+}
+
+func (s OrStep) Silent() bool {
+	return s.silent
 }

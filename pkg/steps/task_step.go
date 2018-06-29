@@ -16,9 +16,10 @@ func (l TaskStepLoader) LoadStep(stepConfig step.StepDef, context step.LoadingCo
 		}
 
 		return TaskStep{
-			Name:           stepConfig.GetName(),
-			TaskKeyString:  taskKey,
-			ProvidedInputs: inputs,
+			Name:          stepConfig.GetName(),
+			TaskKeyString: taskKey,
+			Arguments:     inputs,
+			silent:        stepConfig.Silent(),
 		}, nil
 	}
 
@@ -30,16 +31,21 @@ func NewTaskStepLoader() TaskStepLoader {
 }
 
 type TaskStep struct {
-	Name           string
-	TaskKeyString  string
-	ProvidedInputs task.Arguments
+	Name          string
+	TaskKeyString string
+	Arguments     task.Arguments
+	silent        bool
 }
 
 func (s TaskStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
-	output, err := context.RunAnotherTask(s.TaskKeyString, s.ProvidedInputs)
+	output, err := context.RunAnotherTask(s.TaskKeyString, s.Arguments, context.Vars())
 	return step.StepStringOutput{String: output}, err
 }
 
 func (s TaskStep) GetName() string {
 	return s.Name
+}
+
+func (s TaskStep) Silent() bool {
+	return s.silent
 }

@@ -1,0 +1,39 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    steps:
+    - task: run
+  changed-files:
+    script: |
+      (
+          echo foo/foo1.txt
+          echo foo/foo2.txt
+          echo bar/bar1.txt
+          echo bar/bar2.txt
+      ) | jq -Rs 'split("\n") | [.[] | select(. != "")]'
+  run:
+    options:
+    - name: changed-files
+      required: true
+      type: array
+    steps:
+    - task: filter-and-print
+      arguments:
+        prefix: foo
+        items: '{{ get "changed-files" }}'
+    - task: filter-and-print
+      arguments:
+        prefix: bar
+        items: '{{ get "changed-files" }}'
+  filter-and-print:
+    options:
+    - name: prefix
+      type: string
+      required: true
+    - name: items
+      type: array
+      required: true
+    steps:
+    - script: |
+        echo '{{ get "items" }}' | jq -r .[] | grep {{ get "prefix" }} | xargs -I{} -L1 echo "{{ get "prefix" }}: {}"

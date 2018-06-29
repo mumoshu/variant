@@ -37,9 +37,10 @@ func (l IfStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 	}
 
 	result := IfStep{
-		Name: config.GetName(),
-		If:   []step.Step{},
-		Then: []step.Step{},
+		Name:   config.GetName(),
+		If:     []step.Step{},
+		Then:   []step.Step{},
+		silent: config.Silent(),
 	}
 
 	ifInput, ifErr := readSteps(ifArray, context)
@@ -101,9 +102,10 @@ func NewIfStepLoader() IfStepLoader {
 }
 
 type IfStep struct {
-	Name string
-	If   []step.Step
-	Then []step.Step
+	Name   string
+	If     []step.Step
+	Then   []step.Step
+	silent bool
 }
 
 func run(steps []step.Step, context step.ExecutionContext) (step.StepStringOutput, error) {
@@ -139,4 +141,8 @@ func (s IfStep) Run(context step.ExecutionContext) (step.StepStringOutput, error
 
 func (s IfStep) GetName() string {
 	return s.Name
+}
+
+func (s IfStep) Silent() bool {
+	return s.silent
 }

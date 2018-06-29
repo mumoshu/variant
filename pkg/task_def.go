@@ -281,6 +281,7 @@ func readStepsFromStepDefs(script string, stepDefs []map[interface{}]interface{}
 		s, err := LoadStep(step.NewStepConfig(map[string]interface{}{
 			"name":   "script",
 			"script": script,
+			"silent": false,
 		}))
 
 		if err != nil {
