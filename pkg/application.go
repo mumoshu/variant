@@ -72,7 +72,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 
 	ctx.Debugf("app started task %s", taskName.ShortString())
 
-	provided := p.GetValueForConfigKey(taskName.ShortString())
+	provided := p.GetTmplOrTypedValueForConfigKey(taskName.ShortString(), "string")
 
 	if provided != nil {
 		p := fmt.Sprintf("%v", provided)
@@ -174,19 +174,29 @@ func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []st
 
 type AnyMap map[string]interface{}
 
-func (p Application) GetValueForConfigKey(k string) interface{} {
+func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) interface{} {
 	ctx := log.WithFields(log.Fields{"key": k})
 
 	lastIndex := strings.LastIndex(k, ".")
 
-	valueFromFlag := viper.Get(fmt.Sprintf("flags.%s", k))
-	if valueFromFlag != nil {
-		if str, ok := valueFromFlag.(string); ok && str == "" {
-			return nil
+	ctx.Debugf("fetching %s for %s", k, tpe)
+
+	flagKey := fmt.Sprintf("flags.%s", k)
+	ctx.Debugf("fetching %s", flagKey)
+	valueFromFlag := viper.Get(flagKey)
+	if valueFromFlag != nil && valueFromFlag != "" {
+		// From flags
+		if s, ok := valueFromFlag.(string); ok {
+			return s
 		}
-		ctx.Debugf("GetValueForConfigKey(%s): %v", k, valueFromFlag)
-		return valueFromFlag
+		// From configs
+		if any, ok := ensureType(valueFromFlag, tpe); ok {
+			return any
+		}
+		ctx.Debugf("found %v, but its type was %s(expected %s)", valueFromFlag, reflect.TypeOf(valueFromFlag), tpe)
 	}
+
+	ctx.Debugf("index: %d", lastIndex)
 
 	if lastIndex != -1 {
 		a := []rune(k)
@@ -219,17 +229,52 @@ func (p Application) GetValueForConfigKey(k string) interface{} {
 	} else {
 		raw := viper.Get(k)
 		ctx.Debugf("app fetched raw value for key %s: %v", k, raw)
-		ctx.Debugf("type of value fetched: %v", reflect.TypeOf(raw))
+		ctx.Debugf("type of value fetched: expected %s, got %v", tpe, reflect.TypeOf(raw))
 		if raw == nil {
 			return nil
 		}
-		switch raw.(type) {
-		case string, int, int64, bool:
-			return raw
-		default:
-			panic(fmt.Sprintf("unexpected type of value fetched: %v", reflect.TypeOf(raw)))
+
+		// From flags
+		if s, ok := raw.(string); ok {
+			return s
 		}
+
+		// From configs
+		v, ok := ensureType(raw, tpe)
+		if ok {
+			return v
+		}
+
+		ctx.Debugf("ignoring: unexpected type of value fetched: expected %s, but got %v", tpe, reflect.TypeOf(raw))
+		return nil
 	}
+}
+
+func ensureType(raw interface{}, tpe string) (interface{}, bool) {
+	if tpe == "string" {
+		if _, ok := raw.(string); ok {
+			return raw, true
+		}
+		return nil, false
+	}
+
+	if tpe == "integer" {
+		switch raw.(type) {
+		case int, int64:
+			return raw, true
+		}
+		return nil, false
+	}
+
+	if tpe == "bool" {
+		switch raw.(type) {
+		case bool:
+			return raw, true
+		}
+		return nil, false
+	}
+
+	return nil, false
 }
 
 func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (map[string]interface{}, error) {
@@ -260,33 +305,33 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 	for _, input := range currentTask.ResolvedInputs {
 		ctx.Debugf("app sees task depends on input %s", input.ShortName())
 
-		var tmplValue interface{}
+		var tmplOrStaticVal interface{}
 		var value interface{}
 
 		if i := input.ArgumentIndex; i != nil && len(args) >= *i+1 {
 			ctx.Debugf("app found positional argument: args[%d]=%s", input.ArgumentIndex, args[*i])
-			tmplValue = args[*i]
+			tmplOrStaticVal = args[*i]
 		}
 
-		if tmplValue == nil {
+		if tmplOrStaticVal == nil {
 			if v, err := arguments.Get(input.Name); err == nil {
-				tmplValue = v
+				tmplOrStaticVal = v
 			}
 		}
 
-		if tmplValue == nil && baseTaskKey != "" {
-			tmplValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", baseTaskKey, input.ShortName()))
+		if tmplOrStaticVal == nil && baseTaskKey != "" {
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(fmt.Sprintf("%s.%s", baseTaskKey, input.ShortName()), input.TypeName())
 		}
 
-		if tmplValue == nil && strings.LastIndex(input.ShortName(), taskName.ShortString()) == -1 {
-			tmplValue = p.GetValueForConfigKey(fmt.Sprintf("%s.%s", taskName.ShortString(), input.ShortName()))
+		if tmplOrStaticVal == nil && strings.LastIndex(input.ShortName(), taskName.ShortString()) == -1 {
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(fmt.Sprintf("%s.%s", taskName.ShortString(), input.ShortName()), input.TypeName())
 		}
 
-		if tmplValue == nil {
-			tmplValue = p.GetValueForConfigKey(input.ShortName())
+		if tmplOrStaticVal == nil {
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(input.ShortName(), input.TypeName())
 		}
 
-		if tmplValue == nil {
+		if tmplOrStaticVal == nil {
 			if input.Default != nil {
 				switch input.TypeName() {
 				case "string":
@@ -319,68 +364,44 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 		if value == nil {
 			// Missed all the value sources(default, args, params, options)
-			if tmplValue == nil {
+			if tmplOrStaticVal == nil {
 				var output interface{}
 				var err error
 				if output, err = maputil.GetValueAtPath(p.CachedTaskOutputs, pathComponents); output == nil {
-					tmplValue, err = p.RunTask(p.TaskNamer.FromResolvedInput(input), []string{}, task.NewArguments(), map[string]interface{}{}, currentTask)
+					tmplOrStaticVal, err = p.RunTask(p.TaskNamer.FromResolvedInput(input), []string{}, task.NewArguments(), map[string]interface{}{}, currentTask)
 					if err != nil {
 						return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
 					}
-					maputil.SetValueAtPath(p.CachedTaskOutputs, pathComponents, tmplValue)
+					maputil.SetValueAtPath(p.CachedTaskOutputs, pathComponents, tmplOrStaticVal)
 				}
 				if err != nil {
 					return nil, errors.Trace(err)
 				}
 			}
-			// Now that the tmplValue exists, render add type it
-			log.Debugf("tmplValue=%v", tmplValue)
-			if tmplValue != nil {
+			// Now that the tmplOrStaticVal exists, render add type it
+			log.Debugf("tmplOrStaticVal=%v", tmplOrStaticVal)
+			if tmplOrStaticVal != nil {
 				var renderedValue string
 				{
-					expr := tmplValue.(string)
-					taskTemplate := NewTaskTemplate(currentTask, scope)
-					log.Debugf("rendering %s", expr)
-					r, err := taskTemplate.Render(expr, input.Name)
-					if err != nil {
-						return nil, errors.Annotate(err, "failed to render task template")
+					expr, ok := tmplOrStaticVal.(string)
+					if ok {
+						taskTemplate := NewTaskTemplate(currentTask, scope)
+						log.Debugf("rendering %s", expr)
+						r, err := taskTemplate.Render(expr, input.Name)
+						if err != nil {
+							return nil, errors.Annotate(err, "failed to render task template")
+						}
+						renderedValue = r
+						log.Debugf("converting type of %v", renderedValue)
+						value, err = parseSupportedValueFromString(renderedValue, input.TypeName())
+						if err != nil {
+							return nil, err
+						}
+						log.Debugf("value after type conversion=%v", value)
+					} else {
+						value = tmplOrStaticVal
 					}
-					renderedValue = r
 				}
-
-				log.Debugf("converting type of %v", renderedValue)
-				switch input.TypeName() {
-				case "string":
-					log.Debugf("string=%v", renderedValue)
-					value = renderedValue
-				case "integer":
-					log.Debugf("integer=%v", renderedValue)
-					value, err = strconv.Atoi(renderedValue)
-					if err != nil {
-						return nil, errors.Annotatef(err, "%v can't be casted to integer", renderedValue)
-					}
-				case "boolean":
-					log.Debugf("boolean=%v", renderedValue)
-					switch renderedValue {
-					case "true":
-						value = true
-					case "false":
-						value = false
-					default:
-						return nil, fmt.Errorf("%v can't be parsed as boolean", renderedValue)
-					}
-				case "array", "object":
-					log.Debugf("converting this to either array or object=%v", tmplValue)
-					var dst interface{}
-					if err := json.Unmarshal([]byte(renderedValue), &dst); err != nil {
-						return nil, errors.Annotatef(err, "failed converting: failed to parse %s as json", renderedValue)
-					}
-					value = dst
-				default:
-					log.Debugf("foobar")
-					return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", input.TypeName())
-				}
-				log.Debugf("value after type conversion=%v", value)
 			} else {
 				// the dependent task succeeded with no output
 			}
@@ -392,6 +413,41 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 	ctx.WithField("values", values).Debugf("app finished collecting inputs")
 
 	return values, nil
+}
+
+func parseSupportedValueFromString(renderedValue string, typeName string) (interface{}, error) {
+	switch typeName {
+	case "string":
+		log.Debugf("string=%v", renderedValue)
+		return renderedValue, nil
+	case "integer":
+		log.Debugf("integer=%v", renderedValue)
+		value, err := strconv.Atoi(renderedValue)
+		if err != nil {
+			return nil, errors.Annotatef(err, "%v can't be casted to integer", renderedValue)
+		}
+		return value, nil
+	case "boolean":
+		log.Debugf("boolean=%v", renderedValue)
+		switch renderedValue {
+		case "true":
+			return true, nil
+		case "false":
+			return false, nil
+		default:
+			return nil, fmt.Errorf("%v can't be parsed as boolean", renderedValue)
+		}
+	case "array", "object":
+		log.Debugf("converting this to either array or object=%v", renderedValue)
+		var dst interface{}
+		if err := json.Unmarshal([]byte(renderedValue), &dst); err != nil {
+			return nil, errors.Annotatef(err, "failed converting: failed to parse %s as json", renderedValue)
+		}
+		return dst, nil
+	default:
+		log.Debugf("foobar")
+		return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", typeName)
+	}
 }
 
 func (p *Application) Tasks() map[string]*Task {

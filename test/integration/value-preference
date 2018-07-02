@@ -1,0 +1,26 @@
+#!/usr/bin/env var
+
+tasks:
+  file:
+    parameters:
+    - name: foo
+      required: true
+      default: default_foo
+    script: |
+      echo file.foo={{ get "foo" }}
+
+  commandline:
+    parameters:
+    - name: foo
+      required: true
+      default: default_foo
+    script: |
+      echo commandline.foo={{ get "foo" }}
+
+  default:
+    parameters:
+    - name: foo
+      required: true
+      default: default_foo
+    script: |
+      echo default.foo={{ get "foo" }}

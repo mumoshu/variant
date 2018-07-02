@@ -104,5 +104,8 @@ smoke16: build
 smoke17: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./array-input test --logtostderr > out && cat out | tee /dev/stderr | ( grep "foo: foo/foo1.txt" out && grep "foo: foo/foo2.txt" && grep "bar: bar/bar1.txt" out && grep "bar: bar/bar2.txt" out) && echo smoke17 passed.
 
+smoke18: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./value-preference file --logtostderr > file.out && ./value-preference commandline --foo=commandline_foo --logtostderr > commandline.out && ./value-preference default --logtostderr > default.out && cat file.out commandline.out default.out | tee /dev/stderr | ( grep "file.foo=file_foo" file.out && grep "default.foo=default_foo" default.out && grep "commandline.foo=commandline_foo" commandline.out) && echo smoke18 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18}

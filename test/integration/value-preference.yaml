@@ -1,0 +1,4 @@
+file:
+  foo: file_foo
+commandline:
+  foo: file_foo
