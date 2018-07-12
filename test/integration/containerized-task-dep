@@ -1,0 +1,28 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    steps:
+    - task: report
+  unit:
+    # translated to `docker run alpine:3.7 bash -c "$script"`
+    runner:
+      image: "alpine:3.7"
+      command: sh
+      args: [-c]
+    script: |
+      echo FOO
+#      echo FOO > ./result
+#    outputs:
+#      artifacts:
+#      - name: result
+#        path: ./result
+  report:
+    options:
+    - name: unit
+      required: true
+      type: string
+#    artifacts:
+#    - name: unit.result
+    script: |
+      echo unit='{{ get "unit" }}'

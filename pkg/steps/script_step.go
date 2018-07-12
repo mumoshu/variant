@@ -15,20 +15,48 @@ import (
 
 type ScriptStepLoader struct{}
 
-func (l ScriptStepLoader) LoadStep(stepConfig step.StepDef, context step.LoadingContext) (step.Step, error) {
-	code, isStr := stepConfig.Get("script").(string)
+func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext) (step.Step, error) {
+	script, isStr := def.Script()
 
-	log.Debugf("step config: %v", stepConfig)
+	var runConf *runnerConfig
+	{
+		runner, ok := def.Get("runner").(map[string]interface{})
+		log.Debugf("runner: %+v", runner)
+		log.Debugf("def: %+v", def)
+		if ok {
+			args := []string{}
+			switch a := runner["args"].(type) {
+			case []interface{}:
+				for _, arg := range a {
+					args = append(args, arg.(string))
+				}
+			}
+			runConf = &runnerConfig{
+				Image:   runner["image"].(string),
+				Command: runner["command"].(string),
+				Args:    args,
+			}
+		} else {
+			log.Debugf("runner wasn't expected type of map: %+v", runner)
+		}
 
-	if isStr && code != "" {
-		return ScriptStep{
-			Name:   stepConfig.GetName(),
-			Code:   code,
-			silent: stepConfig.Silent(),
-		}, nil
 	}
 
-	return nil, fmt.Errorf("no script step found. script=%v, isStr=%v, config=%v", stepConfig.Get("script"), isStr, stepConfig)
+	log.Debugf("step config: %v", def)
+
+	if isStr && script != "" {
+		step := ScriptStep{
+			Name:   def.GetName(),
+			Code:   script,
+			silent: def.Silent(),
+		}
+		if runConf != nil {
+			step.runnerConfig = *runConf
+		}
+		return step, nil
+	}
+
+	return nil, fmt.Errorf("no script step found. script=%v, isStr=%v, config=%v", def.Get("script"), isStr, def)
 }
 
 func NewScriptStepLoader() ScriptStepLoader {
@@ -36,9 +64,39 @@ func NewScriptStepLoader() ScriptStepLoader {
 }
 
 type ScriptStep struct {
-	Name   string
-	Code   string
-	silent bool
+	Name         string
+	Code         string
+	silent       bool
+	runnerConfig runnerConfig
+}
+
+type runnerConfig struct {
+	Image   string
+	Command string
+	Args    []string
+}
+
+func (c runnerConfig) CommandLine(script string) (string, []string) {
+	var cmd string
+	if c.Command != "" {
+		cmd = c.Command
+	} else {
+		cmd = "sh"
+	}
+
+	var args []string
+	if c.Args != nil {
+		args = append([]string{}, c.Args...)
+		args = append(args, script)
+	} else {
+		args = []string{"-c", script}
+	}
+
+	if c.Image != "" {
+		return "docker", append([]string{"run", "--rm", "-i", c.Image, cmd}, args...)
+	} else {
+		return cmd, args
+	}
 }
 
 func (s ScriptStep) Silent() bool {
@@ -63,6 +121,11 @@ func (s ScriptStep) Run(context step.ExecutionContext) (step.StepStringOutput, e
 	return step.StepStringOutput{String: output}, err
 }
 
+type ShellScriptRunner struct {
+	Command string
+	Args    []string
+}
+
 func (t ScriptStep) RunScript(script string, depended bool, context step.ExecutionContext) (string, error) {
 	//commands := strings.Split(script, "\n")
 	commands := []string{script}
@@ -80,14 +143,13 @@ func (t ScriptStep) RunScript(script string, depended bool, context step.Executi
 }
 
 func (t ScriptStep) RunCommand(command string, depended bool, context step.ExecutionContext) (string, error) {
-	c := "sh"
-	args := []string{"-c", command}
+	cmdStr, args := t.runnerConfig.CommandLine(command)
 
-	ctx := log.WithFields(log.Fields{"cmd": append([]string{c}, args...)})
+	ctx := log.WithFields(log.Fields{"cmd": append([]string{cmdStr}, args...)})
 
 	ctx.Debug("script step started")
 
-	cmd := exec.Command(c, args...)
+	cmd := exec.Command(cmdStr, args...)
 
 	mergedEnv := map[string]string{}
 

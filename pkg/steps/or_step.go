@@ -46,7 +46,7 @@ func (l OrStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 			converted["name"] = fmt.Sprintf("or[%d]", i)
 		}
 
-		step, loadingErr := context.LoadStep(step.NewStepConfig(converted))
+		step, loadingErr := context.LoadStep(step.NewStepDef(converted))
 		if loadingErr != nil {
 			return nil, errors.Trace(loadingErr)
 		}

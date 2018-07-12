@@ -31,6 +31,7 @@ type TaskDefV1 struct {
 	Parameters  []*ParameterConfig            `yaml:"parameters,omitempty"`
 	Options     []*OptionConfig               `yaml:"options,omitempty"`
 	TaskDefs    []*TaskDef                    `yaml:"tasks,omitempty"`
+	Runner      map[string]interface{}        `yaml:"runner,omitempty"`
 	Script      string                        `yaml:"script,omitempty"`
 	StepDefs    []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
@@ -44,6 +45,7 @@ type TaskDefV2 struct {
 	Parameters  []*ParameterConfig            `yaml:"parameters,omitempty"`
 	Options     []*OptionConfig               `yaml:"options,omitempty"`
 	TaskDefs    map[string]*TaskDef           `yaml:"tasks,omitempty"`
+	Runner      map[string]interface{}        `yaml:"runner,omitempty"`
 	Script      string                        `yaml:"script,omitempty"`
 	StepDefs    []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
@@ -110,7 +112,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Autoenv = v1.Autoenv
 		t.Autodir = v1.Autodir
 		t.Interactive = v1.Interactive
-		steps, err := readStepsFromStepDefs(v1.Script, v1.StepDefs)
+		steps, err := readStepsFromStepDefs(v1.Script, v1.Runner, v1.StepDefs)
 		if err != nil {
 			return errors.Annotatef(err, "Error while reading v1 config")
 		}
@@ -167,7 +169,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				}
 			}
 			t.TaskDefs = TransformV2FlowConfigMapToArray(v2.TaskDefs)
-			steps, err := readStepsFromStepDefs(v2.Script, v2.StepDefs)
+			steps, err := readStepsFromStepDefs(v2.Script, v2.Runner, v2.StepDefs)
 			if err != nil {
 				return errors.Annotatef(err, "Error while reading v2 config")
 			}
@@ -270,7 +272,7 @@ func LoadStep(config step.StepDef) (step.Step, error) {
 	return nil, errors.Annotatef(lastError, "all loader failed to load step")
 }
 
-func readStepsFromStepDefs(script string, stepDefs []map[interface{}]interface{}) ([]step.Step, error) {
+func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDefs []map[interface{}]interface{}) ([]step.Step, error) {
 	result := []step.Step{}
 
 	if script != "" {
@@ -278,11 +280,15 @@ func readStepsFromStepDefs(script string, stepDefs []map[interface{}]interface{}
 			return nil, fmt.Errorf("both script and steps exist.")
 		}
 
-		s, err := LoadStep(step.NewStepConfig(map[string]interface{}{
+		raw := map[string]interface{}{
 			"name":   "script",
 			"script": script,
 			"silent": false,
-		}))
+		}
+		if runner != nil {
+			raw["runner"] = runner
+		}
+		s, err := LoadStep(step.NewStepDef(raw))
 
 		if err != nil {
 			log.Panicf("step failed to load: %v", err)
@@ -290,20 +296,20 @@ func readStepsFromStepDefs(script string, stepDefs []map[interface{}]interface{}
 
 		result = []step.Step{s}
 	} else {
-		for i, stepConfig := range stepDefs {
+		for i, stepDef := range stepDefs {
 			defaultName := fmt.Sprintf("step-%d", i+1)
 
-			if stepConfig["name"] == "" || stepConfig["name"] == nil {
-				stepConfig["name"] = defaultName
+			if stepDef["name"] == "" || stepDef["name"] == nil {
+				stepDef["name"] = defaultName
 			}
 
-			converted, castErr := maputil.CastKeysToStrings(stepConfig)
+			converted, castErr := maputil.CastKeysToStrings(stepDef)
 
 			if castErr != nil {
 				panic(castErr)
 			}
 
-			s, err := LoadStep(step.NewStepConfig(converted))
+			s, err := LoadStep(step.NewStepDef(converted))
 
 			if err != nil {
 				return nil, errors.Annotatef(err, "Error reading step[%d]")

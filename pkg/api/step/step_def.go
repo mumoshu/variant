@@ -7,19 +7,11 @@ import (
 	"reflect"
 )
 
-type stepDefImpl struct {
+type StepDef struct {
 	raw map[string]interface{}
 }
 
-type StepDef interface {
-	GetName() string
-	Raw() map[string]interface{}
-	Get(key string) interface{}
-	GetStringMapOrEmpty(key string) map[string]interface{}
-	Silent() bool
-}
-
-func (c stepDefImpl) GetName() string {
+func (c StepDef) GetName() string {
 	str, ok := c.raw["name"].(string)
 
 	if !ok {
@@ -29,15 +21,20 @@ func (c stepDefImpl) GetName() string {
 	return str
 }
 
-func (c stepDefImpl) Raw() map[string]interface{} {
+func (c StepDef) Script() (string, bool) {
+	r, ok := c.Get("script").(string)
+	return r, ok
+}
+
+func (c StepDef) Raw() map[string]interface{} {
 	return c.raw
 }
 
-func (c stepDefImpl) Get(key string) interface{} {
+func (c StepDef) Get(key string) interface{} {
 	return c.raw[key]
 }
 
-func (c stepDefImpl) GetStringMapOrEmpty(key string) map[string]interface{} {
+func (c StepDef) GetStringMapOrEmpty(key string) map[string]interface{} {
 	ctx := log.WithField("raw", c.raw[key]).WithField("key", key).WithField("type", reflect.TypeOf(c.raw[key]))
 
 	rawMap, expected := c.Get(key).(map[interface{}]interface{})
@@ -57,7 +54,7 @@ func (c stepDefImpl) GetStringMapOrEmpty(key string) map[string]interface{} {
 	}
 }
 
-func (c stepDefImpl) Silent() bool {
+func (c StepDef) Silent() bool {
 	silent, ok := c.raw["silent"].(bool)
 	if !ok {
 		silent = false
@@ -65,8 +62,8 @@ func (c stepDefImpl) Silent() bool {
 	return silent
 }
 
-func NewStepConfig(raw map[string]interface{}) StepDef {
-	return stepDefImpl{
+func NewStepDef(raw map[string]interface{}) StepDef {
+	return StepDef{
 		raw: raw,
 	}
 }
