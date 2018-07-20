@@ -1,0 +1,23 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    steps:
+    - task: report
+  unit:
+    # translated to `docker run --env-file ../../examples/codebuild/.env -v $HOME/.aws/credentials:/root/.aws/credentials mumoshu/variant/runner-codebuild:canary "$script"`
+    runner:
+      image: "mumoshu/variant-runner-codebuild:canary"
+      envfile: ../../examples/codebuild/.env
+      volumes:
+      # this is echo'ed to expand vars
+      - $HOME/.aws/credentials:/root/.aws/credentials
+    script: |
+      echo FOO
+  report:
+    options:
+    - name: unit
+      required: true
+      type: string
+    script: |
+      echo unit='{{ get "unit" }}'

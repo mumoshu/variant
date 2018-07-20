@@ -32,9 +32,21 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 				}
 			}
 			runConf = &runnerConfig{
-				Image:   runner["image"].(string),
-				Command: runner["command"].(string),
-				Args:    args,
+				Image: runner["image"].(string),
+				Args:  args,
+			}
+			if command, ok := runner["command"].(string); ok {
+				runConf.Command = command
+			}
+			if envfile, ok := runner["envfile"].(string); ok {
+				runConf.Envfile = envfile
+			}
+			if volumes, ok := runner["volumes"].([]interface{}); ok {
+				vols := make([]string, len(volumes))
+				for i, v := range volumes {
+					vols[i] = os.ExpandEnv(v.(string))
+				}
+				runConf.Volumes = vols
 			}
 		} else {
 			log.Debugf("runner wasn't expected type of map: %+v", runner)
@@ -74,28 +86,42 @@ type runnerConfig struct {
 	Image   string
 	Command string
 	Args    []string
+	Envfile string
+	Volumes []string
 }
 
 func (c runnerConfig) CommandLine(script string) (string, []string) {
 	var cmd string
 	if c.Command != "" {
 		cmd = c.Command
-	} else {
+	} else if c.Image == "" {
 		cmd = "sh"
 	}
 
-	var args []string
+	var cmdArgs []string
 	if c.Args != nil {
-		args = append([]string{}, c.Args...)
-		args = append(args, script)
+		cmdArgs = append([]string{}, c.Args...)
+		cmdArgs = append(cmdArgs, script)
 	} else {
-		args = []string{"-c", script}
+		cmdArgs = []string{"-c", script}
 	}
 
 	if c.Image != "" {
-		return "docker", append([]string{"run", "--rm", "-i", c.Image, cmd}, args...)
+		dockerArgs := []string{}
+		for _, v := range c.Volumes {
+			dockerArgs = append(dockerArgs, "-v", v)
+		}
+		if c.Envfile != "" {
+			dockerArgs = append(dockerArgs, "--env-file", c.Envfile)
+		}
+		var args []string
+		args = append(args, dockerArgs...)
+		args = append(args, c.Image)
+		args = append(args, cmd)
+		args = append(args, cmdArgs...)
+		return "docker", append([]string{"run", "--rm", "-i"}, args...)
 	} else {
-		return cmd, args
+		return cmd, cmdArgs
 	}
 }
 

@@ -110,5 +110,8 @@ smoke18: build
 smoke19: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./containerized-task-dep test --logtostderr > file.out && cat file.out | tee /dev/stderr | (grep "unit=FOO" file.out) && echo smoke19 passed.
 
+smoke20: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./codebuild test --logtostderr > file.out && cat file.out | tee /dev/stderr | (grep "unit=FOO" file.out) && echo smoke20 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20}
