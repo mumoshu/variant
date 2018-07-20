@@ -17,8 +17,13 @@ if [ -z "$GITHUB_TOKEN" ]; then
   exit 1
 fi
 
-go get github.com/golang/dep/cmd/dep
-go get github.com/aktau/github-release
+if ! which dep; then
+  go get github.com/golang/dep/cmd/dep
+fi
+
+if ! which github-release; then
+  go get github.com/aktau/github-release
+fi
 
 COMMIT=$(git rev-parse HEAD)
 TAG=$(git describe --exact-match --abbrev=0 --tags "${COMMIT}" 2> /dev/null || true)
