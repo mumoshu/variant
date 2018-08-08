@@ -1,0 +1,42 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    options:
+    - name: s3bucket
+      type: string
+      required: true
+    steps:
+    - task: report
+      arguments:
+        unit:
+          s3bucket: '{{ get "s3bucket" }}'
+  unit:
+    options:
+    - name: s3bucket
+      type: string
+      required: true
+    # translated to `docker run --env-file ../../examples/codebuild/.env -v $HOME/.aws/credentials:/root/.aws/credentials mumoshu/variant/runner-codebuild:canary "$script"`
+    runner:
+      image: "mumoshu/variant-runner-codebuild:canary"
+      envfile: ../../examples/codebuild/.env
+      volumes:
+      # this is echo'ed to expand vars
+      - $HOME/.aws/credentials:/root/.aws/credentials
+      artifacts:
+      - name: mybuildcontext
+        path: ./
+        via: 's3://{{ get "s3bucket" }}/variant/artifacts'
+      - name: artifacts
+        path: artifacts/
+        via: 's3://{{ get "s3bucket" }}/variant/artifacts'
+    script: |
+      ls -lah 1>&2
+      cat artifacts/testdata
+  report:
+    options:
+    - name: unit
+      required: true
+      type: string
+    script: |
+      echo unit='{{ get "unit" }}'

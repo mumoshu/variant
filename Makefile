@@ -17,7 +17,7 @@ install-local: /usr/local/bin/var
 /usr/local/bin/var: dist/$(VERSION)
 	cp dist/$(VERSION)/var /usr/local/bin/var
 
-gofmt:	
+format:
 	$(call GO_FMT)
 
 clean:
@@ -113,5 +113,9 @@ smoke19: build
 smoke20: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./codebuild test --logtostderr > file.out && cat file.out | tee /dev/stderr | (grep "unit=FOO" file.out) && echo smoke20 passed.
 
+smoke21: build
+	cd examples/codebuild; make build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./codebuild-s3 test --s3bucket $(VARIANT_ARTIFACTS_S3_BUCKET) --logtostderr > file.out && cat file.out | tee /dev/stderr | (grep "unit=TESTDATA" file.out) && echo smoke21 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21}

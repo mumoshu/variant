@@ -303,7 +303,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 	}
 
 	for _, input := range currentTask.ResolvedInputs {
-		ctx.Debugf("app sees task depends on input %s", input.ShortName())
+		ctx.Debugf("task %s depends on input %s", taskName, input.ShortName())
 
 		var tmplOrStaticVal interface{}
 		var value interface{}
@@ -315,6 +315,12 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 		if tmplOrStaticVal == nil {
 			if v, err := arguments.Get(input.Name); err == nil {
+				tmplOrStaticVal = v
+			}
+		}
+
+		if tmplOrStaticVal == nil && input.Name != input.ShortName() {
+			if v, err := arguments.Get(input.ShortName()); err == nil {
 				tmplOrStaticVal = v
 			}
 		}
@@ -368,7 +374,8 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 				var output interface{}
 				var err error
 				if output, err = maputil.GetValueAtPath(p.CachedTaskOutputs, pathComponents); output == nil {
-					tmplOrStaticVal, err = p.RunTask(p.TaskNamer.FromResolvedInput(input), []string{}, task.NewArguments(), map[string]interface{}{}, currentTask)
+					args := arguments.GetSubOrEmpty(input.Name)
+					tmplOrStaticVal, err = p.RunTask(p.TaskNamer.FromResolvedInput(input), []string{}, args, map[string]interface{}{}, currentTask)
 					if err != nil {
 						return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
 					}

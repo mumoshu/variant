@@ -38,7 +38,13 @@ type TaskStep struct {
 }
 
 func (s TaskStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
-	output, err := context.RunAnotherTask(s.TaskKeyString, s.Arguments, context.Vars())
+	output, err := context.RunAnotherTask(s.TaskKeyString, s.Arguments.TransformStringValues(func(v string) string {
+		v2, err := context.Render(v, "argument")
+		if err != nil {
+			panic(err)
+		}
+		return v2
+	}), context.Vars())
 	return step.StepStringOutput{String: output}, err
 }
 

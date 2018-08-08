@@ -40,6 +40,7 @@ func GetStringAtPath(m map[string]interface{}, key string) (string, error) {
 	head := components[0]
 	rest := components[1:]
 	value, exists := m[head]
+	log.Debugf("fetching %s in %v", key, m)
 	if !exists {
 
 		log.Debugf("maptuil fetched %s: %v", key, m[key])
@@ -56,17 +57,23 @@ func GetStringAtPath(m map[string]interface{}, key string) (string, error) {
 			}
 		}
 
-		return "", fmt.Errorf("No value for %s in %+v", head, m)
+		return "", fmt.Errorf("no value for %s in %+v", head, m)
 	}
 
-	next, isMap := value.(map[string]interface{})
 	result, isStr := value.(string)
 
 	if !isStr {
-		if !isMap {
-			return "", fmt.Errorf("Not map or string: %s in %+v", head, m)
-		} else {
+		switch next := value.(type) {
+		case map[string]interface{}:
 			return GetStringAtPath(next, strings.Join(rest, sep))
+		case map[interface{}]interface{}:
+			converted, err := CastKeysToStrings(next)
+			if err != nil {
+				return "", err
+			}
+			return GetStringAtPath(converted, strings.Join(rest, sep))
+		default:
+			return "", fmt.Errorf("Not map or string: %s in %+v: type is %s", head, m, reflect.TypeOf(next))
 		}
 	}
 

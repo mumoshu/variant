@@ -10,7 +10,12 @@ import (
 	"strings"
 	"syscall"
 
+	"archive/tar"
+	"compress/gzip"
 	"github.com/mumoshu/variant/pkg/api/step"
+	"io"
+	"path/filepath"
+	"runtime"
 )
 
 type ScriptStepLoader struct{}
@@ -31,9 +36,31 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 					args = append(args, arg.(string))
 				}
 			}
+			artifacts := []Artifact{}
+			switch rawArts := runner["artifacts"].(type) {
+			case []interface{}:
+				for _, rawArt := range rawArts {
+					switch art := rawArt.(type) {
+					case map[interface{}]interface{}:
+						a := Artifact{
+							Name: art["name"].(string),
+							Path: art["path"].(string),
+							Via:  art["via"].(string),
+						}
+						artifacts = append(artifacts, a)
+					default:
+						panic(fmt.Errorf("unexpected type of artifact"))
+					}
+				}
+			case nil:
+
+			default:
+				panic(fmt.Errorf("unexpected type of artifacts"))
+			}
 			runConf = &runnerConfig{
-				Image: runner["image"].(string),
-				Args:  args,
+				Image:     runner["image"].(string),
+				Args:      args,
+				Artifacts: artifacts,
 			}
 			if command, ok := runner["command"].(string); ok {
 				runConf.Command = command
@@ -82,20 +109,40 @@ type ScriptStep struct {
 	runnerConfig runnerConfig
 }
 
-type runnerConfig struct {
-	Image   string
-	Command string
-	Args    []string
-	Envfile string
-	Volumes []string
+type Artifact struct {
+	Name string
+	Path string
+	Via  string
 }
 
-func (c runnerConfig) CommandLine(script string) (string, []string) {
+type runnerConfig struct {
+	Image     string
+	Command   string
+	Artifacts []Artifact
+	Args      []string
+	Envfile   string
+	Volumes   []string
+}
+
+func (c runnerConfig) commandNameAndArgsToRunScript(script string, context step.ExecutionContext) (string, []string) {
 	var cmd string
 	if c.Command != "" {
 		cmd = c.Command
 	} else if c.Image == "" {
 		cmd = "sh"
+	}
+
+	for _, a := range c.Artifacts {
+		s3Prefix, err := context.Render(a.Via, "runner.via")
+		if err != nil {
+			panic(err)
+		}
+		name := a.Name
+		setup := fmt.Sprintf(`echo downloading artifacts from %s/%s.tgz 1>&2
+aws s3 cp %s/%s.tgz %s.tgz 1>&2
+tar zxvf %s.tgz 1>&2
+`, s3Prefix, name, s3Prefix, name, name, name)
+		script = setup + script
 	}
 
 	var cmdArgs []string
@@ -142,40 +189,43 @@ func (s ScriptStep) Run(context step.ExecutionContext) (step.StepStringOutput, e
 		return step.StepStringOutput{String: "scripterror"}, errors.Annotatef(err, "script step failed templating")
 	}
 
-	output, err := s.RunScript(script, depended, context)
+	output, err := s.runScriptWithArtifacts(script, depended, context)
 
 	return step.StepStringOutput{String: output}, err
 }
 
-type ShellScriptRunner struct {
-	Command string
-	Args    []string
-}
-
-func (t ScriptStep) RunScript(script string, depended bool, context step.ExecutionContext) (string, error) {
-	//commands := strings.Split(script, "\n")
-	commands := []string{script}
-	var lastOutput string
-	for _, command := range commands {
-		if command != "" {
-			output, err := t.RunCommand(command, depended, context)
-			if err != nil {
-				return output, err
-			}
-			lastOutput = output
+func (t ScriptStep) runScriptWithArtifacts(script string, depended bool, context step.ExecutionContext) (string, error) {
+	for _, a := range t.runnerConfig.Artifacts {
+		err := createTarFromGlob(fmt.Sprintf("%s.tgz", a.Name), a.Path)
+		if err != nil {
+			return "", err
+		}
+		via, err := context.Render(a.Via, "runner.via")
+		if err != nil {
+			return "", err
+		}
+		setup := fmt.Sprintf(`aws s3 cp %s.tgz %s/%s.tgz 1>&2`, a.Name, via, a.Name)
+		name, args := runnerConfig{}.commandNameAndArgsToRunScript(setup, context)
+		out, err := t.runCommand(name, args, depended, context)
+		if err != nil {
+			return out, err
 		}
 	}
-	return lastOutput, nil
+
+	name, args := t.runnerConfig.commandNameAndArgsToRunScript(script, context)
+	output, err := t.runCommand(name, args, depended, context)
+	if err != nil {
+		return output, err
+	}
+	return output, nil
 }
 
-func (t ScriptStep) RunCommand(command string, depended bool, context step.ExecutionContext) (string, error) {
-	cmdStr, args := t.runnerConfig.CommandLine(command)
-
-	ctx := log.WithFields(log.Fields{"cmd": append([]string{cmdStr}, args...)})
+func (t ScriptStep) runCommand(name string, args []string, depended bool, context step.ExecutionContext) (string, error) {
+	ctx := log.WithFields(log.Fields{"cmd": append([]string{name}, args...)})
 
 	ctx.Debug("script step started")
 
-	cmd := exec.Command(cmdStr, args...)
+	cmd := exec.Command(name, args...)
 
 	mergedEnv := map[string]string{}
 
@@ -230,8 +280,6 @@ func (t ScriptStep) RunCommand(command string, depended bool, context step.Execu
 			os.Exit(1)
 		}
 	} else {
-		// Pipes
-
 		cmdReader, err := cmd.StdoutPipe()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error creating StdoutPipe for Cmd", err)
@@ -267,11 +315,16 @@ func (t ScriptStep) RunCommand(command string, depended bool, context step.Execu
 			}()
 			for scanner.Scan() {
 				text := scanner.Text()
-				channels.Stdout <- text
-				if output != "" {
-					output += "\n"
+				errOutPrefix := "variant.stderr: "
+				if strings.HasPrefix(text, errOutPrefix) {
+					channels.Stderr <- strings.SplitN(text, errOutPrefix, 2)[1]
+				} else {
+					channels.Stdout <- text
+					if output != "" {
+						output += "\n"
+					}
+					output += text
 				}
-				output += text
 			}
 		}()
 
@@ -336,4 +389,75 @@ func (t ScriptStep) RunCommand(command string, depended bool, context step.Execu
 	}
 
 	return strings.Trim(output, "\n "), nil
+}
+
+func createTarFromGlob(filename string, pattern string) error {
+	paths, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+	return createTarFromFiles(filename, paths)
+}
+
+func createTarFromFiles(filename string, paths []string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	var fileWriter io.WriteCloser = file
+	if strings.HasSuffix(filename, ".gz") || strings.HasSuffix(filename, ".tgz") {
+		fileWriter = gzip.NewWriter(file)
+		defer fileWriter.Close()
+	}
+	writer := tar.NewWriter(fileWriter)
+	defer writer.Close()
+	for _, p := range paths {
+		if err := filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+			if !info.IsDir() {
+				if err := writeFileToTar(writer, path); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeFileToTar(writer *tar.Writer, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	stat, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	header := &tar.Header{
+		Name:    sanitizedName(filename),
+		Mode:    int64(stat.Mode()),
+		Uid:     os.Getuid(),
+		Gid:     os.Getgid(),
+		Size:    stat.Size(),
+		ModTime: stat.ModTime(),
+	}
+	if err = writer.WriteHeader(header); err != nil {
+		return err
+	}
+	_, err = io.Copy(writer, file)
+	return err
+}
+
+func sanitizedName(filename string) string {
+	if len(filename) > 1 && filename[1] == ':' &&
+		runtime.GOOS == "windows" {
+		filename = filename[2:]
+	}
+	filename = filepath.ToSlash(filename)
+	filename = strings.TrimLeft(filename, "/.")
+	return strings.Replace(filename, "../", "", -1)
 }
