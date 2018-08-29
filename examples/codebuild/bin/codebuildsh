@@ -139,6 +139,8 @@ env:
 phases:
   build:
     commands:
+    - apk update
+    - apk add coreutils bash --no-cache
     - stdbuf -i 0 -o 0 -e 0 ./build.sh
 EOF
 
