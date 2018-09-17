@@ -62,6 +62,9 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 				Args:      args,
 				Artifacts: artifacts,
 			}
+			if entrypoint, ok := runner["entrypoint"].(string); ok {
+				runConf.Entrypoint = entrypoint
+			}
 			if command, ok := runner["command"].(string); ok {
 				runConf.Command = command
 			}
@@ -116,12 +119,13 @@ type Artifact struct {
 }
 
 type runnerConfig struct {
-	Image     string
-	Command   string
-	Artifacts []Artifact
-	Args      []string
-	Envfile   string
-	Volumes   []string
+	Image      string
+	Command    string
+	Entrypoint string
+	Artifacts  []Artifact
+	Args       []string
+	Envfile    string
+	Volumes    []string
 }
 
 func (c runnerConfig) commandNameAndArgsToRunScript(script string, context step.ExecutionContext) (string, []string) {
@@ -160,12 +164,25 @@ tar zxvf %s.tgz 1>&2
 		}
 		if c.Envfile != "" {
 			dockerArgs = append(dockerArgs, "--env-file", c.Envfile)
+		} else if context.Autoenv() {
+			autoEnv, err := context.GenerateAutoenv()
+			if err != nil {
+				log.Errorf("script step failed to generate autoenv: %v", err)
+			}
+			for name, value := range autoEnv {
+				if value == "" {
+					continue
+				}
+				dockerArgs = append(dockerArgs, "--env", fmt.Sprintf("%s=%s", name, value))
+			}
 		}
 		var args []string
 		args = append(args, dockerArgs...)
+		args = append(args, "--entrypoint", c.Entrypoint)
 		args = append(args, c.Image)
 		args = append(args, cmd)
 		args = append(args, cmdArgs...)
+
 		return "docker", append([]string{"run", "--rm", "-i"}, args...)
 	} else {
 		return cmd, cmdArgs
