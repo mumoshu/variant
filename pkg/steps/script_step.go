@@ -63,7 +63,7 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 				Artifacts: artifacts,
 			}
 			if entrypoint, ok := runner["entrypoint"].(string); ok {
-				runConf.Entrypoint = entrypoint
+				runConf.Entrypoint = &entrypoint
 			}
 			if command, ok := runner["command"].(string); ok {
 				runConf.Command = command
@@ -121,7 +121,7 @@ type Artifact struct {
 type runnerConfig struct {
 	Image      string
 	Command    string
-	Entrypoint string
+	Entrypoint *string
 	Artifacts  []Artifact
 	Args       []string
 	Envfile    string
@@ -165,8 +165,8 @@ tar zxvf %s.tgz 1>&2
 		if c.Envfile != "" {
 			dockerArgs = append(dockerArgs, "--env-file", c.Envfile)
 		}
-		if c.Entrypoint != "" {
-			dockerArgs = append(dockerArgs, "--entrypoint", c.Entrypoint)
+		if c.Entrypoint != nil {
+			dockerArgs = append(dockerArgs, "--entrypoint", *c.Entrypoint)
 		}
 		var args []string
 		args = append(args, dockerArgs...)
