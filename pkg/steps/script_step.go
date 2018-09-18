@@ -164,12 +164,24 @@ tar zxvf %s.tgz 1>&2
 		}
 		if c.Envfile != "" {
 			dockerArgs = append(dockerArgs, "--env-file", c.Envfile)
+		} else if context.Autoenv() {
+			autoEnv, err := context.GenerateAutoenv()
+			if err != nil {
+				log.Errorf("script step failed to generate autoenv: %v", err)
+			}
+			for name, value := range autoEnv {
+				if value == "" {
+					continue
+				}
+				dockerArgs = append(dockerArgs, "--env", fmt.Sprintf("%s=%s", name, value))
+			}
 		}
 		if c.Entrypoint != nil {
 			dockerArgs = append(dockerArgs, "--entrypoint", *c.Entrypoint)
 		}
 		var args []string
 		args = append(args, dockerArgs...)
+		args = append(args, "--entrypoint", c.Entrypoint)
 		args = append(args, c.Image)
 		args = append(args, cmd)
 		args = append(args, cmdArgs...)
