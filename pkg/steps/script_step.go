@@ -181,7 +181,6 @@ tar zxvf %s.tgz 1>&2
 		}
 		var args []string
 		args = append(args, dockerArgs...)
-		args = append(args, "--entrypoint", *c.Entrypoint)
 		args = append(args, c.Image)
 		args = append(args, cmd)
 		args = append(args, cmdArgs...)
