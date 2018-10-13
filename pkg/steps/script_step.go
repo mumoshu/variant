@@ -82,7 +82,7 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 			if volumes, ok := runner["volumes"].([]interface{}); ok {
 				vols := make([]string, len(volumes))
 				for i, v := range volumes {
-					vols[i] = os.ExpandEnv(v.(string))
+					vols[i] = v.(string)
 				}
 				runConf.Volumes = vols
 			}
@@ -183,13 +183,13 @@ tar zxvf %s.tgz 1>&2
 
 		dockerArgs := []string{}
 		for _, v := range c.Volumes {
-			dockerArgs = append(dockerArgs, "-v", v)
+			dockerArgs = append(dockerArgs, "-v", os.ExpandEnv(v))
 		}
 		for k, v := range c.Env {
-			dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", k, v))
+			dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", k, os.ExpandEnv(v)))
 		}
 		if c.Envfile != "" {
-			dockerArgs = append(dockerArgs, "--env-file", c.Envfile)
+			dockerArgs = append(dockerArgs, "--env-file", os.ExpandEnv(c.Envfile))
 		}
 		if c.Entrypoint != nil {
 			dockerArgs = append(dockerArgs, "--entrypoint", *c.Entrypoint)
