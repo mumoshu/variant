@@ -78,6 +78,9 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 				}
 				runConf.Volumes = vols
 			}
+			if workdir, ok := runner["workdir"].(string); ok {
+				runConf.Workdir = workdir
+			}
 		} else {
 			log.Debugf("runner wasn't expected type of map: %+v", runner)
 		}
@@ -126,6 +129,7 @@ type runnerConfig struct {
 	Args       []string
 	Envfile    string
 	Volumes    []string
+	Workdir	   string
 }
 
 func (c runnerConfig) commandNameAndArgsToRunScript(script string, context step.ExecutionContext) (string, []string) {
@@ -178,6 +182,9 @@ tar zxvf %s.tgz 1>&2
 		}
 		if c.Entrypoint != nil {
 			dockerArgs = append(dockerArgs, "--entrypoint", *c.Entrypoint)
+		}
+		if c.Workdir != "" {
+			dockerArgs = append(dockerArgs, "--workdir", c.Workdir)
 		}
 		var args []string
 		args = append(args, dockerArgs...)
