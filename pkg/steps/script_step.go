@@ -78,6 +78,9 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 				}
 				runConf.Volumes = vols
 			}
+			if net, ok := runner["net"].(string); ok {
+				runConf.Net = net
+			}
 		} else {
 			log.Debugf("runner wasn't expected type of map: %+v", runner)
 		}
@@ -126,6 +129,7 @@ type runnerConfig struct {
 	Args       []string
 	Envfile    string
 	Volumes    []string
+	Net        string
 }
 
 func (c runnerConfig) commandNameAndArgsToRunScript(script string, context step.ExecutionContext) (string, []string) {
@@ -178,6 +182,9 @@ tar zxvf %s.tgz 1>&2
 		}
 		if c.Entrypoint != nil {
 			dockerArgs = append(dockerArgs, "--entrypoint", *c.Entrypoint)
+		}
+		if c.Net != "" {
+			dockerArgs = append(dockerArgs, "--net", c.Net)
 		}
 		var args []string
 		args = append(args, dockerArgs...)
