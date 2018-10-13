@@ -71,6 +71,13 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 			if envfile, ok := runner["envfile"].(string); ok {
 				runConf.Envfile = envfile
 			}
+			if environments, ok := runner["env"].(map[interface]interface{}); ok {
+				env := make(map[string]string, len(environments))
+				for k, v := range environments {
+					env[k.(string)] = v.(string)
+				}
+				runConf.Env = env
+			}
 			if volumes, ok := runner["volumes"].([]interface{}); ok {
 				vols := make([]string, len(volumes))
 				for i, v := range volumes {
@@ -125,6 +132,7 @@ type runnerConfig struct {
 	Artifacts  []Artifact
 	Args       []string
 	Envfile    string
+	Env        map[string]string
 	Volumes    []string
 }
 
@@ -161,6 +169,9 @@ tar zxvf %s.tgz 1>&2
 		dockerArgs := []string{}
 		for _, v := range c.Volumes {
 			dockerArgs = append(dockerArgs, "-v", v)
+		}
+		for k, v := range c.Env {
+			dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", k, v))
 		}
 		if c.Envfile != "" {
 			dockerArgs = append(dockerArgs, "--env-file", c.Envfile)
