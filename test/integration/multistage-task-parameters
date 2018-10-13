@@ -1,0 +1,21 @@
+#!/usr/bin/env var
+
+tasks:
+  param1:
+    script: |
+      echo foo
+
+  param2:
+    options:
+    - name: param1
+      required: true
+    script: |
+      echo {{ get "param1" }}
+
+  test:
+    options:
+    - name: param2
+      required: true
+    script: |
+      echo {{ get "param2" }}
+
