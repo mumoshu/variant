@@ -71,15 +71,14 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 			if envfile, ok := runner["envfile"].(string); ok {
 				runConf.Envfile = envfile
 			}
-			if environments, ok := runner["env"].(map[interface]interface{}); ok {
+			if environments, ok := runner["env"].(map[interface{}]interface{}); ok {
 				env := make(map[string]string, len(environments))
 				for k, v := range environments {
 					env[k.(string)] = v.(string)
 				}
 				runConf.Env = env
-			} else if autoenv, ok := def.Get("autoenv").(bool); ok && autoenv {
-				runConf.Env = make(map[string]string, len(environments))
 			}
+
 			if volumes, ok := runner["volumes"].([]interface{}); ok {
 				vols := make([]string, len(volumes))
 				for i, v := range volumes {
@@ -173,6 +172,9 @@ tar zxvf %s.tgz 1>&2
 			autoEnv, err := context.GenerateAutoenv()
 			if err != nil {
 				log.Errorf("script step failed to generate autoenv with docker run: %v", err)
+			}
+			if c.Env == nil {
+				c.Env = make(map[string]string, len(autoEnv))
 			}
 			for k, v := range autoEnv {
 				c.Env[k] = v
