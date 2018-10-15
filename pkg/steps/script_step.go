@@ -71,13 +71,22 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 			if envfile, ok := runner["envfile"].(string); ok {
 				runConf.Envfile = envfile
 			}
+			if environments, ok := runner["env"].(map[interface{}]interface{}); ok {
+				env := make(map[string]string, len(environments))
+				for k, v := range environments {
+					env[k.(string)] = v.(string)
+				}
+				runConf.Env = env
+			}
+
 			if volumes, ok := runner["volumes"].([]interface{}); ok {
 				vols := make([]string, len(volumes))
 				for i, v := range volumes {
-					vols[i] = os.ExpandEnv(v.(string))
+					vols[i] = v.(string)
 				}
 				runConf.Volumes = vols
 			}
+
 		} else {
 			log.Debugf("runner wasn't expected type of map: %+v", runner)
 		}
@@ -125,6 +134,7 @@ type runnerConfig struct {
 	Artifacts  []Artifact
 	Args       []string
 	Envfile    string
+	Env        map[string]string
 	Volumes    []string
 }
 
@@ -158,23 +168,28 @@ tar zxvf %s.tgz 1>&2
 	}
 
 	if c.Image != "" {
-		dockerArgs := []string{}
-		for _, v := range c.Volumes {
-			dockerArgs = append(dockerArgs, "-v", v)
-		}
-		if c.Envfile != "" {
-			dockerArgs = append(dockerArgs, "--env-file", c.Envfile)
-		} else if context.Autoenv() {
+		if context.Autoenv() {
 			autoEnv, err := context.GenerateAutoenv()
 			if err != nil {
-				log.Errorf("script step failed to generate autoenv: %v", err)
+				log.Errorf("script step failed to generate autoenv with docker run: %v", err)
 			}
-			for name, value := range autoEnv {
-				if value == "" {
-					continue
-				}
-				dockerArgs = append(dockerArgs, "--env", fmt.Sprintf("%s=%s", name, value))
+			if c.Env == nil {
+				c.Env = make(map[string]string, len(autoEnv))
 			}
+			for k, v := range autoEnv {
+				c.Env[k] = v
+			}
+		}
+
+		dockerArgs := []string{}
+		for _, v := range c.Volumes {
+			dockerArgs = append(dockerArgs, "-v", os.ExpandEnv(v))
+		}
+		for k, v := range c.Env {
+			dockerArgs = append(dockerArgs, "-e", fmt.Sprintf("%s=%s", k, os.ExpandEnv(v)))
+		}
+		if c.Envfile != "" {
+			dockerArgs = append(dockerArgs, "--env-file", os.ExpandEnv(c.Envfile))
 		}
 		if c.Entrypoint != nil {
 			dockerArgs = append(dockerArgs, "--entrypoint", *c.Entrypoint)
@@ -201,6 +216,16 @@ func (s ScriptStep) GetName() string {
 
 func (s ScriptStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
 	depended := len(context.Caller()) > 0
+
+	if context.Autoenv() {
+		autoEnv, err := context.GenerateAutoenv()
+		if err != nil {
+			log.Errorf("script step failed to generate autoenv: %v", err)
+		}
+		for name, value := range autoEnv {
+			os.Setenv(fmt.Sprintf("%s", name), fmt.Sprintf("%s", value))
+		}
+	}
 
 	script, err := context.Render(s.Code, s.GetName())
 	if err != nil {
@@ -252,23 +277,6 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 		splits := strings.SplitN(pair, "=", 2)
 		key, value := splits[0], splits[1]
 		mergedEnv[key] = value
-	}
-
-	if context.Autoenv() {
-		autoEnv, err := context.GenerateAutoenv()
-		if err != nil {
-			log.Errorf("script step failed to generate autoenv: %v", err)
-		}
-		for name, value := range autoEnv {
-			mergedEnv[name] = value
-		}
-
-		cmdEnv := []string{}
-		for name, value := range mergedEnv {
-			cmdEnv = append(cmdEnv, fmt.Sprintf("%s=%s", name, value))
-		}
-
-		cmd.Env = cmdEnv
 	}
 
 	if context.Autodir() {
