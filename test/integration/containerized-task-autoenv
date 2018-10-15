@@ -1,0 +1,41 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    steps:
+    - task: runner-env
+    - task: runner-autoenv
+    - task: runner-env-and-autoenv
+  runner-env:
+    runner:
+      image: "alpine:3.7"
+      command: sh
+      args: [-c]
+      env:
+        FOO: foo
+    script: |
+      env | grep "FOO=foo"
+  runner-autoenv:
+    inputs:
+    - name: foo
+      default: "foo"
+    autoenv: true
+    runner:
+      image: "alpine:3.7"
+      command: sh
+      args: [-c]
+    script: |
+      env |  grep "FOO=foo"
+  runner-env-and-autoenv:
+    inputs:
+    - name: foo
+      default: "foo"
+    autoenv: true
+    runner:
+      image: "alpine:3.7"
+      command: sh
+      args: [-c]
+      env:
+        FOOFOO=${FOO}
+    script: |
+      env |  grep "FOOFOO=foo"

@@ -117,5 +117,8 @@ smoke21: build
 	cd examples/codebuild; make build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./codebuild-s3 test --s3bucket $(VARIANT_ARTIFACTS_S3_BUCKET) --logtostderr > file.out && cat file.out | tee /dev/stderr | (grep "unit=TESTDATA" file.out) && echo smoke21 passed.
 
+smoke22: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./containerized-task-autoenv test --logtostderr && echo smoke22 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}
