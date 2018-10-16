@@ -90,6 +90,11 @@ func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext
 			if net, ok := runner["net"].(string); ok {
 				runConf.Net = net
 			}
+
+			if workdir, ok := runner["workdir"].(string); ok {
+				runConf.Workdir = workdir
+			}
+
 		} else {
 			log.Debugf("runner wasn't expected type of map: %+v", runner)
 		}
@@ -140,6 +145,7 @@ type runnerConfig struct {
 	Env        map[string]string
 	Volumes    []string
 	Net        string
+	Workdir	   string
 }
 
 func (c runnerConfig) commandNameAndArgsToRunScript(script string, context step.ExecutionContext) (string, []string) {
@@ -200,6 +206,9 @@ tar zxvf %s.tgz 1>&2
 		}
 		if c.Net != "" {
 			dockerArgs = append(dockerArgs, "--net", c.Net)
+		}
+		if c.Workdir != "" {
+			dockerArgs = append(dockerArgs, "--workdir", c.Workdir)
 		}
 		var args []string
 		args = append(args, dockerArgs...)
