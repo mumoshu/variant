@@ -380,6 +380,8 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 						return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
 					}
 					maputil.SetValueAtPath(p.CachedTaskOutputs, pathComponents, tmplOrStaticVal)
+				} else {
+					tmplOrStaticVal = output
 				}
 				if err != nil {
 					return nil, errors.Trace(err)
