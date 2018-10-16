@@ -77,6 +77,10 @@ func (t TaskRunner) GenerateAutoenvRecursively(path string, env map[string]inter
 				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = stringV
 			} else if v == nil {
 				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = ""
+			} else if fmt.Sprintf("%T", v) == "bool" {
+				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = fmt.Sprintf("%t", v)
+			} else if fmt.Sprintf("%T", v) == "int" {
+				result[toEnvName(fmt.Sprintf("%s%s", path, k))] = fmt.Sprintf("%d", v)
 			} else {
 				return nil, errors.Errorf("The value for the key %s was neither a `map[string]interface{}` nor a `string`: %v(%#v)", k, v, v)
 			}
