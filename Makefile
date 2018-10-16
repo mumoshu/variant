@@ -123,6 +123,8 @@ smoke22: build
 smoke23: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./multistage-task-parameters test --logtostderr | grep foo && echo smoke23 passed.
 
+smoke24: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./params-type-autoenv test --logtostderr && echo smoke24 passed.
 
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24}

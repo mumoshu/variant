@@ -1,0 +1,42 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    steps:
+    - task: string-env
+    - task: integer-env
+    - task: bool-true-env
+    - task: bool-false-env
+  string-env:
+    options:
+    - name: foo
+      type: string
+      default: foo
+    autoenv: true
+    script: |
+      env | grep "FOO=foo"
+  integer-env:
+    options:
+    - name: foo
+      type: integer
+      default: 1
+    autoenv: true
+    script: |
+      env | grep "FOO=1"
+  bool-true-env:
+    options:
+    - name: foo
+      type: boolean
+      default: true
+    autoenv: true
+    script: |
+      env | grep "FOO=true"
+  bool-false-env:
+    options:
+    - name: foo
+      type: boolean
+      default: false
+    autoenv: true
+    script: |
+      env | grep "FOO=false"
+
