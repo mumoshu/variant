@@ -2,20 +2,9 @@
 set -euo pipefail
 
 name=variant
-COMMIT=$(git rev-parse HEAD)
-TAG=$(git describe --exact-match --abbrev=0 --tags "${COMMIT}" 2> /dev/null || true)
 OUTPUT_PATH=${OUTPUT_PATH:-"bin/${name}"}
 
-if [ -z "$TAG" ]; then
-    VERSION=$COMMIT
-else
-    VERSION=$TAG
-fi
-
-# check for changed files (not untracked files)
-if [ -n "$(git diff --shortstat 2> /dev/null | tail -n1)" ]; then
-    VERSION="${VERSION}+dirty"
-fi
+VERSION=$( $(dirname $0)/version )
 
 echo Building ${name} ${VERSION}
 
@@ -27,6 +16,6 @@ if [[ ! "${BUILD_GOARCH:-}" == "" ]];then
 fi
 PKG=$(cd $(dirname $0)/.. && pwd)
 PKG=${PKG#*go/src/}
-x=${PKG}/cli/version.VERSION=${VERSION}
+x=${PKG}/pkg/cli/version.VERSION=${VERSION}
 echo Setting $x
 go build -ldflags "-X $x" -a -tags netgo -installsuffix netgo -o "$OUTPUT_PATH" ./
