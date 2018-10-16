@@ -35,7 +35,7 @@ dist/$(VERSION):
 	# $ go tool nm dist/v$(VERSION)/var | grep VERSION
 	#  8b0780 D _/Users/me/path/to/variant/cli/version.VERSION
 	#  6dff9c R _/Users/me/path/to/variant/cli/version.VERSION.str
-	go build -ldflags "-X '_$(shell pwd)/cli/version.VERSION=$(VERSION)'" -o dist/$(VERSION)/var .
+	go build -ldflags "-X '_$(shell pwd)/pkg/cli/version.VERSION=$(VERSION)'" -o dist/$(VERSION)/var .
 
 release: dist/$(VERSION)
 	ghr -u $(GITHUB_USER) -r $(GITHUB_REPO) -c master --prerelease v$(VERSION) dist/$(VERSION)
@@ -117,5 +117,12 @@ smoke21: build
 	cd examples/codebuild; make build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./codebuild-s3 test --s3bucket $(VARIANT_ARTIFACTS_S3_BUCKET) --logtostderr > file.out && cat file.out | tee /dev/stderr | (grep "unit=TESTDATA" file.out) && echo smoke21 passed.
 
+smoke22: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./containerized-task-autoenv test --logtostderr && echo smoke22 passed.
+
+smoke23: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./multistage-task-parameters test --logtostderr | grep foo && echo smoke23 passed.
+
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23}
