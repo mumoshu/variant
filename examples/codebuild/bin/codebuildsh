@@ -17,13 +17,14 @@ while test $# -gt 0; do
                         echo "$package [options] application [arguments]"
                         echo " "
                         echo "options:"
-                        echo "-h, --help                         show brief help"
-                        echo "--vpc=VPC_ID                       specify an VPC in which start the build"
-                        echo "--subnets=SUBNET1,SUBNET2,...      specify subnets in which start the build"
-                        echo "--s3-bucket=mybucket               specify S3 bucket to store the build bundle"
-                        echo "--security-groups=SG1,SG2,...      specify security groups that are associated to the builder container"
-                        echo "--service-role=myiamrolename       specify the iam role used by CodeBuild"
-                        echo "--image=alpine:3.7                 specify the container image used by CodeBuild builds"
+                        echo "-h, --help                                     show brief help"
+                        echo "--vpc=VPC_ID                                   specify an VPC in which start the build"
+                        echo "--subnets=SUBNET1,SUBNET2,...                  specify subnets in which start the build"
+                        echo "--s3-bucket=mybucket                           specify S3 bucket to store the build bundle"
+                        echo "--security-groups=SG1,SG2,...                  specify security groups that are associated to the builder container"
+                        echo "--service-role=myiamrolename                   specify the iam role used by CodeBuild"
+                        echo "--image=alpine:3.7                             specify the container image used by CodeBuild builds"
+                        echo "--environment=[{name=str,value=str,type=str}]  specify environment variables used by CodeBuild"
                         exit 0
                         ;;
                 -a)
@@ -60,6 +61,10 @@ while test $# -gt 0; do
                         export image=`echo $1 | sed -e 's/^[^=]*=//g'`
                         shift
                         ;;
+                --environment*)
+                        export environment=`echo $1 | sed -e 's/^[^=]*=//g'`
+                        shift
+                        ;;
                 *)
                         if [ "$script" != "" ]; then
                           v=$1
@@ -94,6 +99,7 @@ vpcid=${vpcid:-myvcpid}
 subnets=${subnets:-subnet-12345678}
 sgids=${sgids:-sg-12345678}
 image=${image:-alpine:3.7}
+environment=${environment:-[]}
 vpcconfig=vpcId=$vpcid,subnets=$subnets,securityGroupIds=$sgids
 
 projects=$(aws codebuild batch-get-projects --names $name)
@@ -109,7 +115,7 @@ if [ "$num_projects" -gt 0 ]; then
     --service-role $iamrole \
     --vpc-config $vpcconfig \
     --artifacts type=NO_ARTIFACTS \
-    --environment type=LINUX_CONTAINER,image=${image},computeType=BUILD_GENERAL1_SMALL | tee create-project.json 1>&2
+    --environment type=LINUX_CONTAINER,image=${image},computeType=BUILD_GENERAL1_SMALL,environmentVariables=${environment} | tee create-project.json 1>&2
   jq .project create-project.json > project.json
 else
   # See the official doc for the details of the params: https://docs.aws.amazon.com/codebuild/latest/userguide/run-build.html#run-build-cli
@@ -120,7 +126,7 @@ else
     --service-role $iamrole \
     --vpc-config $vpcconfig \
     --artifacts type=NO_ARTIFACTS \
-    --environment type=LINUX_CONTAINER,image=${image},computeType=BUILD_GENERAL1_SMALL | tee create-project.json 1>&2
+    --environment type=LINUX_CONTAINER,image=${image},computeType=BUILD_GENERAL1_SMALL,environmentVariables=${environment} | tee create-project.json 1>&2
   jq .project create-project.json > project.json
 fi
 
