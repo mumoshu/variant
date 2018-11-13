@@ -145,7 +145,7 @@ type runnerConfig struct {
 	Env        map[string]string
 	Volumes    []string
 	Net        string
-	Workdir	   string
+	Workdir    string
 }
 
 func (c runnerConfig) commandNameAndArgsToRunScript(script string, context step.ExecutionContext) (string, []string) {
