@@ -2,9 +2,9 @@ package steps
 
 import (
 	"fmt"
-	"github.com/juju/errors"
 	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/mumoshu/variant/pkg/util/maputil"
+	"github.com/pkg/errors"
 	"log"
 	"reflect"
 )
@@ -46,13 +46,13 @@ func (l IfStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 	ifInput, ifErr := readSteps(ifArray, context)
 
 	if ifErr != nil {
-		return nil, errors.Annotatef(ifErr, "reading `if` failed")
+		return nil, errors.Wrapf(ifErr, "reading `if` failed")
 	}
 
 	thenInput, thenErr := readSteps(thenArray, context)
 
 	if thenErr != nil {
-		return nil, errors.Annotatef(thenErr, "reading `then` failed")
+		return nil, errors.Wrapf(thenErr, "reading `then` failed")
 	}
 
 	result.If = ifInput
@@ -79,7 +79,7 @@ func readSteps(input interface{}, context step.LoadingContext) ([]step.Step, err
 
 		converted, conversionErr := maputil.CastKeysToStrings(stepAsMap)
 		if conversionErr != nil {
-			return nil, errors.Trace(conversionErr)
+			return nil, errors.WithStack(conversionErr)
 		}
 
 		if converted["name"] == "" || converted["name"] == nil {
@@ -88,7 +88,7 @@ func readSteps(input interface{}, context step.LoadingContext) ([]step.Step, err
 
 		step, loadingErr := context.LoadStep(step.NewStepDef(converted))
 		if loadingErr != nil {
-			return nil, errors.Trace(loadingErr)
+			return nil, errors.WithStack(loadingErr)
 		}
 
 		result = append(result, step)
@@ -116,7 +116,7 @@ func run(steps []step.Step, context step.ExecutionContext) (step.StepStringOutpu
 		lastOutput, lastError = s.Run(context)
 
 		if lastError != nil {
-			return step.StepStringOutput{String: "run error"}, errors.Annotatef(lastError, "failed running step")
+			return step.StepStringOutput{String: "run error"}, errors.Wrapf(lastError, "failed running step")
 		}
 	}
 
@@ -133,7 +133,7 @@ func (s IfStep) Run(context step.ExecutionContext) (step.StepStringOutput, error
 	thenOut, thenErr := run(s.Then, context)
 
 	if thenErr != nil {
-		return step.StepStringOutput{String: "then step failed"}, errors.Annotatef(thenErr, "`then` steps failed")
+		return step.StepStringOutput{String: "then step failed"}, errors.Wrapf(thenErr, "`then` steps failed")
 	}
 
 	return thenOut, nil

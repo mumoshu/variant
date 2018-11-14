@@ -1,7 +1,7 @@
 package variant
 
 import (
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 )
 
 type TaskRegistry struct {

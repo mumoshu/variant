@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/juju/errors"
 	"github.com/mumoshu/variant/pkg/util/maputil"
+	"github.com/pkg/errors"
 	"strings"
 	"text/template"
 )
@@ -42,7 +42,7 @@ func (f *TaskTemplate) createFuncMap() template.FuncMap {
 		}
 
 		if err != nil {
-			return nil, errors.Trace(err)
+			return nil, errors.WithStack(err)
 		}
 		return val, nil
 	}
@@ -72,7 +72,7 @@ func (t *TaskTemplate) Render(expr string, name string) (string, error) {
 
 	var buff bytes.Buffer
 	if err := tmpl.Execute(&buff, t.values); err != nil {
-		return "", errors.Annotatef(err, "failed rendering %s.%s.%s", task.ProjectName, task.Name.ShortString(), name)
+		return "", errors.Wrapf(err, "failed rendering %s.%s.%s", task.ProjectName, task.Name.ShortString(), name)
 	}
 
 	return buff.String(), nil

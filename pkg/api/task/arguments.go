@@ -3,8 +3,8 @@ package task
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/juju/errors"
 	"github.com/mumoshu/variant/pkg/util/maputil"
+	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -34,7 +34,7 @@ func (in Arguments) Get(name string) (interface{}, error) {
 	log.WithField("raw", in).Debugf("argument named \"%s\" fetched: %v", name, result)
 
 	if internalError != nil {
-		err = errors.Trace(internalError)
+		err = errors.WithStack(internalError)
 	}
 
 	return result, err

@@ -1,8 +1,8 @@
 package variant
 
 import (
-	"github.com/juju/errors"
 	"github.com/mumoshu/variant/pkg/api/step"
+	"github.com/pkg/errors"
 	"strings"
 )
 

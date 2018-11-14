@@ -23,6 +23,7 @@ format:
 clean:
 	rm -Rf dist/$(VERSION)
 
+.PHONY: build
 build: dist/$(VERSION)
 
 .PHONY: cross-build

@@ -3,7 +3,6 @@ package variant
 import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/juju/errors"
 	taskapi "github.com/mumoshu/variant/pkg/api/task"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -53,14 +52,7 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 
 			if err != nil {
 				c := strings.Join(strings.Split(taskName.String(), "."), " ")
-				stack := strings.Split(errors.ErrorStack(err), "\n")
-				for i := len(stack)/2 - 1; i >= 0; i-- {
-					opp := len(stack) - 1 - i
-					stack[i], stack[opp] = stack[opp], stack[i]
-				}
-				log.WithFields(log.Fields{"stack": errors.ErrorStack(err)}).Errorf("command %s failed: %v", c, err)
-				//log.Errorf("Command `%s` failed\n\nCaused by:\n%s", c, strings.Join(stack, "\n"))
-				//log.Debugf("Stack:\n%v", errors.ErrorStack(errors.Trace(err)))
+				log.Errorf("command %s failed: %+v", c, err)
 				os.Exit(1)
 			}
 

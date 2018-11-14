@@ -1,7 +1,7 @@
 package variant
 
 import (
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -32,7 +32,7 @@ func (g *TaskCreator) Create(taskDef *TaskDef, parentTaskNameComponents []string
 		f, err := g.Create(c, taskNameComponents, appName)
 
 		if err != nil {
-			return nil, errors.Trace(err)
+			return nil, errors.WithStack(err)
 		}
 
 		subTasks = append(subTasks, f)

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/juju/errors"
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"encoding/json"
@@ -85,7 +85,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 	taskDef, err := p.TaskRegistry.FindTask(taskName)
 
 	if err != nil {
-		return "", errors.Annotatef(err, "app failed finding task %s", taskName.ShortString())
+		return "", errors.Wrapf(err, "app failed finding task %s", taskName.ShortString())
 	}
 
 	vars := map[string](interface{}){}
@@ -96,7 +96,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 	inputs, err := p.InheritedInputValuesForTaskKey(taskName, args, arguments, scope, caller...)
 
 	if err != nil {
-		return "", errors.Annotatef(err, "app failed running task %s", taskName.ShortString())
+		return "", errors.Wrapf(err, "app failed running task %s", taskName.ShortString())
 	}
 
 	for k, v := range inputs {
@@ -107,7 +107,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 
 	s, err := jsonschemaFromInputs(taskDef.Inputs)
 	if err != nil {
-		return "", errors.Annotatef(err, "app failed while generating jsonschema from: %v", taskDef.Inputs)
+		return "", errors.Wrapf(err, "app failed while generating jsonschema from: %v", taskDef.Inputs)
 	}
 	doc := gojsonschema.NewGoLoader(kv)
 	result, err := s.Validate(doc)
@@ -119,7 +119,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 			// Err implements the ResultError interface
 			log.Errorf("- %s", err)
 		}
-		return "", errors.Annotatef(err, "app failed validating inputs: %v", doc)
+		return "", errors.Wrapf(err, "app failed validating inputs: %v", doc)
 	}
 
 	ctx.WithField("variables", kv).Debugf("app bound variables for task %s", taskName.ShortString())
@@ -127,7 +127,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 	taskTemplate := NewTaskTemplate(taskDef, vars)
 	taskRunner, err := NewTaskRunner(taskDef, taskTemplate, vars)
 	if err != nil {
-		return "", errors.Annotatef(err, "failed to initialize task runner")
+		return "", errors.Wrapf(err, "failed to initialize task runner")
 	}
 
 	output, error := taskRunner.Run(&p, caller...)
@@ -135,7 +135,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 	ctx.Debugf("app received output from task %s: %s", taskName.ShortString(), output)
 
 	if error != nil {
-		error = errors.Annotatef(error, "app failed running task %s", taskName.ShortString())
+		error = errors.Wrapf(error, "app failed running task %s", taskName.ShortString())
 	}
 
 	ctx.Debugf("app finished running task %s", taskName.ShortString())
@@ -150,7 +150,7 @@ func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []st
 	direct, err := p.DirectInputValuesForTaskKey(taskName, args, arguments, scope, caller...)
 
 	if err != nil {
-		return nil, errors.Annotatef(err, "One or more inputs for task %s failed", taskName.ShortString())
+		return nil, errors.Wrapf(err, "One or more inputs for task %s failed", taskName.ShortString())
 	}
 
 	for k, v := range direct {
@@ -163,7 +163,7 @@ func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []st
 		inherited, err := p.InheritedInputValuesForTaskKey(parentKey, []string{}, arguments, map[string]interface{}{}, caller...)
 
 		if err != nil {
-			return nil, errors.Annotatef(err, "AggregateInputsForParent(%s) failed", taskName.ShortString())
+			return nil, errors.Wrapf(err, "AggregateInputsForParent(%s) failed", taskName.ShortString())
 		}
 
 		maputil.DeepMerge(result, inherited)
@@ -299,7 +299,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 	currentTask, err := p.TaskRegistry.FindTask(taskName)
 	if err != nil {
-		return nil, errors.Trace(err)
+		return nil, errors.WithStack(err)
 	}
 
 	for _, input := range currentTask.ResolvedInputs {
@@ -349,13 +349,13 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 				case "array":
 					v, err := input.DefaultAsArray()
 					if err != nil {
-						return nil, errors.Annotatef(err, "failed to parse default value as array: %v", input.Default)
+						return nil, errors.Wrapf(err, "failed to parse default value as array: %v", input.Default)
 					}
 					value = v
 				case "object":
 					v, err := input.DefaultAsObject()
 					if err != nil {
-						return nil, errors.Annotatef(err, "failed to parse default value as map: %v", input.Default)
+						return nil, errors.Wrapf(err, "failed to parse default value as map: %v", input.Default)
 					}
 					value = v
 				default:
@@ -377,14 +377,14 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 					args := arguments.GetSubOrEmpty(input.Name)
 					tmplOrStaticVal, err = p.RunTask(p.TaskNamer.FromResolvedInput(input), []string{}, args, map[string]interface{}{}, currentTask)
 					if err != nil {
-						return nil, errors.Annotatef(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
+						return nil, errors.Wrapf(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
 					}
 					maputil.SetValueAtPath(p.CachedTaskOutputs, pathComponents, tmplOrStaticVal)
 				} else {
 					tmplOrStaticVal = output
 				}
 				if err != nil {
-					return nil, errors.Trace(err)
+					return nil, errors.WithStack(err)
 				}
 			}
 			// Now that the tmplOrStaticVal exists, render add type it
@@ -398,7 +398,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 						log.Debugf("rendering %s", expr)
 						r, err := taskTemplate.Render(expr, input.Name)
 						if err != nil {
-							return nil, errors.Annotate(err, "failed to render task template")
+							return nil, errors.Wrap(err, "failed to render task template")
 						}
 						renderedValue = r
 						log.Debugf("converting type of %v", renderedValue)
@@ -433,7 +433,7 @@ func parseSupportedValueFromString(renderedValue string, typeName string) (inter
 		log.Debugf("integer=%v", renderedValue)
 		value, err := strconv.Atoi(renderedValue)
 		if err != nil {
-			return nil, errors.Annotatef(err, "%v can't be casted to integer", renderedValue)
+			return nil, errors.Wrapf(err, "%v can't be casted to integer", renderedValue)
 		}
 		return value, nil
 	case "boolean":
@@ -450,7 +450,7 @@ func parseSupportedValueFromString(renderedValue string, typeName string) (inter
 		log.Debugf("converting this to either array or object=%v", renderedValue)
 		var dst interface{}
 		if err := json.Unmarshal([]byte(renderedValue), &dst); err != nil {
-			return nil, errors.Annotatef(err, "failed converting: failed to parse %s as json", renderedValue)
+			return nil, errors.Wrapf(err, "failed converting: failed to parse %s as json", renderedValue)
 		}
 		return dst, nil
 	default:

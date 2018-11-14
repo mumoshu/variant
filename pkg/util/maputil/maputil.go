@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 	"reflect"
 	"strconv"
 )
@@ -53,7 +53,7 @@ func GetStringAtPath(m map[string]interface{}, key string) (string, error) {
 			} else if i, ok := value.(int); ok {
 				return strconv.Itoa(i), nil
 			} else {
-				return "", fmt.Errorf("maputil failed to parse string: %v", value)
+				return "", errors.Errorf("maputil failed to parse string: %v", value)
 			}
 		}
 
@@ -105,7 +105,7 @@ func SetValueAtPath(cache map[string]interface{}, keyComponents []string, value 
 		}
 		err := SetValueAtPath(cache[k].(map[string]interface{}), rest, value)
 		if err != nil {
-			return errors.Trace(err)
+			return errors.Wrapf(err, "failed setting value for key %+v", keyComponents)
 		}
 	}
 	return nil

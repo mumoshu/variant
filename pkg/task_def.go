@@ -5,8 +5,8 @@ import (
 	"reflect"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/juju/errors"
 	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 
 	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/mumoshu/variant/pkg/util/maputil"
@@ -114,7 +114,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Interactive = v1.Interactive
 		steps, err := readStepsFromStepDefs(v1.Script, v1.Runner, v1.StepDefs)
 		if err != nil {
-			return errors.Annotatef(err, "Error while reading v1 config")
+			return errors.Wrapf(err, "Error while reading v1 config")
 		}
 		t.Steps = steps
 	}
@@ -171,7 +171,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.TaskDefs = TransformV2FlowConfigMapToArray(v2.TaskDefs)
 			steps, err := readStepsFromStepDefs(v2.Script, v2.Runner, v2.StepDefs)
 			if err != nil {
-				return errors.Annotatef(err, "Error while reading v2 config")
+				return errors.Wrapf(err, "Error while reading v2 config")
 			}
 			t.Steps = steps
 			t.Script = v2.Script
@@ -186,7 +186,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		log.Debugf("Trying to parse v3 format")
 
 		if v3err != nil {
-			return errors.Annotate(v3err, "Failed to unmarshal as a map.")
+			return errors.Wrap(v3err, "Failed to unmarshal as a map.")
 		}
 
 		if v3["tasks"] != nil {
@@ -196,7 +196,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			}
 			tasks, err := maputil.CastKeysToStrings(rawTasks)
 			if err != nil {
-				return errors.Annotate(err, "Failed to unmarshal as a map[string]interface{}")
+				return errors.Wrap(err, "Failed to unmarshal as a map[string]interface{}")
 			}
 			t.Autoenv = false
 			t.Autodir = false
@@ -208,7 +208,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 	}
 
-	return errors.Trace(err)
+	return errors.WithStack(err)
 }
 
 func (t *TaskDef) CopyTo(other *TaskDef) {
@@ -269,7 +269,7 @@ func LoadStep(config step.StepDef) (step.Step, error) {
 			return s, nil
 		}
 	}
-	return nil, errors.Annotatef(lastError, "all loader failed to load step")
+	return nil, errors.Wrapf(lastError, "all loader failed to load step")
 }
 
 func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDefs []map[interface{}]interface{}) ([]step.Step, error) {
@@ -312,7 +312,7 @@ func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDef
 			s, err := LoadStep(step.NewStepDef(converted))
 
 			if err != nil {
-				return nil, errors.Annotatef(err, "Error reading step[%d]")
+				return nil, errors.Wrapf(err, "Error reading step[%d]")
 			}
 
 			result = append(result, s)
@@ -348,7 +348,7 @@ func TransformV3TaskDefMapToArray(v3 map[string]interface{}) []*TaskDef {
 		s2i, err := maputil.CastKeysToStrings(i2i)
 
 		if err != nil {
-			panic(errors.Annotate(err, "Unexpected structure"))
+			panic(errors.Wrap(err, "Unexpected structure"))
 		}
 
 		leaf := s2i["script"] != nil
@@ -359,7 +359,7 @@ func TransformV3TaskDefMapToArray(v3 map[string]interface{}) []*TaskDef {
 			log.Debugf("Not a nested map")
 			err = mapstructure.Decode(s2i, t)
 			if err != nil {
-				panic(errors.Trace(err))
+				panic(errors.WithStack(err))
 			}
 			log.Debugf("Loaded %v", t)
 		}

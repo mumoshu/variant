@@ -6,7 +6,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 
 	"fmt"
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 
 	"github.com/mumoshu/variant/pkg/api/step"
 )
@@ -111,7 +111,7 @@ func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) 
 		lastout, err = s.Run(context)
 
 		if err != nil {
-			return "", errors.Annotate(err, "Task#Run failed while running a script")
+			return "", errors.Wrap(err, "Task#Run failed while running a script")
 		}
 
 		if !s.Silent() && len(lastout.String) > 0 {
@@ -129,7 +129,7 @@ func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) 
 	}
 
 	if err != nil {
-		err = errors.Annotate(err, "Task#Run failed while running a script")
+		err = errors.Wrap(err, "Task#Run failed while running a script")
 	}
 
 	ctx.Debugf("task %s finished", t.Name.String())

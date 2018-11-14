@@ -82,7 +82,7 @@ func main() {
 		taskConfigFromFile, err := engine.ReadTaskConfigFromFile(varfile)
 
 		if err != nil {
-			log.Errorf(errors.ErrorStack(err))
+			log.Errorf("%+v", err)
 			panic(errors.Trace(err))
 		}
 		rootTaskConfig = taskConfigFromFile

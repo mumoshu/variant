@@ -6,7 +6,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 )
 
 type EnvFile struct {
@@ -39,7 +39,7 @@ func Set(env string) error { return e.Set(env) }
 func (e *EnvFile) Set(env string) error {
 	err := ioutil.WriteFile(e.GetPath(), []byte(env), 0644)
 	if err != nil {
-		return errors.Trace(err)
+		return errors.WithStack(err)
 	}
 	return nil
 }
@@ -48,7 +48,7 @@ func Get() (string, error) { return e.Get() }
 func (e *EnvFile) Get() (string, error) {
 	env, err := ioutil.ReadFile(e.GetPath())
 	if err != nil {
-		return "", errors.Trace(err)
+		return "", errors.WithStack(err)
 	}
 	return string(env), nil
 }
@@ -60,7 +60,7 @@ func (e *EnvFile) GetOrSet(defaultEnv string) (string, error) {
 		log.Errorf("%s", err)
 		err := e.Set(defaultEnv)
 		if err != nil {
-			return "", errors.Trace(err)
+			return "", errors.WithStack(err)
 		}
 	}
 	return env, nil

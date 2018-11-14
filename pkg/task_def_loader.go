@@ -7,8 +7,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/juju/errors"
 	"github.com/mumoshu/variant/pkg/api/step"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -29,7 +29,7 @@ func ReadTaskConfigFromString(data string) (*TaskDef, error) {
 func ReadTaskConfigFromBytes(data []byte) (*TaskDef, error) {
 	c := NewDefaultTaskConfig()
 	if err := yaml.Unmarshal(data, c); err != nil {
-		return nil, errors.Annotatef(err, "yaml.Unmarshal failed: %v", err)
+		return nil, errors.Wrapf(err, "yaml.Unmarshal failed: %v", err)
 	}
 	return c, nil
 }
@@ -52,7 +52,7 @@ func ReadTaskConfigFromFile(path string) (*TaskDef, error) {
 	t, err := ReadTaskConfigFromBytes(yamlBytes)
 
 	if err != nil {
-		return nil, errors.Annotatef(err, "Error while loading %s", path)
+		return nil, errors.Wrapf(err, "Error while loading %s", path)
 	}
 
 	return t, nil

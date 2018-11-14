@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/juju/errors"
+	"github.com/pkg/errors"
 	"os"
 	"os/exec"
 	"strings"
@@ -246,7 +246,7 @@ func (s ScriptStep) Run(context step.ExecutionContext) (step.StepStringOutput, e
 	script, err := context.Render(s.Code, s.GetName())
 	if err != nil {
 		log.WithFields(log.Fields{"source": s.Code, "vars": context.Vars}).Errorf("script step failed templating")
-		return step.StepStringOutput{String: "scripterror"}, errors.Annotatef(err, "script step failed templating")
+		return step.StepStringOutput{String: "scripterror"}, errors.Wrapf(err, "script step failed templating")
 	}
 
 	output, err := s.runScriptWithArtifacts(script, depended, context)
@@ -424,7 +424,7 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 			waitStatus = exitError.Sys().(syscall.WaitStatus)
 			print([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
 		}
-		return "scripterror", errors.Annotate(err, "script step failed")
+		return "scripterror", errors.Wrap(err, "script step failed")
 	} else {
 		// Command was successful
 		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)

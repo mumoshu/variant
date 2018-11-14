@@ -2,9 +2,9 @@ package steps
 
 import (
 	"fmt"
-	"github.com/juju/errors"
 	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/mumoshu/variant/pkg/util/maputil"
+	"github.com/pkg/errors"
 	"log"
 	"reflect"
 )
@@ -39,7 +39,7 @@ func (l OrStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 
 		converted, conversionErr := maputil.CastKeysToStrings(stepAsMap)
 		if conversionErr != nil {
-			return nil, errors.Trace(conversionErr)
+			return nil, errors.WithStack(conversionErr)
 		}
 
 		if converted["name"] == "" || converted["name"] == nil {
@@ -48,7 +48,7 @@ func (l OrStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 
 		step, loadingErr := context.LoadStep(step.NewStepDef(converted))
 		if loadingErr != nil {
-			return nil, errors.Trace(loadingErr)
+			return nil, errors.WithStack(loadingErr)
 		}
 
 		result.Steps = append(result.Steps, step)
@@ -78,7 +78,7 @@ func (s OrStep) Run(context step.ExecutionContext) (step.StepStringOutput, error
 			return output, nil
 		}
 	}
-	return step.StepStringOutput{String: "all steps failed"}, errors.Annotatef(lastError, "all steps failed")
+	return step.StepStringOutput{String: "all steps failed"}, errors.Wrapf(lastError, "all steps failed")
 }
 
 func (s OrStep) GetName() string {
