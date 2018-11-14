@@ -385,8 +385,28 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 		stdoutEnds := false
 		stderrEnds := false
 
-		stdoutlog := log.WithFields(log.Fields{"stream": "stdout"})
-		stderrlog := log.WithFields(log.Fields{"stream": "stderr"})
+		var writeToOut func(str string)
+		var writeToErr func(str string)
+
+		// Print logs to stdout and stderr only when this is the command called by the user
+		if len(context.trace) == 1 {
+			writeToOut = func(str string) {
+				fmt.Fprint(os.Stdout, str, "\n")
+			}
+			writeToErr = func(str string) {
+				fmt.Fprint(os.Stderr, str, "\n")
+			}
+		} else {
+			stdoutlog := log.WithFields(log.Fields{"stream": "stdout"})
+			stderrlog := log.WithFields(log.Fields{"stream": "stderr"})
+
+			writeToOut = func(str string) {
+				stdoutlog.Info(str)
+			}
+			writeToErr = func(str string) {
+				stderrlog.Info(str)
+			}
+		}
 
 		// Coordinating stdout/stderr in this single place to not screw up message ordering
 		for {
@@ -396,14 +416,14 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 					//if depended {
 					//	stdoutlog.Debug(text)
 					//} else {
-					stdoutlog.Info(text)
+					writeToOut(text)
 					//}
 				} else {
 					stdoutEnds = true
 				}
 			case text, ok := <-channels.Stderr:
 				if ok {
-					stderrlog.Info(text)
+					writeToErr(text)
 				} else {
 					stderrEnds = true
 				}
