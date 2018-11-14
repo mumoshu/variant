@@ -310,7 +310,7 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 		}
 	}
 
-	output := ""
+	errOut := ""
 
 	if context.Interactive() {
 		cmd.Stdin = os.Stdin
@@ -363,10 +363,6 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 					channels.Stderr <- strings.SplitN(text, errOutPrefix, 2)[1]
 				} else {
 					channels.Stdout <- text
-					if output != "" {
-						output += "\n"
-					}
-					output += text
 				}
 			}
 		}()
@@ -424,6 +420,10 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 			case text, ok := <-channels.Stderr:
 				if ok {
 					writeToErr(text)
+					if errOut != "" {
+						errOut += "\n"
+					}
+					errOut += text
 				} else {
 					stderrEnds = true
 				}
@@ -442,16 +442,16 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 		// Did the command fail because of an unsuccessful exit code
 		if exitError, ok := err.(*exec.ExitError); ok {
 			waitStatus = exitError.Sys().(syscall.WaitStatus)
-			print([]byte(fmt.Sprintf("%d", waitStatus.ExitStatus())))
+			log.Errorf("exit status was %d", waitStatus.ExitStatus())
 		}
-		return "scripterror", errors.Wrap(err, "script step failed")
+		return strings.Trim(errOut, "\n "), errors.Wrap(err, "script step failed")
 	} else {
 		// Command was successful
 		waitStatus = cmd.ProcessState.Sys().(syscall.WaitStatus)
 		log.Debugf("script step finished command with status: %d", waitStatus.ExitStatus())
 	}
 
-	return strings.Trim(output, "\n "), nil
+	return strings.Trim(errOut, "\n "), nil
 }
 
 func createTarFromGlob(filename string, pattern string) error {

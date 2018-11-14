@@ -109,7 +109,7 @@ func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) 
 		lastout, err = s.Run(context)
 
 		if err != nil {
-			return "", errors.Wrap(err, "Task#Run failed while running a script")
+			return lastout.String, errors.Wrap(err, "Task#Run failed while running a script")
 		}
 
 		if !s.Silent() && len(lastout.String) > 0 {

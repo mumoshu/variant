@@ -48,12 +48,15 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.app.UpdateLoggingConfiguration()
 
-			_, err := p.app.RunTask(taskName, args, taskapi.NewArguments(), map[string]interface{}{})
+			errMsg, err := p.app.RunTask(taskName, args, taskapi.NewArguments(), map[string]interface{}{})
 
 			if err != nil {
 				c := strings.Join(strings.Split(taskName.String(), "."), " ")
-				log.Errorf("stack trace: %+v", err)
-				log.Errorf("`%s` failed: %v", c, err)
+				log.Errorf("Stack trace: %+v", err)
+				log.Errorf("Error: `%s` failed: %v", c, err)
+				if errMsg != "" {
+					log.Errorf("Caused by: %s", errMsg)
+				}
 				os.Exit(1)
 			}
 		}
