@@ -1,8 +1,8 @@
-package steps
+package variant
 
 import (
 	"fmt"
-	"github.com/mumoshu/variant/pkg/api/step"
+
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/pkg/errors"
 	"log"
@@ -11,7 +11,7 @@ import (
 
 type IfStepLoader struct{}
 
-func (l IfStepLoader) LoadStep(config step.StepDef, context step.LoadingContext) (step.Step, error) {
+func (l IfStepLoader) LoadStep(config StepDef, context LoadingContext) (Step, error) {
 	ifData := config.Get("if")
 
 	if ifData == nil {
@@ -38,8 +38,8 @@ func (l IfStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 
 	result := IfStep{
 		Name:   config.GetName(),
-		If:     []step.Step{},
-		Then:   []step.Step{},
+		If:     []Step{},
+		Then:   []Step{},
 		silent: config.Silent(),
 	}
 
@@ -61,14 +61,14 @@ func (l IfStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 	return result, nil
 }
 
-func readSteps(input interface{}, context step.LoadingContext) ([]step.Step, error) {
+func readSteps(input interface{}, context LoadingContext) ([]Step, error) {
 	steps, ok := input.([]interface{})
 
 	if !ok {
 		return nil, fmt.Errorf("input must be array: input=%v", input)
 	}
 
-	result := []step.Step{}
+	result := []Step{}
 
 	for i, s := range steps {
 		stepAsMap, isMap := s.(map[interface{}]interface{})
@@ -86,7 +86,7 @@ func readSteps(input interface{}, context step.LoadingContext) ([]step.Step, err
 			converted["name"] = fmt.Sprintf("or[%d]", i)
 		}
 
-		step, loadingErr := context.LoadStep(step.NewStepDef(converted))
+		step, loadingErr := context.LoadStep(NewStepDef(converted))
 		if loadingErr != nil {
 			return nil, errors.WithStack(loadingErr)
 		}
@@ -103,37 +103,37 @@ func NewIfStepLoader() IfStepLoader {
 
 type IfStep struct {
 	Name   string
-	If     []step.Step
-	Then   []step.Step
+	If     []Step
+	Then   []Step
 	silent bool
 }
 
-func run(steps []step.Step, context step.ExecutionContext) (step.StepStringOutput, error) {
-	var lastOutput step.StepStringOutput
+func run(steps []Step, context ExecutionContext) (StepStringOutput, error) {
+	var lastOutput StepStringOutput
 	var lastError error
 
 	for _, s := range steps {
 		lastOutput, lastError = s.Run(context)
 
 		if lastError != nil {
-			return step.StepStringOutput{String: "run error"}, errors.Wrapf(lastError, "failed running step")
+			return StepStringOutput{String: "run error"}, errors.Wrapf(lastError, "failed running step")
 		}
 	}
 
 	return lastOutput, nil
 }
 
-func (s IfStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
+func (s IfStep) Run(context ExecutionContext) (StepStringOutput, error) {
 	_, ifErr := run(s.If, context)
 
 	if ifErr != nil {
-		return step.StepStringOutput{String: "if step failed"}, nil
+		return StepStringOutput{String: "if step failed"}, nil
 	}
 
 	thenOut, thenErr := run(s.Then, context)
 
 	if thenErr != nil {
-		return step.StepStringOutput{String: "then step failed"}, errors.Wrapf(thenErr, "`then` steps failed")
+		return StepStringOutput{String: "then step failed"}, errors.Wrapf(thenErr, "`then` steps failed")
 	}
 
 	return thenOut, nil

@@ -1,4 +1,4 @@
-package step
+package variant
 
 type Key interface {
 	ShortString() string

@@ -1,8 +1,8 @@
-package steps
+package variant
 
 import (
 	"fmt"
-	"github.com/mumoshu/variant/pkg/api/step"
+
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/pkg/errors"
 	"log"
@@ -11,7 +11,7 @@ import (
 
 type OrStepLoader struct{}
 
-func (l OrStepLoader) LoadStep(config step.StepDef, context step.LoadingContext) (step.Step, error) {
+func (l OrStepLoader) LoadStep(config StepDef, context LoadingContext) (Step, error) {
 	data := config.Get("or")
 
 	if data == nil {
@@ -26,7 +26,7 @@ func (l OrStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 
 	result := OrStep{
 		Name:   config.GetName(),
-		Steps:  []step.Step{},
+		Steps:  []Step{},
 		silent: config.Silent(),
 	}
 
@@ -46,7 +46,7 @@ func (l OrStepLoader) LoadStep(config step.StepDef, context step.LoadingContext)
 			converted["name"] = fmt.Sprintf("or[%d]", i)
 		}
 
-		step, loadingErr := context.LoadStep(step.NewStepDef(converted))
+		step, loadingErr := context.LoadStep(NewStepDef(converted))
 		if loadingErr != nil {
 			return nil, errors.WithStack(loadingErr)
 		}
@@ -63,14 +63,14 @@ func NewOrStepLoader() OrStepLoader {
 
 type OrStep struct {
 	Name   string
-	Steps  []step.Step
+	Steps  []Step
 	silent bool
 }
 
-func (s OrStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
+func (s OrStep) Run(context ExecutionContext) (StepStringOutput, error) {
 	var lastError error
 	for _, s := range s.Steps {
-		var output step.StepStringOutput
+		var output StepStringOutput
 
 		output, lastError = s.Run(context)
 
@@ -78,7 +78,7 @@ func (s OrStep) Run(context step.ExecutionContext) (step.StepStringOutput, error
 			return output, nil
 		}
 	}
-	return step.StepStringOutput{String: "all steps failed"}, errors.Wrapf(lastError, "all steps failed")
+	return StepStringOutput{String: "all steps failed"}, errors.Wrapf(lastError, "all steps failed")
 }
 
 func (s OrStep) GetName() string {

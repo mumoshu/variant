@@ -1,4 +1,4 @@
-package steps
+package variant
 
 import (
 	"bufio"
@@ -12,7 +12,7 @@ import (
 
 	"archive/tar"
 	"compress/gzip"
-	"github.com/mumoshu/variant/pkg/api/step"
+
 	"io"
 	"path/filepath"
 	"runtime"
@@ -20,7 +20,7 @@ import (
 
 type ScriptStepLoader struct{}
 
-func (l ScriptStepLoader) LoadStep(def step.StepDef, context step.LoadingContext) (step.Step, error) {
+func (l ScriptStepLoader) LoadStep(def StepDef, context LoadingContext) (Step, error) {
 	script, isStr := def.Script()
 
 	var runConf *runnerConfig
@@ -148,7 +148,7 @@ type runnerConfig struct {
 	Workdir    string
 }
 
-func (c runnerConfig) commandNameAndArgsToRunScript(script string, context step.ExecutionContext) (string, []string) {
+func (c runnerConfig) commandNameAndArgsToRunScript(script string, context ExecutionContext) (string, []string) {
 	var cmd string
 	if c.Command != "" {
 		cmd = c.Command
@@ -230,7 +230,7 @@ func (s ScriptStep) GetName() string {
 	return s.Name
 }
 
-func (s ScriptStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
+func (s ScriptStep) Run(context ExecutionContext) (StepStringOutput, error) {
 	depended := len(context.Caller()) > 0
 
 	if context.Autoenv() {
@@ -246,15 +246,15 @@ func (s ScriptStep) Run(context step.ExecutionContext) (step.StepStringOutput, e
 	script, err := context.Render(s.Code, s.GetName())
 	if err != nil {
 		log.WithFields(log.Fields{"source": s.Code, "vars": context.Vars}).Errorf("script step failed templating")
-		return step.StepStringOutput{String: "scripterror"}, errors.Wrapf(err, "script step failed templating")
+		return StepStringOutput{String: "scripterror"}, errors.Wrapf(err, "script step failed templating")
 	}
 
 	output, err := s.runScriptWithArtifacts(script, depended, context)
 
-	return step.StepStringOutput{String: output}, err
+	return StepStringOutput{String: output}, err
 }
 
-func (t ScriptStep) runScriptWithArtifacts(script string, depended bool, context step.ExecutionContext) (string, error) {
+func (t ScriptStep) runScriptWithArtifacts(script string, depended bool, context ExecutionContext) (string, error) {
 	for _, a := range t.runnerConfig.Artifacts {
 		err := createTarFromGlob(fmt.Sprintf("%s.tgz", a.Name), a.Path)
 		if err != nil {
@@ -280,7 +280,7 @@ func (t ScriptStep) runScriptWithArtifacts(script string, depended bool, context
 	return output, nil
 }
 
-func (t ScriptStep) runCommand(name string, args []string, depended bool, context step.ExecutionContext) (string, error) {
+func (t ScriptStep) runCommand(name string, args []string, depended bool, context ExecutionContext) (string, error) {
 	ctx := log.WithFields(log.Fields{"cmd": append([]string{name}, args...)})
 
 	ctx.Debug("script step started")

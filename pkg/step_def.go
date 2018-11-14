@@ -1,4 +1,4 @@
-package step
+package variant
 
 import (
 	"github.com/Sirupsen/logrus"

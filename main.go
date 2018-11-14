@@ -14,7 +14,6 @@ import (
 	"github.com/mumoshu/variant/cmd"
 	engine "github.com/mumoshu/variant/pkg"
 	"github.com/mumoshu/variant/pkg/cli/env"
-	"github.com/mumoshu/variant/pkg/steps"
 	"github.com/mumoshu/variant/pkg/util/envutil"
 	"github.com/mumoshu/variant/pkg/util/fileutil"
 )
@@ -45,10 +44,10 @@ func init() {
 }
 
 func main() {
-	engine.Register(steps.NewTaskStepLoader())
-	engine.Register(steps.NewScriptStepLoader())
-	engine.Register(steps.NewOrStepLoader())
-	engine.Register(steps.NewIfStepLoader())
+	engine.Register(engine.NewTaskStepLoader())
+	engine.Register(engine.NewScriptStepLoader())
+	engine.Register(engine.NewOrStepLoader())
+	engine.Register(engine.NewIfStepLoader())
 
 	var commandName string
 	var commandPath string

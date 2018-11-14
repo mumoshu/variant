@@ -1,14 +1,14 @@
-package steps
+package variant
 
 import (
 	"fmt"
-	"github.com/mumoshu/variant/pkg/api/step"
+
 	"github.com/mumoshu/variant/pkg/api/task"
 )
 
 type TaskStepLoader struct{}
 
-func (l TaskStepLoader) LoadStep(stepConfig step.StepDef, context step.LoadingContext) (step.Step, error) {
+func (l TaskStepLoader) LoadStep(stepConfig StepDef, context LoadingContext) (Step, error) {
 	if taskKey, isStr := stepConfig.Get("task").(string); isStr && taskKey != "" {
 		inputs := task.NewArguments(stepConfig.GetStringMapOrEmpty("inputs"))
 		if len(inputs) == 0 {
@@ -37,7 +37,7 @@ type TaskStep struct {
 	silent        bool
 }
 
-func (s TaskStep) Run(context step.ExecutionContext) (step.StepStringOutput, error) {
+func (s TaskStep) Run(context ExecutionContext) (StepStringOutput, error) {
 	output, err := context.RunAnotherTask(s.TaskKeyString, s.Arguments.TransformStringValues(func(v string) string {
 		v2, err := context.Render(v, "argument")
 		if err != nil {
@@ -45,7 +45,7 @@ func (s TaskStep) Run(context step.ExecutionContext) (step.StepStringOutput, err
 		}
 		return v2
 	}), context.Vars())
-	return step.StepStringOutput{String: output}, err
+	return StepStringOutput{String: output}, err
 }
 
 func (s TaskStep) GetName() string {

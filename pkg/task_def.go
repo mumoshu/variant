@@ -8,7 +8,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
-	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 )
 
@@ -18,7 +17,7 @@ type TaskDef struct {
 	Inputs      []*InputConfig `yaml:"inputs,omitempty"`
 	TaskDefs    []*TaskDef     `yaml:"tasks,omitempty"`
 	Script      string         `yaml:"script,omitempty"`
-	Steps       []step.Step    `yaml:"steps,omitempty"`
+	Steps       []Step         `yaml:"steps,omitempty"`
 	Autoenv     bool           `yaml:"autoenv,omitempty"`
 	Autodir     bool           `yaml:"autodir,omitempty"`
 	Interactive bool           `yaml:"interactive,omitempty"`
@@ -235,32 +234,32 @@ func TransformV2FlowConfigMapToArray(v2 map[string]*TaskDef) []*TaskDef {
 	return result
 }
 
-var stepLoaders []step.StepLoader
+var stepLoaders []StepLoader
 
-func Register(stepLoader step.StepLoader) {
+func Register(stepLoader StepLoader) {
 	stepLoaders = append(stepLoaders, stepLoader)
 }
 
 func init() {
-	stepLoaders = []step.StepLoader{}
+	stepLoaders = []StepLoader{}
 }
 
 type stepLoadingContextImpl struct{}
 
-func (s stepLoadingContextImpl) LoadStep(config step.StepDef) (step.Step, error) {
+func (s stepLoadingContextImpl) LoadStep(config StepDef) (Step, error) {
 	step, err := LoadStep(config)
 
 	return step, err
 }
 
-func LoadStep(config step.StepDef) (step.Step, error) {
+func LoadStep(config StepDef) (Step, error) {
 	var lastError error
 
 	lastError = nil
 
 	context := stepLoadingContextImpl{}
 	for _, loader := range stepLoaders {
-		var s step.Step
+		var s Step
 		s, lastError = loader.LoadStep(config, context)
 
 		log.WithField("step", s).Debugf("step loaded")
@@ -272,8 +271,8 @@ func LoadStep(config step.StepDef) (step.Step, error) {
 	return nil, errors.Wrapf(lastError, "all loader failed to load step")
 }
 
-func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDefs []map[interface{}]interface{}) ([]step.Step, error) {
-	result := []step.Step{}
+func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDefs []map[interface{}]interface{}) ([]Step, error) {
+	result := []Step{}
 
 	if script != "" {
 		if len(stepDefs) > 0 {
@@ -288,13 +287,13 @@ func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDef
 		if runner != nil {
 			raw["runner"] = runner
 		}
-		s, err := LoadStep(step.NewStepDef(raw))
+		s, err := LoadStep(NewStepDef(raw))
 
 		if err != nil {
 			log.Panicf("step failed to load: %v", err)
 		}
 
-		result = []step.Step{s}
+		result = []Step{s}
 	} else {
 		for i, stepDef := range stepDefs {
 			defaultName := fmt.Sprintf("step-%d", i+1)
@@ -309,7 +308,7 @@ func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDef
 				panic(castErr)
 			}
 
-			s, err := LoadStep(step.NewStepDef(converted))
+			s, err := LoadStep(NewStepDef(converted))
 
 			if err != nil {
 				return nil, errors.Wrapf(err, "Error reading step[%d]")

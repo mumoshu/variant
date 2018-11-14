@@ -7,8 +7,6 @@ import (
 
 	"fmt"
 	"github.com/pkg/errors"
-
-	"github.com/mumoshu/variant/pkg/api/step"
 )
 
 type TaskRunner struct {
@@ -21,11 +19,11 @@ type stepCaller struct {
 	task *Task
 }
 
-func (c stepCaller) GetKey() step.Key {
+func (c stepCaller) GetKey() Key {
 	return c.task.Name.AsStepKey()
 }
 
-func (t TaskRunner) AsStepCaller() step.Caller {
+func (t TaskRunner) AsStepCaller() Caller {
 	return stepCaller{
 		task: t.Task,
 	}
@@ -40,7 +38,7 @@ func NewTaskRunner(taskDef *Task, taskTemplate *TaskTemplate, vars map[string]in
 	return runner, nil
 }
 
-func (t TaskRunner) GetKey() step.Key {
+func (t TaskRunner) GetKey() Key {
 	return t.Name.AsStepKey()
 }
 
@@ -101,11 +99,11 @@ func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) 
 
 	ctx.Debugf("task %s started", t.Name.String())
 
-	var output step.StepStringOutput
-	var lastout step.StepStringOutput
+	var output StepStringOutput
+	var lastout StepStringOutput
 	var err error
 
-	context := NewStepExecutionContext(*project, *t, t.Template)
+	context := NewStepExecutionContext(*project, *t, t.Template, append(append([]*Task{t.Task}, caller...)))
 
 	for _, s := range t.Steps {
 		lastout, err = s.Run(context)
@@ -119,7 +117,7 @@ func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) 
 			if output.String != "" && !strings.HasSuffix(output.String, "\n") {
 				sep = "\n"
 			}
-			output = step.StepStringOutput{
+			output = StepStringOutput{
 				output.String + sep + lastout.String,
 			}
 		}

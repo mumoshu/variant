@@ -1,7 +1,6 @@
 package variant
 
 import (
-	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/pkg/errors"
 	"strings"
 )
@@ -38,7 +37,7 @@ func (k taskStepKey) ShortString() string {
 	return k.taskName.ShortString()
 }
 
-func (k taskStepKey) Parent() (step.Key, error) {
+func (k taskStepKey) Parent() (Key, error) {
 	parent, err := k.taskName.Parent()
 	if err != nil {
 		return nil, err
@@ -46,7 +45,7 @@ func (k taskStepKey) Parent() (step.Key, error) {
 	return parent.AsStepKey(), nil
 }
 
-func (t TaskName) AsStepKey() step.Key {
+func (t TaskName) AsStepKey() Key {
 	return taskStepKey{
 		taskName: t,
 	}

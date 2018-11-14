@@ -7,7 +7,6 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/mumoshu/variant/pkg/api/step"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -17,7 +16,7 @@ func NewDefaultTaskConfig() *TaskDef {
 		Inputs:   []*InputConfig{},
 		TaskDefs: []*TaskDef{},
 		Autoenv:  false,
-		Steps:    []step.Step{},
+		Steps:    []Step{},
 	}
 }
 
