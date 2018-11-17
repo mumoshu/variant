@@ -54,7 +54,7 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 				c := strings.Join(strings.Split(taskName.String(), "."), " ")
 				log.Errorf("Stack trace: %+v", err)
 				log.Errorf("Error: `%s` failed: %v", c, err)
-				if errMsg != "" {
+				if strings.Trim(errMsg, " \n\t") != "" {
 					log.Errorf("Caused by: %s", errMsg)
 				}
 				os.Exit(1)
