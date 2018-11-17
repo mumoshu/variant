@@ -76,6 +76,11 @@ func main() {
 
 	varfileExists := fileutil.Exists(varfile)
 
+	if !varfileExists {
+		varfile = "Variantfile"
+		varfileExists = fileutil.Exists(varfile)
+	}
+
 	if varfileExists {
 
 		taskConfigFromFile, err := engine.ReadTaskConfigFromFile(varfile)
