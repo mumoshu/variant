@@ -16,6 +16,7 @@ import (
 	"io"
 	"path/filepath"
 	"runtime"
+	"github.com/logrusorgru/aurora"
 )
 
 type ScriptStepLoader struct{}
@@ -393,16 +394,18 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 				fmt.Fprint(os.Stderr, str, "\n")
 			}
 		} else {
-			stdoutlog := log.WithFields(log.Fields{"stream": "stdout"})
-			stderrlog := log.WithFields(log.Fields{"stream": "stderr"})
+			stdoutlog := log.StandardLogger()
+			stderrlog := log.StandardLogger()
 
 			writeToOut = func(str string) {
-				stdoutlog.Info(str)
+				stdoutlog.Info(aurora.Gray(str))
 			}
 			writeToErr = func(str string) {
-				stderrlog.Info(str)
+				stderrlog.Info(aurora.Red(str))
 			}
 		}
+
+		log.Info(aurora.Bold(aurora.Cyan(fmt.Sprintf("≫ %s %s", name, strings.TrimSuffix(strings.Join(args, " "), "\n")))))
 
 		// Coordinating stdout/stderr in this single place to not screw up message ordering
 		for {

@@ -76,6 +76,14 @@
   revision = "7cafcd837844e784b526369c9bce262804aebc60"
 
 [[projects]]
+  branch = "master"
+  digest = "1:095e6cc12b2b7063e6f30d6f8d3b2440f9a0c9a4e552b3d2facf601e73ff439f"
+  name = "github.com/logrusorgru/aurora"
+  packages = ["."]
+  pruneopts = ""
+  revision = "a7b3b318ed4e1ae5b80602b08627267303c68572"
+
+[[projects]]
   digest = "1:739b2038a38cebb50e922d18f4b042c042256320fea2db094814aeef8891e0c1"
   name = "github.com/magiconair/properties"
   packages = ["."]
@@ -240,6 +248,7 @@
     "github.com/davecgh/go-spew/spew",
     "github.com/juju/errors",
     "github.com/kr/pretty",
+    "github.com/logrusorgru/aurora",
     "github.com/mitchellh/mapstructure",
     "github.com/mumoshu/logrus-bunyan-formatter",
     "github.com/pkg/errors",
