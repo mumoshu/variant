@@ -13,10 +13,10 @@ import (
 	"archive/tar"
 	"compress/gzip"
 
+	"github.com/logrusorgru/aurora"
 	"io"
 	"path/filepath"
 	"runtime"
-	"github.com/logrusorgru/aurora"
 )
 
 type ScriptStepLoader struct{}
@@ -312,6 +312,9 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 	}
 
 	errOut := ""
+	resOut := ""
+
+	var done chan struct{}
 
 	if context.Interactive() {
 		cmd.Stdin = os.Stdin
@@ -324,6 +327,10 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 			os.Exit(1)
 		}
 	} else {
+		done = make(chan struct{})
+		defer func() {
+		}()
+
 		cmdReader, err := cmd.StdoutPipe()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error creating StdoutPipe for Cmd", err)
@@ -417,6 +424,10 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 					//} else {
 					writeToOut(text)
 					//}
+					if resOut != "" {
+						resOut += "\n"
+					}
+					resOut += text
 				} else {
 					stdoutEnds = true
 				}
@@ -435,10 +446,16 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 				break
 			}
 		}
+		log.Debugf("closing...")
+		close(done)
 	}
 
 	var waitStatus syscall.WaitStatus
 	err := cmd.Wait()
+
+	log.Debugf("waiting for all the stdout/stderr contents to be consumed...")
+
+	<-done
 
 	if err != nil {
 		ctx.Errorf("script step failed: %v", err)
@@ -454,7 +471,7 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 		log.Debugf("script step finished command with status: %d", waitStatus.ExitStatus())
 	}
 
-	return strings.Trim(errOut, "\n "), nil
+	return strings.Trim(resOut, "\n "), nil
 }
 
 func createTarFromGlob(filename string, pattern string) error {
