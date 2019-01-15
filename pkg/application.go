@@ -17,6 +17,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 	"reflect"
 	"strconv"
+	"github.com/hashicorp/go-multierror"
 )
 
 type Application struct {
@@ -82,10 +83,10 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 		return p, nil
 	}
 
-	taskDef, err := p.TaskRegistry.FindTask(taskName)
+	taskDef := p.TaskRegistry.FindTask(taskName)
 
-	if err != nil {
-		return "", errors.Wrapf(err, "app failed finding task %s", taskName.ShortString())
+	if taskDef == nil {
+		return "", errors.Errorf("no task named `%s` exists", taskName.ShortString())
 	}
 
 	vars := map[string](interface{}){}
@@ -96,7 +97,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 	inputs, err := p.InheritedInputValuesForTaskKey(taskName, args, arguments, scope, caller...)
 
 	if err != nil {
-		return "", errors.Wrapf(err, "app failed running task %s", taskName.ShortString())
+		return "", errors.Wrapf(err, "%s failed running task %s", p.Name, taskName.ShortString())
 	}
 
 	for k, v := range inputs {
@@ -135,7 +136,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 	ctx.Debugf("app received output from task %s: %s", taskName.ShortString(), output)
 
 	if error != nil {
-		error = errors.Wrapf(error, "app failed running task %s", taskName.ShortString())
+		error = errors.Wrapf(error, "%s failed running task %s", p.Name, taskName.ShortString())
 	}
 
 	ctx.Debugf("app finished running task %s", taskName.ShortString())
@@ -150,7 +151,7 @@ func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []st
 	direct, err := p.DirectInputValuesForTaskKey(taskName, args, arguments, scope, caller...)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "One or more inputs for task %s failed", taskName.ShortString())
+		return nil, errors.Wrapf(err, "missing input for task `%s`", taskName.ShortString())
 	}
 
 	for k, v := range direct {
@@ -278,6 +279,8 @@ func ensureType(raw interface{}, tpe string) (interface{}, bool) {
 }
 
 func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (map[string]interface{}, error) {
+	var errs *multierror.Error
+
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
@@ -297,13 +300,13 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 	ctx.Debugf("app started collecting inputs")
 
-	currentTask, err := p.TaskRegistry.FindTask(taskName)
-	if err != nil {
-		return nil, errors.WithStack(err)
+	currentTask := p.TaskRegistry.FindTask(taskName)
+	if currentTask == nil {
+		return nil, errors.Errorf("%s has no task named `%s`", p.Name, taskName)
 	}
 
 	for _, input := range currentTask.ResolvedInputs {
-		ctx.Debugf("task %s depends on input %s", taskName, input.ShortName())
+		ctx.Debugf("task `%s` depends on input %s", taskName, input.ShortName())
 
 		var tmplOrStaticVal interface{}
 		var value interface{}
@@ -316,25 +319,41 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 		if tmplOrStaticVal == nil {
 			if v, err := arguments.Get(input.Name); err == nil {
 				tmplOrStaticVal = v
+			} else {
+				errs = multierror.Append(errs, fmt.Errorf("no value for argument `%s`", input.Name))
 			}
 		}
 
 		if tmplOrStaticVal == nil && input.Name != input.ShortName() {
 			if v, err := arguments.Get(input.ShortName()); err == nil {
 				tmplOrStaticVal = v
+			} else {
+				errs = multierror.Append(errs, fmt.Errorf("no value for argument `%s`", input.ShortName()))
 			}
 		}
 
+		confKeyBaseTask := fmt.Sprintf("%s.%s", baseTaskKey, input.ShortName())
 		if tmplOrStaticVal == nil && baseTaskKey != "" {
-			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(fmt.Sprintf("%s.%s", baseTaskKey, input.ShortName()), input.TypeName())
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyBaseTask, input.TypeName())
+			if tmplOrStaticVal == nil {
+				errs = multierror.Append(errs, fmt.Errorf("no value for config `%s`", confKeyBaseTask))
+			}
 		}
 
+		confKeyTask := fmt.Sprintf("%s.%s", taskName.ShortString(), input.ShortName())
 		if tmplOrStaticVal == nil && strings.LastIndex(input.ShortName(), taskName.ShortString()) == -1 {
-			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(fmt.Sprintf("%s.%s", taskName.ShortString(), input.ShortName()), input.TypeName())
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyTask, input.TypeName())
+			if tmplOrStaticVal == nil {
+				errs = multierror.Append(errs, fmt.Errorf("no value for config `%s`", confKeyTask))
+			}
 		}
 
+		confKeyInput := input.ShortName()
 		if tmplOrStaticVal == nil {
-			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(input.ShortName(), input.TypeName())
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyInput, input.TypeName())
+			if tmplOrStaticVal == nil {
+				errs = multierror.Append(errs, fmt.Errorf("no value for config `%s`", confKeyInput))
+			}
 		}
 
 		if tmplOrStaticVal == nil {
@@ -363,6 +382,8 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 				}
 			} else if input.Name == "env" {
 				value = ""
+			} else {
+				errs = multierror.Append(errs, fmt.Errorf("no default value defined for input `%s`", input.Name))
 			}
 		}
 
@@ -375,9 +396,19 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 				var err error
 				if output, err = maputil.GetValueAtPath(p.CachedTaskOutputs, pathComponents); output == nil {
 					args := arguments.GetSubOrEmpty(input.Name)
-					tmplOrStaticVal, err = p.RunTask(p.TaskNamer.FromResolvedInput(input), []string{}, args, map[string]interface{}{}, currentTask)
+					inTaskName := p.TaskNamer.FromResolvedInput(input)
+					tmplOrStaticVal, err = p.RunTask(inTaskName, []string{}, args, map[string]interface{}{}, currentTask)
 					if err != nil {
-						return nil, errors.Wrapf(err, "Missing value for input `%s`. Please provide a command line option or a positional argument or a task for it`", input.ShortName())
+						runTaskErr := errors.Wrapf(err, "unable to run task `%s`", inTaskName)
+						errs = multierror.Append(errs, runTaskErr)
+						errs.ErrorFormat = func(es []error) string {
+							points := make([]string, len(es))
+							for i, err := range es {
+								points[i] = fmt.Sprintf("%d. %s", i + 1, err)
+							}
+							return fmt.Sprintf("all the input sources failed (details follow)\n%s", strings.Join(points, "\n"))
+						}
+						return nil, errors.WithStack(errs)
 					}
 					maputil.SetValueAtPath(p.CachedTaskOutputs, pathComponents, tmplOrStaticVal)
 				} else {

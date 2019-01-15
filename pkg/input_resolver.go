@@ -39,9 +39,9 @@ func (r *RegistryBasedInputResolver) ResolveInputsForTaskKey(currentTaskKey Task
 
 	ctx := log.WithFields(log.Fields{"prefix": fmt.Sprintf("%s", currentTaskKey.String())})
 
-	currentTask, err := r.registry.FindTask(currentTaskKey)
+	currentTask := r.registry.FindTask(currentTaskKey)
 
-	if err != nil {
+	if currentTask == nil {
 		allTasks := r.registry.AllTaskKeys()
 		ctx.Debugf("is not a Task in: %v", allTasks)
 		return []*Input{}

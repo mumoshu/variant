@@ -52,8 +52,12 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 
 			if err != nil {
 				c := strings.Join(strings.Split(taskName.String(), "."), " ")
-				log.Errorf("Stack trace: %+v", err)
-				log.Errorf("Error: `%s` failed: %v", c, err)
+				if log.GetLevel() == log.DebugLevel {
+					log.Errorf("Stack trace: %+v", err)
+				}
+				errs := strings.Split(err.Error(), ": ")
+				msg := strings.Join(errs, "\n")
+				log.Errorf("Error: `%s` failed: %s", c, msg)
 				if strings.Trim(errMsg, " \n\t") != "" {
 					log.Errorf("Caused by: %s", errMsg)
 				}

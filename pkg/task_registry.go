@@ -1,9 +1,5 @@
 package variant
 
-import (
-	"github.com/pkg/errors"
-)
-
 type TaskRegistry struct {
 	tasks map[string]*Task
 }
@@ -18,14 +14,8 @@ func (p *TaskRegistry) Tasks() map[string]*Task {
 	return p.tasks
 }
 
-func (p *TaskRegistry) FindTask(name TaskName) (*Task, error) {
-	t := p.tasks[name.ShortString()]
-
-	if t == nil {
-		return nil, errors.Errorf("No Task exists for the task name `%s`", name.ShortString())
-	}
-
-	return t, nil
+func (p *TaskRegistry) FindTask(name TaskName) *Task {
+	return p.tasks[name.ShortString()]
 }
 
 func (p *TaskRegistry) put(key TaskName, task *Task) {
