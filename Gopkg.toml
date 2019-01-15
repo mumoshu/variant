@@ -56,3 +56,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/logrusorgru/aurora"
+
+[[constraint]]
+  name = "github.com/hashicorp/go-multierror"
+  version = "1.0.0"
