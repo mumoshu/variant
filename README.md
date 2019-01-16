@@ -55,6 +55,31 @@ Now run your command by:
 
 ```
 $ chmod +x ./myfirstcmd
+$ ./myfirstcmd
+Usage:
+  myfirstcmd [command]
+
+Available Commands:
+  bar
+  env         Print currently selected environment
+  foo
+  help        Help about any command
+  ls          test
+  version     Print the version number of this command
+
+Flags:
+  -c, --config-file string   Path to config file
+  -h, --help                 help for myfirstcmd
+      --logtostderr          write log messages to stderr (default true)
+  -o, --output string        Output format. One of: json|text|bunyan (default "text")
+  -v, --verbose              verbose output
+
+Use "myfirstcmd [command] --help" for more information about a command.
+```
+
+Each task in the `myfirstcmd` is given a sub-command. Run `myfistcmd foo` to run the task named `foo`:
+
+```
 $ ./myfirstcmd foo
 Hello dude you are in the heaven
 ```
