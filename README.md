@@ -1,10 +1,10 @@
 # Variant
 
-![image](https://user-images.githubusercontent.com/22009/51234679-d16c8780-19b0-11e9-8f97-2103d99a44c1.png)
+`Variant` is a task runner. It transforms your workflows written in YAML into a modern CLI application.
 
-Bash + Workflows + Dataflows + Dependency Injection, JSON Schema for inputs validation
+![image](https://user-images.githubusercontent.com/22009/51234992-b1899380-19b1-11e9-83c3-dbfdb1517b1c.png)
 
-## Rationale
+# Rationale
 
 Automating DevOps workflows is difficult because it often involve multiple `executables` like shell/ruby/perl/etc scripts and commands.
 
@@ -20,7 +20,7 @@ writing a single tool which
 
 is both time-consuming.
 
-## What?
+# How it works
 
 Variant is a framework to build a CLI application which becomes the single entry point to your DevOps workflows.
 
@@ -39,6 +39,8 @@ It consists of:
   * to implicitly inject required inputs to a commands from configuration files or outputs from another commands
   * to explicit inject inputs to commands and its dependencies via command-line parameters
 
+# Usage
+
 ## Inputs
 
 An input named `myinput` for the task `mytask` can be one of follows, in order of precedense:
@@ -49,7 +51,7 @@ An input named `myinput` for the task `mytask` can be one of follows, in order o
   * from the common config file: `<command name>.yaml`(normally `var.yaml`)
 * Output of the task `myinput`
 
-## Using environments
+## Environments
 
 You can switch `environment` (or context) in which a task is executed by running `var env set <env name>`.
 
@@ -72,17 +74,17 @@ $ var version --output json | jq -c -r 'select(.msg == "version") | .framework_v
 0.0.3-rc1
 ```
 
-## Similar projects
+# Alternatives
 
 * [tj/robo](https://github.com/tj/robo)
 
-## Interesting Readings
+# Interesting Readings
 
 * [How to write killer DevOps automation workflows](http://techbeacon.com/how-write-killer-devops-automation-workflows)
 * [progrium/bashstyle: Let's do Bash right!](https://github.com/progrium/bashstyle)
 * [ralish/bash-script-template: A best practices Bash script template with many useful functions](https://github.com/ralish/bash-script-template)
 
-## Future Goals
+# Future Goals
 
 * Runners to run tasks in places other than the host running your Variant app
   * Docker
@@ -96,12 +98,12 @@ $ var version --output json | jq -c -r 'select(.msg == "version") | .framework_v
 * Integration with job queues
   * to ensure your tasks are run reliably, at-least-once, tolerating temporary failures
 
-## License
+# License
 
 Apache License 2.0
 
 
-## Attribution
+# Attribution
 
 We use:
 
