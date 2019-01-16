@@ -2,20 +2,12 @@
 
 
 [[projects]]
-  digest = "1:42a42c4bc67bed17f40fddf0f24d4403e25e7b96488456cf4248e6d16659d370"
-  name = "github.com/sirupsen/logrus"
-  packages = ["."]
-  pruneopts = ""
-  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
-  version = "v1.0.4"
-
-[[projects]]
-  digest = "1:56c130d885a4aacae1dd9c7b71cfe39912c7ebc1ff7d2b46083c8812996dc43b"
+  digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   pruneopts = ""
-  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
-  version = "v1.1.0"
+  revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:eb53021a8aa3f599d29c7102e65026242bdedce998a54837dc67f14b6a97c5fd"
@@ -42,13 +34,13 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:147d671753effde6d3bcd58fc74c1d67d740196c84c280c762a5417319499972"
+  digest = "1:d14365c51dd1d34d5c79833ec91413bfbb166be978724f15701e17080dc06dec"
   name = "github.com/hashicorp/hcl"
   packages = [
     ".",
     "hcl/ast",
     "hcl/parser",
+    "hcl/printer",
     "hcl/scanner",
     "hcl/strconv",
     "hcl/token",
@@ -57,7 +49,8 @@
     "json/token",
   ]
   pruneopts = ""
-  revision = "23c074d0eceb2b8a5bfdbb271ab780cde70f05a8"
+  revision = "8cb6e5b959231cc1119e43259c4a608f9c51a241"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
@@ -69,27 +62,35 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b38a66184fb38b517900ab365f43557ea7e4efe36f939e2fcb53ec0aa92b29c5"
+  digest = "1:9778f6bb37b3b32ac561cbea983318a988beb687964ba35a570a9d36664962a0"
   name = "github.com/juju/errors"
   packages = ["."]
   pruneopts = ""
-  revision = "c7d06af17c68cd34c835053720b21f6549d9b0ee"
+  revision = "089d3ea4e4d597bd98acac068193d341983326a3"
+
+[[projects]]
+  digest = "1:6a874e3ddfb9db2b42bd8c85b6875407c702fa868eed20634ff489bc896ccfd3"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = ""
+  revision = "5c8c8bd35d3832f5d134ae1e1e375b69a4d25242"
+  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
-  digest = "1:591a2778aa6e896980757ea87e659b3aa13d8c0e790310614028463a31c0998b"
+  digest = "1:3108ec0946181c60040ff51b811908f89d03e521e2b4ade5ef5c65b3c0e911ae"
   name = "github.com/kr/pretty"
   packages = ["."]
   pruneopts = ""
-  revision = "cfb55aafdaf3ec08f0db22699ab822c50091b1c4"
+  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
 
 [[projects]]
-  branch = "master"
-  digest = "1:109e0a9b9e74c5c8adf94a2dc4dd4a9ca2a183d4d87ffecd4e62db69a5ede55a"
+  digest = "1:11b056b4421396ab14e384ab8ab8c2079b03f1e51aa5eb4d9b81f9e0d1aa8fbf"
   name = "github.com/kr/text"
   packages = ["."]
   pruneopts = ""
-  revision = "7cafcd837844e784b526369c9bce262804aebc60"
+  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
+  version = "v0.1.0"
 
 [[projects]]
   branch = "master"
@@ -100,95 +101,103 @@
   revision = "a7b3b318ed4e1ae5b80602b08627267303c68572"
 
 [[projects]]
-  digest = "1:739b2038a38cebb50e922d18f4b042c042256320fea2db094814aeef8891e0c1"
+  digest = "1:961dc3b1d11f969370533390fdf203813162980c858e1dabe827b60940c909a5"
   name = "github.com/magiconair/properties"
   packages = ["."]
   pruneopts = ""
-  revision = "d419a98cdbed11a922bf76f257b7c4be79b50e73"
-  version = "v1.7.4"
+  revision = "c2353362d570a7bfa228149c62842019201cfb71"
+  version = "v1.8.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:a31c8ff06bf8ccc1826e3a28a4132bf217a53f3b096e6a03dcac7b6a9eb796f9"
+  digest = "1:bcc46a0fbd9e933087bef394871256b5c60269575bb661935874729c65bbbf60"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   pruneopts = ""
-  revision = "b4575eea38cca1123ec2dc90c26529b5c5acfcff"
+  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
+  version = "v1.1.2"
 
 [[projects]]
   branch = "master"
-  digest = "1:8f27aba4de5b3119bcf150f1c58c4bb22fe4766c442fdc321f3b72ea649862c8"
+  digest = "1:e934edefa01362c34a9f315a2be5d10de285297d6b5a0d623b224ad2d0f48d6c"
   name = "github.com/mumoshu/logrus-bunyan-formatter"
   packages = ["."]
   pruneopts = ""
-  revision = "caa7a7da48e04474da3744e04eb59aaa96887769"
+  revision = "0b24af3c58eb86ef575df253ce949ebb63ab779e"
 
 [[projects]]
-  digest = "1:d60cfeee185019d4fcd35e8c89c83aff576e4723b6100300bf67b05be961388f"
+  digest = "1:894aef961c056b6d85d12bac890bf60c44e99b46292888bfa66caf529f804457"
   name = "github.com/pelletier/go-toml"
   packages = ["."]
   pruneopts = ""
-  revision = "acdc4509485b587f5e675510c4f2c63e90ff68a8"
-  version = "v1.1.0"
+  revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
+  version = "v1.2.0"
 
 [[projects]]
-  digest = "1:7365acd48986e205ccb8652cc746f09c8b7876030d53710ea6ef7d0bd0dcd7ca"
+  digest = "1:1d7e1867c49a6dd9856598ef7c3123604ea3daabf5b83f303ff457bcbc410b1d"
   name = "github.com/pkg/errors"
   packages = ["."]
   pruneopts = ""
-  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
-  version = "v0.8.0"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
 
 [[projects]]
-  digest = "1:dae0d7dd55563fd389e7263a32d2030022ef29cceff941336e53f6520e0308c0"
+  digest = "1:9a3c631555e0351fdc4e696577bb63afd90c399d782a8462dba9d100d7021db3"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = ""
+  revision = "e1e72e9de974bd926e5c56f83753fba2df402ce5"
+  version = "v1.3.0"
+
+[[projects]]
+  digest = "1:32c5802989a96ee74cc4e8372efce3cab9cf6355132ad8e80cc32c18757ccd47"
   name = "github.com/spf13/afero"
   packages = [
     ".",
     "mem",
   ]
   pruneopts = ""
-  revision = "bb8f1927f2a9d3ab41c9340aa034f6b803f4359c"
-  version = "v1.0.2"
+  revision = "a5d6946387efe7d64d09dcba68cdd523dc1273a3"
+  version = "v1.2.0"
 
 [[projects]]
-  digest = "1:6ff9b74bfea2625f805edec59395dc37e4a06458dd3c14e3372337e3d35a2ed6"
+  digest = "1:ae3493c780092be9d576a1f746ab967293ec165e8473425631f06658b6212afc"
   name = "github.com/spf13/cast"
   packages = ["."]
   pruneopts = ""
-  revision = "acbeb36b902d72a7a4c18e8f3241075e7ab763e4"
-  version = "v1.1.0"
+  revision = "8c9545af88b134710ab1cd196795e7f2388358d7"
+  version = "v1.3.0"
 
 [[projects]]
-  digest = "1:2208a80fc3259291e43b30f42f844d18f4218036dff510f42c653ec9890d460a"
+  digest = "1:a1403cc8a94b8d7956ee5e9694badef0e7b051af289caad1cf668331e3ffa4f6"
   name = "github.com/spf13/cobra"
   packages = ["."]
   pruneopts = ""
-  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
-  version = "v0.0.1"
+  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
+  version = "v0.0.3"
 
 [[projects]]
-  branch = "master"
-  digest = "1:104517520aab91164020ab6524a5d6b7cafc641b2e42ac6236f6ac1deac4f66a"
+  digest = "1:9ceffa4ab5f7195ecf18b3a7fff90c837a9ed5e22e66d18069e4bccfe1f52aa0"
   name = "github.com/spf13/jwalterweatherman"
   packages = ["."]
   pruneopts = ""
-  revision = "7c0cea34c8ece3fbeb2b27ab9b59511d360fb394"
+  revision = "4a4406e478ca629068e7768fc33f3f044173c0a6"
+  version = "v1.0.0"
 
 [[projects]]
-  digest = "1:261bc565833ef4f02121450d74eb88d5ae4bd74bfe5d0e862cddb8550ec35000"
+  digest = "1:cbaf13cdbfef0e4734ed8a7504f57fe893d471d62a35b982bf6fb3f036449a66"
   name = "github.com/spf13/pflag"
   packages = ["."]
   pruneopts = ""
-  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
-  version = "v1.0.0"
+  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
+  version = "v1.0.3"
 
 [[projects]]
-  digest = "1:59354ad53dfe6ed1b941844cb029cd37c0377598eec3a0d49c03aee2375ef9c4"
+  digest = "1:b98ee2c3f1469ab3b494859d3a9c9e595ec2c63660dea130a5154cfcd427b608"
   name = "github.com/spf13/viper"
   packages = ["."]
   pruneopts = ""
-  revision = "25b30aa063fc18e48662b86996252eabdcf2f0c7"
-  version = "v1.0.0"
+  revision = "6d33b5a963d922d182c91e8a1c88d81fd150cfd4"
+  version = "v1.3.1"
 
 [[projects]]
   branch = "master"
@@ -208,34 +217,33 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5ad0971943f5a0072e0f76ce6ee2fbc3dbdb23e0667d55feb85c018cf0ba6dd8"
+  digest = "1:c2c74271189fe48e23c25216570008b7ecc5782688d6efd81325886ac6f62ad0"
   name = "github.com/xeipuuv/gojsonschema"
   packages = ["."]
   pruneopts = ""
-  revision = "1d523034197ff1f222f6429836dd36a2457a1874"
+  revision = "f971f3cd73b2899de6923801c147f075263e0c50"
 
 [[projects]]
   branch = "master"
-  digest = "1:febc7d7c1a817016b83441742910a3eab682d5c64613fcd91fde7ca06107ea49"
+  digest = "1:59b49c47c11a48f1054529207f65907c014ecf5f9a7c0d9c0f1616dec7b062ed"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = ""
-  revision = "1875d0a70c90e57f11972aefd42276df65e895b9"
+  revision = "ff983b9c42bc9fbf91556e191cc8efb585c16908"
 
 [[projects]]
   branch = "master"
-  digest = "1:e4853644a857f4dd587ac56235c24ab32fefa393a8955be2ff5a535b820d5e19"
+  digest = "1:69b7ecfaddca30f8e8d97798822ff2b8ddfa7634ed16661561b54f30c63c2a42"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = ""
-  revision = "3dbebcf8efb6a5011a60c2b4591c1022a759af8a"
+  revision = "a457fd036447854c0c02e89ea439481bdcf941a2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:9f9562b058a594dae0c8e2388c1a802664111736845bc08885246f0e4bf99bdd"
+  digest = "1:5acd3512b047305d49e8763eef7ba423901e85d5dd2fd1e71778a0ea8de10bd4"
   name = "golang.org/x/text"
   packages = [
     "internal/gen",
@@ -246,21 +254,21 @@
     "unicode/norm",
   ]
   pruneopts = ""
-  revision = "e19ae1496984b1c655b8044a65c0300a3c878dd3"
+  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
+  version = "v0.3.0"
 
 [[projects]]
   branch = "v2"
-  digest = "1:4b4e5848dfe7f316f95f754df071bebfb40cf4482da62e17e7e1aebdf11f4918"
+  digest = "1:cedccf16b71e86db87a24f8d4c70b0a855872eb967cb906a66b95de56aefbd0d"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = ""
-  revision = "d670f9405373e636a5a2765eea47fac0c9bc91a4"
+  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/sirupsen/logrus",
     "github.com/davecgh/go-spew/spew",
     "github.com/hashicorp/go-multierror",
     "github.com/juju/errors",
@@ -269,6 +277,7 @@
     "github.com/mitchellh/mapstructure",
     "github.com/mumoshu/logrus-bunyan-formatter",
     "github.com/pkg/errors",
+    "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "github.com/spf13/viper",

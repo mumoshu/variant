@@ -3,7 +3,7 @@ package logrus
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"os"
 	"time"
 )
@@ -47,7 +47,7 @@ func (f *Formatter) Format(entry *logrus.Entry) ([]byte, error) {
 		switch v := v.(type) {
 		case error:
 			// Otherwise errors are ignored by `encoding/json`
-			// https://github.com/Sirupsen/logrus/issues/137
+			// https://github.com/sirupsen/logrus/issues/137
 			data[k] = v.Error()
 		default:
 			data[k] = v
