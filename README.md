@@ -93,3 +93,10 @@ $ var version --output json | jq -c -r 'select(.msg == "version") | .framework_v
 ## License
 
 Apache License 2.0
+
+
+## Attribution
+
+We use:
+
+- [semtag](https://github.com/pnikosis/semtag) for automated semver tagging. I greatly appreciate the author(pnikosis)'s effort on creating it and their kindness to share it!
