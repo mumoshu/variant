@@ -1,6 +1,6 @@
 project_name: variant
 builds:
-  env:
+- env:
   - CGO_ENABLED=0
 changelog:
   filters:
