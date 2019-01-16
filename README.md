@@ -20,6 +20,54 @@ writing a single tool which
 
 is both time-consuming.
 
+# Getting Started
+
+Download and install `variant` from the GitHub releases page:
+
+https://github.com/mumoshu/variant/releases
+
+Create a yaml file named `myfirstcmd` containing:
+
+```yaml
+#!/usr/bin/env variant
+
+tasks:
+  ls:
+    description: "test"
+    script: |
+      /usr/bin/ls -l 
+  bar:
+    script: |
+      echo "dude"
+  foo:
+    parameters:
+    - name: bar
+      type: string
+      description: "the bar"
+    - name: environment
+      type: string
+      default: "heaven"
+    script: |
+      echo "Hello {{ get "bar" }} you are in the {{ get "environment" }}"
+```
+
+Now run your command by:
+
+```
+$ chmod +x ./myfirstcmd
+$ ./myfirstcmd foo
+Hello dude you are in the default environment
+```
+
+Note that `variant` obtained the value for the parameter `bar` automatically from another task named `bar`.
+
+To specify the value, use the corresponding command-line automatically created and named after the parameter:
+
+```
+$ ./myfirstcmd foo --bar=$USER
+Hello <Your username> you are in the default environment
+```
+
 # How it works
 
 Variant is a framework to build a CLI application which becomes the single entry point to your DevOps workflows.
