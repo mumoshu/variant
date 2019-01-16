@@ -88,7 +88,7 @@ func (t TaskRunner) GenerateAutoenvRecursively(path string, env map[string]inter
 	return result, nil
 }
 
-func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) {
+func (t *TaskRunner) Run(project *Application, asInput bool, caller ...*Task) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) > 0 {
@@ -103,7 +103,7 @@ func (t *TaskRunner) Run(project *Application, caller ...*Task) (string, error) 
 	var lastout StepStringOutput
 	var err error
 
-	context := NewStepExecutionContext(*project, *t, t.Template, append(append([]*Task{t.Task}, caller...)))
+	context := NewStepExecutionContext(*project, *t, t.Template, asInput, append(append([]*Task{t.Task}, caller...)))
 
 	for _, s := range t.Steps {
 		lastout, err = s.Run(context)

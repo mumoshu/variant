@@ -48,7 +48,7 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 		cmd.Run = func(cmd *cobra.Command, args []string) {
 			p.app.UpdateLoggingConfiguration()
 
-			errMsg, err := p.app.RunTask(taskName, args, taskapi.NewArguments(), map[string]interface{}{})
+			errMsg, err := p.app.RunTask(taskName, args, taskapi.NewArguments(), map[string]interface{}{}, false)
 
 			if err != nil {
 				c := strings.Join(strings.Split(taskName.String(), "."), " ")

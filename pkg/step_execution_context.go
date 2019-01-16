@@ -9,14 +9,16 @@ type ExecutionContext struct {
 	taskRunner   TaskRunner
 	taskTemplate *TaskTemplate
 	trace        []*Task
+	asInput      bool
 }
 
-func NewStepExecutionContext(app Application, taskRunner TaskRunner, taskTemplate *TaskTemplate, trace []*Task) ExecutionContext {
+func NewStepExecutionContext(app Application, taskRunner TaskRunner, taskTemplate *TaskTemplate, asInput bool, trace []*Task) ExecutionContext {
 	return ExecutionContext{
 		app:          app,
 		taskRunner:   taskRunner,
 		taskTemplate: taskTemplate,
 		trace:        trace,
+		asInput:      asInput,
 	}
 }
 
@@ -53,5 +55,5 @@ func (c ExecutionContext) Interactive() bool {
 }
 
 func (c ExecutionContext) RunAnotherTask(key string, arguments task.Arguments, scope map[string]interface{}) (string, error) {
-	return c.app.RunTaskForKeyString(key, []string{}, arguments, scope, c.taskRunner.Task)
+	return c.app.RunTaskForKeyString(key, []string{}, arguments, scope, c.asInput, c.taskRunner.Task)
 }

@@ -392,8 +392,8 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 		var writeToOut func(str string)
 		var writeToErr func(str string)
 
-		// Print logs to stdout and stderr only when this is the command called by the user
-		if len(context.trace) == 1 {
+		// Print logs to stdout and stderr only when this is the command called by the user, directly or indirectly, as a task script. not as an input
+		if !context.asInput {
 			writeToOut = func(str string) {
 				fmt.Fprint(os.Stdout, str, "\n")
 			}

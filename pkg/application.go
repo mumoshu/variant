@@ -57,12 +57,12 @@ func (p Application) UpdateLoggingConfiguration() {
 	}
 }
 
-func (p Application) RunTaskForKeyString(keyStr string, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (string, error) {
+func (p Application) RunTaskForKeyString(keyStr string, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
 	taskKey := p.TaskNamer.FromString(fmt.Sprintf("%s.%s", p.Name, keyStr))
-	return p.RunTask(taskKey, args, arguments, scope, caller...)
+	return p.RunTask(taskKey, args, arguments, scope, asInput, caller...)
 }
 
-func (p Application) RunTask(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (string, error) {
+func (p Application) RunTask(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
@@ -131,7 +131,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 		return "", errors.Wrapf(err, "failed to initialize task runner")
 	}
 
-	output, error := taskRunner.Run(&p, caller...)
+	output, error := taskRunner.Run(&p, asInput, caller...)
 
 	ctx.Debugf("app received output from task %s: %s", taskName.ShortString(), output)
 
@@ -397,7 +397,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 				if output, err = maputil.GetValueAtPath(p.CachedTaskOutputs, pathComponents); output == nil {
 					args := arguments.GetSubOrEmpty(input.Name)
 					inTaskName := p.TaskNamer.FromResolvedInput(input)
-					tmplOrStaticVal, err = p.RunTask(inTaskName, []string{}, args, map[string]interface{}{}, currentTask)
+					tmplOrStaticVal, err = p.RunTask(inTaskName, []string{}, args, map[string]interface{}{}, true, currentTask)
 					if err != nil {
 						runTaskErr := errors.Wrapf(err, "unable to run task `%s`", inTaskName)
 						errs = multierror.Append(errs, runTaskErr)
