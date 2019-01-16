@@ -2,7 +2,7 @@ package variant
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	taskapi "github.com/mumoshu/variant/pkg/api/task"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

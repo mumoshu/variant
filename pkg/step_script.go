@@ -3,7 +3,7 @@ package variant
 import (
 	"bufio"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/pkg/errors"
 	"os"
 	"os/exec"

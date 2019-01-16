@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/pkg/errors"
 )

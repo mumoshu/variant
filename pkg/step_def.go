@@ -1,8 +1,8 @@
 package variant
 
 import (
-	"github.com/Sirupsen/logrus"
-	log "github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"reflect"
 )

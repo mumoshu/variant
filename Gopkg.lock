@@ -3,7 +3,7 @@
 
 [[projects]]
   digest = "1:42a42c4bc67bed17f40fddf0f24d4403e25e7b96488456cf4248e6d16659d370"
-  name = "github.com/Sirupsen/logrus"
+  name = "github.com/sirupsen/logrus"
   packages = ["."]
   pruneopts = ""
   revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
@@ -260,7 +260,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Sirupsen/logrus",
+    "github.com/sirupsen/logrus",
     "github.com/davecgh/go-spew/spew",
     "github.com/hashicorp/go-multierror",
     "github.com/juju/errors",

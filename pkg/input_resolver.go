@@ -2,7 +2,7 @@ package variant
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type InputResolver interface {

@@ -3,7 +3,7 @@ package variant
 import (
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	"fmt"
 	"github.com/pkg/errors"
