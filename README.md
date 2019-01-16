@@ -56,7 +56,7 @@ Now run your command by:
 ```
 $ chmod +x ./myfirstcmd
 $ ./myfirstcmd foo
-Hello dude you are in the default environment
+Hello dude you are in the heaven
 ```
 
 Note that `variant` obtained the value for the parameter `bar` automatically from another task named `bar`.
@@ -65,7 +65,7 @@ To specify the value, use the corresponding command-line automatically created a
 
 ```
 $ ./myfirstcmd foo --bar=$USER
-Hello <Your username> you are in the default environment
+Hello <Your username> you are in the heaven
 ```
 
 # How it works
