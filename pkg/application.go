@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/viper"
 
 	"encoding/json"
+	"github.com/hashicorp/go-multierror"
 	"github.com/mumoshu/variant/pkg/api/task"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/xeipuuv/gojsonschema"
 	"reflect"
 	"strconv"
-	"github.com/hashicorp/go-multierror"
 )
 
 type Application struct {
@@ -404,7 +404,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 						errs.ErrorFormat = func(es []error) string {
 							points := make([]string, len(es))
 							for i, err := range es {
-								points[i] = fmt.Sprintf("%d. %s", i + 1, err)
+								points[i] = fmt.Sprintf("%d. %s", i+1, err)
 							}
 							return fmt.Sprintf("all the input sources failed (details follow)\n%s", strings.Join(points, "\n"))
 						}
