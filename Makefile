@@ -23,6 +23,18 @@ format:
 clean:
 	rm -Rf dist/$(VERSION)
 
+release/minor:
+	git fetch origin master
+	git branch -D autorelease
+	git checkou -b autorelease origin/master
+	hack/semtag final -s minor
+
+release/patch:
+	git fetch origin master
+	git branch -D autorelease
+	git checkou -b autorelease origin/master
+	hack/semtag final -s patch
+
 .PHONY: build
 build: dist/$(VERSION)
 
