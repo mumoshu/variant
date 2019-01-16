@@ -1,4 +1,10 @@
-## Why?
+# Variant
+
+![image](https://user-images.githubusercontent.com/22009/51234679-d16c8780-19b0-11e9-8f97-2103d99a44c1.png)
+
+Bash + Workflows + Dataflows + Dependency Injection, JSON Schema for inputs validation
+
+## Rationale
 
 Automating DevOps workflows is difficult because it often involve multiple `executables` like shell/ruby/perl/etc scripts and commands.
 
