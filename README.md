@@ -1,6 +1,6 @@
 # Variant
 
-`Variant` is a task runner. It transforms your workflows written in YAML into a modern CLI application.
+`Variant` is a task runner / CLI generator. It transforms your workflows written in YAML into a modern CLI application. All you need to write some YAML and add a shebang to call `variant`.
 
 ![image](https://user-images.githubusercontent.com/22009/51234992-b1899380-19b1-11e9-83c3-dbfdb1517b1c.png)
 
