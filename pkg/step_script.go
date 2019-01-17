@@ -154,7 +154,7 @@ func (c runnerConfig) commandNameAndArgsToRunScript(script string, context Execu
 	if c.Command != "" {
 		cmd = c.Command
 	} else if c.Image == "" {
-		cmd = "sh"
+		cmd = "bash"
 	}
 
 	for _, a := range c.Artifacts {
