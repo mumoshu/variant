@@ -34,10 +34,6 @@ Create a yaml file named `myfirstcmd` containing:
 #!/usr/bin/env variant
 
 tasks:
-  ls:
-    description: "test"
-    script: |
-      /usr/bin/ls -l 
   bar:
     script: |
       echo "dude"
@@ -55,7 +51,7 @@ tasks:
 
 Now run your command by:
 
-```
+```console
 $ chmod +x ./myfirstcmd
 $ ./myfirstcmd
 Usage:
@@ -81,18 +77,42 @@ Use "myfirstcmd [command] --help" for more information about a command.
 
 Each task in the `myfirstcmd` is given a sub-command. Run `myfistcmd foo` to run the task named `foo`:
 
-```
+```console
 $ ./myfirstcmd foo
 Hello dude you are in the heaven
 ```
 
-Note that `variant` obtained the value for the parameter `bar` automatically from another task named `bar`.
+Look at the substring `dude` contained in the output above. The value `dude` is coming from the the parameter `bar` of the task `foo`. As we didn't specify the value for the parameter, `variant` automatically run the task `bar` to fulfill it.
 
-To specify the value, use the corresponding command-line automatically created and named after the parameter:
+To confirm that it is the task `bar` who fulfilled the value `dude`, run it:
 
+```console
+$ ./myfirstcmd bar
+INFO[0000] ≫ sh -c echo "dude"
+dude
 ```
-$ ./myfirstcmd foo --bar=$USER
-Hello <Your username> you are in the heaven
+
+To specify the value, use the corresponding command-line flag automatically created and named after the parameter `bar`:
+
+```console
+$ ./myfirstcmd foo --bar=folk
+Hello folk you are in the heaven
+```
+
+Alternatively, you can source the value from a YAML file.
+
+Create `myfirstcmd.yaml` containing:
+
+```yaml
+foo:
+  bar: variant
+```
+
+Now your task sources `variant` as the value for the parameter:
+
+```console
+$ ./myfirstcmd foo
+Hello variant you are in the heaven
 ```
 
 # How it works
