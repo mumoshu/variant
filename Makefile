@@ -25,14 +25,14 @@ clean:
 
 release/minor:
 	git fetch origin master
-	git branch -D autorelease
-	git checkou -b autorelease origin/master
+	if [ git branch | grep autorelease ]; then git branch -D autorelease; else echo no branch to be cleaned; fi
+	git checkout -b autorelease origin/master
 	hack/semtag final -s minor
 
 release/patch:
 	git fetch origin master
-	git branch -D autorelease
-	git checkou -b autorelease origin/master
+	if [ git branch | grep autorelease ]; then git branch -D autorelease; else echo no branch to be cleaned; fi
+	git checkout -b autorelease origin/master
 	hack/semtag final -s patch
 
 .PHONY: build
