@@ -87,7 +87,7 @@ func SetValueAtPath(cache map[string]interface{}, keyComponents []string, value 
 
 	var humanReadableValue string
 	if value != nil {
-		humanReadableValue = fmt.Sprintf("%#v", value)
+		humanReadableValue = fmt.Sprintf("%#v(%T)", value, value)
 	} else {
 		humanReadableValue = "<nil>"
 	}
