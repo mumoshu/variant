@@ -12,12 +12,12 @@ Write your workflows in YAML. Add a shebang to call `variant`. Now, `Variant` tr
 
 Automating DevOps workflows is difficult because it often involve multiple `executables` like shell/ruby/perl/etc scripts and commands.
 
-Because those executables vary in
+Bause those executables vary in:
 
 * Its quality, from originally one-off script written in a day but living for several months or even years, to serious commands which are well-designed and written in richer programming languages with enough testing,
 * Its interface. Passing parameters via environment variables, application specific command-line flags, configuration files
 
-writing a single tool which
+Writing a single tool which
 
 * wires up all the executables
 * re-implements all the things currently done in various tools
