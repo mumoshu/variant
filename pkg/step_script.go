@@ -3,8 +3,8 @@ package variant
 import (
 	"bufio"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,7 +13,6 @@ import (
 	"archive/tar"
 	"compress/gzip"
 
-	"github.com/logrusorgru/aurora"
 	"io"
 	"path/filepath"
 	"runtime"
@@ -282,9 +281,12 @@ func (t ScriptStep) runScriptWithArtifacts(script string, depended bool, context
 }
 
 func (t ScriptStep) runCommand(name string, args []string, depended bool, context ExecutionContext) (string, error) {
-	ctx := log.WithFields(log.Fields{"cmd": append([]string{name}, args...)})
+	applog := log.StandardLogger().WithField("app", context.app.Name)
+	taskKey := context.Key().ShortString()
+	tasklog := applog.WithField("task", taskKey)
 
-	ctx.Debug("script step started")
+	applog.Infof("starting task %s", taskKey)
+	tasklog.Debugf("starting command %s %s", name, strings.TrimSuffix(strings.Join(args, " "), "\n"))
 
 	cmd := exec.Command(name, args...)
 
@@ -395,24 +397,20 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 		// Print logs to stdout and stderr only when this is the command called by the user, directly or indirectly, as a task script. not as an input
 		if !context.asInput {
 			writeToOut = func(str string) {
+				tasklog.Info(str)
 				fmt.Fprint(os.Stdout, str, "\n")
 			}
 			writeToErr = func(str string) {
-				fmt.Fprint(os.Stderr, str, "\n")
+				tasklog.Warn(str)
 			}
 		} else {
-			stdoutlog := log.StandardLogger()
-			stderrlog := log.StandardLogger()
-
 			writeToOut = func(str string) {
-				stdoutlog.Info(aurora.Gray(str))
+				tasklog.Info(str)
 			}
 			writeToErr = func(str string) {
-				stderrlog.Info(aurora.Red(str))
+				tasklog.Warn(str)
 			}
 		}
-
-		log.Info(aurora.Bold(aurora.Cyan(fmt.Sprintf("≫ %s %s", name, strings.TrimSuffix(strings.Join(args, " "), "\n")))))
 
 		// Coordinating stdout/stderr in this single place to not screw up message ordering
 		for {
@@ -458,7 +456,7 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 	<-done
 
 	if err != nil {
-		ctx.Errorf("script step failed: %v", err)
+		tasklog.Errorf("script step failed: %v", err)
 		// Did the command fail because of an unsuccessful exit code
 		if exitError, ok := err.(*exec.ExitError); ok {
 			waitStatus = exitError.Sys().(syscall.WaitStatus)

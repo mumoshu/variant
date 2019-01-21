@@ -6,13 +6,14 @@ import (
 	"path"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"encoding/json"
 	"github.com/hashicorp/go-multierror"
+	"github.com/mitchellh/colorstring"
 	"github.com/mumoshu/variant/pkg/api/task"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/xeipuuv/gojsonschema"
@@ -27,6 +28,7 @@ type Application struct {
 	ConfigFile          string
 	Verbose             bool
 	Output              string
+	Colorize            bool
 	Env                 string
 	TaskRegistry        *TaskRegistry
 	InputResolver       InputResolver
@@ -49,7 +51,12 @@ func (p Application) UpdateLoggingConfiguration() {
 	} else if p.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 	} else if p.Output == "text" {
-		log.SetFormatter(&log.TextFormatter{})
+		colorize := &colorstring.Colorize{
+			Colors:  colorstring.DefaultColors,
+			Disable: !p.Colorize,
+			Reset:   true,
+		}
+		log.SetFormatter(&variantTextFormatter{colorize: colorize})
 	} else if p.Output == "message" {
 		log.SetFormatter(&MessageOnlyFormatter{})
 	} else {
@@ -66,9 +73,9 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"task": taskName.ShortString(), "caller": caller[0].GetKey().ShortString()})
+		ctx = log.WithFields(log.Fields{"app": p.Name, "task": taskName.ShortString(), "caller": caller[0].GetKey().ShortString()})
 	} else {
-		ctx = log.WithFields(log.Fields{"task": taskName.ShortString()})
+		ctx = log.WithFields(log.Fields{"app": p.Name, "task": taskName.ShortString()})
 	}
 
 	ctx.Debugf("app started task %s", taskName.ShortString())
@@ -284,9 +291,9 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 	var ctx *log.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"caller": caller[0].Name.ShortString(), "task": taskName.ShortString()})
+		ctx = log.WithFields(log.Fields{"app": p.Name, "caller": caller[0].Name.ShortString(), "task": taskName.ShortString()})
 	} else {
-		ctx = log.WithFields(log.Fields{"task": taskName.ShortString()})
+		ctx = log.WithFields(log.Fields{"app": p.Name, "task": taskName.ShortString()})
 	}
 
 	values := map[string]interface{}{}

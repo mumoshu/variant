@@ -109,6 +109,14 @@
   version = "v1.8.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:d1a560b8320893b5b92c25c94a66de450023a0632cde885e9ab123798a1dba0f"
+  name = "github.com/mitchellh/colorstring"
+  packages = ["."]
+  pruneopts = ""
+  revision = "8631ce90f28644f54aeedcb3e389a85174e067d1"
+
+[[projects]]
   digest = "1:bcc46a0fbd9e933087bef394871256b5c60269575bb661935874729c65bbbf60"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -274,6 +282,7 @@
     "github.com/juju/errors",
     "github.com/kr/pretty",
     "github.com/logrusorgru/aurora",
+    "github.com/mitchellh/colorstring",
     "github.com/mitchellh/mapstructure",
     "github.com/mumoshu/logrus-bunyan-formatter",
     "github.com/pkg/errors",

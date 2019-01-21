@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"strings"
 	"text/template"
 )
