@@ -1,5 +1,7 @@
 # Variant
 
+[![CircleCI](https://circleci.com/gh/mumoshu/variant.svg?style=svg)](https://circleci.com/gh/mumoshu/variant)
+
 `Variant` is a task runner / CLI generator.
 
 Write your workflows in YAML. Add a shebang to call `variant`. Now, `Variant` transforms your workflows into a modern CLI application.
