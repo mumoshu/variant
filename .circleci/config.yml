@@ -1,19 +1,29 @@
 version: 2
 jobs:
-  release:
+  test:
     docker:
-      - image: circleci/golang:1.10
+    - image: circleci/golang:1.10
     working_directory: /go/src/github.com/mumoshu/variant
     steps:
-      - checkout
-      - run: curl -sL https://git.io/goreleaser | bash
+    - checkout
+    - run: make smoke-ci
+  release:
+    docker:
+    - image: circleci/golang:1.10
+    working_directory: /go/src/github.com/mumoshu/variant
+    steps:
+    - checkout
+    - run: curl -sL https://git.io/goreleaser | bash
 workflows:
   version: 2
-  release:
+  build:
     jobs:
-      - release:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /v[0-9]+(\.[0-9]+)*(-.*)*/
+    - test
+    - release:
+        requires:
+        - test
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /v[0-9]+(\.[0-9]+)*(-.*)*/

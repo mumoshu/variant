@@ -36,4 +36,4 @@ tasks:
       required: true
     steps:
     - script: |
-        echo '{{ get "items" }}' | jq -r .[] | grep {{ get "prefix" }} | xargs -I{} -L1 echo "{{ get "prefix" }}: {}"
+        echo '{{ get "items" }}' | jq -r .[] | grep {{ get "prefix" }} | xargs -L1 echo "{{ get "prefix" }}:"
