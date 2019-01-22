@@ -1,0 +1,72 @@
+#!/usr/bin/env var
+
+tasks:
+  baz:
+    script: |
+      echo baz
+  task:
+    script: |
+      echo task
+  ok:
+    parameters:
+    # Provided by config/environments/dev.yaml
+    - name: foo
+      required: true
+    - name: empty1
+      required: true
+      default: ""
+    - name: empty2
+      default: ""
+    - name: task
+      # Overrode by the output from the task "task"
+      default: "default"
+    - name: bar
+      default: "bar"
+    - name: baz
+      required: true
+    - name: bool1
+      type: boolean
+      required: true
+      default: false
+    - name: bool2
+      type: boolean
+      required: true
+      default: true
+    - name: bool3
+      type: boolean
+      required: true
+      default: false
+    - name: integer1
+      type: integer
+      required: true
+      default: 0
+    - name: integer2
+      type: integer
+      required: true
+      default: 1
+    - name: integer3
+      type: integer
+      required: true
+      default: 0
+    script: |
+      echo foo={{ get "foo" }},empty1={{ get "empty1" }},empty2={{ get "empty2" }},task={{ get "task" }},bar={{ get "bar" }},baz={{ get "baz" }},bool1={{ get "bool1" }},bool2={{ get "bool2" }},bool3={{ get "bool3" }},integer1={{ get "integer1" }},integer2={{ get "integer2" }},integer3={{ get "integer3" }}
+  ng1:
+    parameters:
+    - name: bar
+      required: true
+    script: |
+      echo {{ get "bar" }}
+  ng2:
+    parameters:
+    - name: bar
+      type: integer
+      required: true
+    script: |
+      echo {{ get "bar" }}
+  ng3:
+    parameters:
+    - name: bar
+      type: boolean
+      required: true
+    script: |
+      echo {{ get "bar" }}
