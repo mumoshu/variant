@@ -428,12 +428,16 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 			if tmplOrStaticVal == nil {
 				args := arguments.GetSubOrEmpty(input.Name)
 				inTaskName := p.TaskNamer.FromResolvedInput(input)
-				tmplOrStaticVal, err = p.RunTask(inTaskName, []string{}, args, map[string]interface{}{}, true, currentTask)
+				var output string
+				output, err = p.RunTask(inTaskName, []string{}, args, map[string]interface{}{}, true, currentTask)
+				if output != "" {
+					tmplOrStaticVal = output
+				}
 				if err != nil {
-					ctx.Debugf("output = %v(%T)", tmplOrStaticVal, tmplOrStaticVal)
-					ctx.Debugf("looking for a default value because the task %s failed", inTaskName)
+					ctx.Debugf("task %#v failed. output was %#v(%T)", inTaskName, tmplOrStaticVal, tmplOrStaticVal)
+					ctx.Debug("looking for a default value")
 					// Check if any default value is given
-					if tmplOrStaticVal == nil || tmplOrStaticVal == "" {
+					if tmplOrStaticVal == nil {
 						if input.Default != nil {
 							switch input.TypeName() {
 							case "string":
@@ -485,7 +489,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 		}
 
 		// Now that the tmplOrStaticVal exists, render add type it
-		log.Debugf("tmplOrStaticVal=%v", tmplOrStaticVal)
+		log.Debugf("tmplOrStaticVal=%#v", tmplOrStaticVal)
 		if tmplOrStaticVal != nil {
 			var renderedValue string
 			expr, ok := tmplOrStaticVal.(string)

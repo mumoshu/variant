@@ -139,8 +139,13 @@ smoke23: build
 smoke24: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./params-type-autoenv test --logtostderr && echo smoke24 passed.
 
+smoke25: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && \
+	./defaults ok --bool3=true --integer3=3 | grep foo=FOO,empty1=,empty2=,task=task,bar=bar,baz=baz,bool1=false,bool2=true,bool3=true,integer1=0,integer2=1,integer3=3 && \
+	! ./defaults ng1 && ! ./defaults ng2 && ! ./defaults ng3 && echo smoke25 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25}
 
 smoke-ci:
-	bash -c 'make smoke{1..18} smoke{23,24}'
+	bash -c 'make smoke{1..18} smoke{23,24,25}'
