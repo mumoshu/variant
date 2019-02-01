@@ -4,7 +4,22 @@
 
 `Variant` is a task runner / CLI generator.
 
-Write your workflows in YAML. Add a shebang to call `variant`. Now, `Variant` transforms your workflows into a modern CLI application.
+Write your workflows in YAML. Add a shebang to call `variant`. `Variant` transforms your workflows into a modern CLI application.
+
+```yaml
+#!/usr/bin/env variant
+tasks:
+  hello:
+   parameters:
+   - name: target
+   script: |
+     echo Hello {{ get "target" }}!
+```
+
+```console
+$ ./mycli --target variant
+Hello variant! 
+```
 
 ![image](https://user-images.githubusercontent.com/22009/51234992-b1899380-19b1-11e9-83c3-dbfdb1517b1c.png)
 
@@ -136,9 +151,12 @@ It consists of:
   * to implicitly inject required inputs to a commands from configuration files or outputs from another commands
   * to explicit inject inputs to commands and its dependencies via command-line parameters
 
-# Usage
+# Features
 
-## Inputs
+- Task grouping
+- Dependency injection
+
+## Dependency injection
 
 An input named `myinput` for the task `mytask` can be one of follows, in order of precedense:
 
@@ -162,18 +180,10 @@ $ var test
 #=> reads inputs from var.yaml + config/environments/prod.yaml
 ```
 
-## Examples
-
-Extract variant's version using jq:
-
-```
-$ var version --output json | jq -c -r 'select(.msg == "version") | .framework_version'
-0.0.3-rc1
-```
-
 # Alternatives
 
 * [tj/robo](https://github.com/tj/robo)
+* [goeuro/myke](https://github.com/goeuro/myke)
 
 # Interesting Readings
 

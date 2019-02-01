@@ -92,6 +92,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 					Type:          p.Type,
 					Default:       p.Default,
 					Remainings:    p.Remainings,
+					Properties:    p.Properties,
 				}
 				t.Inputs = append(t.Inputs, input)
 			}
@@ -102,6 +103,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 					Type:        o.Type,
 					Default:     o.Default,
 					Remainings:  o.Remainings,
+					Properties:  o.Properties,
 				}
 				t.Inputs = append(t.Inputs, input)
 			}
@@ -153,6 +155,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 						Type:          p.Type,
 						Default:       p.Default,
 						Remainings:    p.Remainings,
+						Properties:    p.Properties,
 					}
 					t.Inputs = append(t.Inputs, input)
 				}
@@ -163,6 +166,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 						Type:        o.Type,
 						Default:     o.Default,
 						Remainings:  o.Remainings,
+						Properties:  o.Properties,
 					}
 					t.Inputs = append(t.Inputs, input)
 				}

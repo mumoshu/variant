@@ -2,7 +2,6 @@ package variant
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/pkg/errors"
@@ -30,20 +29,14 @@ func (f *TaskTemplate) createFuncMap() template.FuncMap {
 		components := strings.Split(strings.Replace(key, "-", "_", -1), sep)
 		val, err := maputil.GetValueAtPath(f.values, components)
 
-		switch val.(type) {
-		case map[string]interface{}, []interface{}:
-			bytes, err := json.Marshal(val)
-			if err != nil {
-				log.Panicf("unexpected error: %v", err)
-			}
-			val = string(bytes)
-		default:
-			val = val
-		}
-
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
+
+		if val == nil {
+			return nil, fmt.Errorf("no value found for \"%s\"", key)
+		}
+
 		return val, nil
 	}
 
@@ -52,8 +45,20 @@ func (f *TaskTemplate) createFuncMap() template.FuncMap {
 		return val, nil
 	}
 
+	ctx := templateContext{
+		get: get,
+	}
+
 	fns := template.FuncMap{
 		"get":                get,
+		"join":               join,
+		"dig":                dig,
+		"merge":              merge,
+		"readFile":           readFile,
+		"toJson":             toJson,
+		"toYaml":             toYaml,
+		"fromYaml":           fromYaml,
+		"toFlags":            ctx.toFlags,
 		"escapeDoubleQuotes": escapeDoubleQuotes,
 	}
 

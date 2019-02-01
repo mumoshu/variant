@@ -21,11 +21,11 @@ tasks:
     - task: filter-and-print
       arguments:
         prefix: foo
-        items: '{{ get "changed-files" }}'
+        items: '{{ get "changed-files" | toJson }}'
     - task: filter-and-print
       arguments:
         prefix: bar
-        items: '{{ get "changed-files" }}'
+        items: '{{ get "changed-files" | toJson }}'
   filter-and-print:
     options:
     - name: prefix
@@ -36,4 +36,4 @@ tasks:
       required: true
     steps:
     - script: |
-        echo '{{ get "items" }}' | jq -r .[] | grep {{ get "prefix" }} | xargs -L1 echo "{{ get "prefix" }}:"
+        echo '{{ get "items" | toJson }}' | jq -r .[] | grep {{ get "prefix" }} | xargs -L1 echo "{{ get "prefix" }}:"

@@ -6,12 +6,13 @@ import (
 )
 
 type InputConfig struct {
-	Name          string                 `yaml:"name,omitempty"`
-	Description   string                 `yaml:"description,omitempty"`
-	ArgumentIndex *int                   `yaml:"argument-index,omitempty"`
-	Type          string                 `yaml:"type,omitempty"`
-	Default       interface{}            `yaml:"default,omitempty"`
-	Remainings    map[string]interface{} `yaml:",inline"`
+	Name          string                            `yaml:"name,omitempty"`
+	Description   string                            `yaml:"description,omitempty"`
+	ArgumentIndex *int                              `yaml:"argument-index,omitempty"`
+	Type          string                            `yaml:"type,omitempty"`
+	Default       interface{}                       `yaml:"default,omitempty"`
+	Properties    map[string]map[string]interface{} `yaml:"properties,omitempty"`
+	Remainings    map[string]interface{}            `yaml:",inline"`
 }
 
 func (c *InputConfig) Required() bool {
@@ -68,6 +69,9 @@ func (c *InputConfig) TypeName() string {
 
 func (c *InputConfig) JSONSchema() map[string]interface{} {
 	jsonschema := map[string]interface{}{}
+	if c.Properties != nil {
+		jsonschema["properties"] = c.Properties
+	}
 	for k, v := range c.Remainings {
 		jsonschema[k] = v
 	}
@@ -76,19 +80,21 @@ func (c *InputConfig) JSONSchema() map[string]interface{} {
 }
 
 type ParameterConfig struct {
-	Name        string                 `yaml:"name,omitempty"`
-	Description string                 `yaml:"description,omitempty"`
-	Type        string                 `yaml:"type,omitempty"`
-	Default     interface{}            `yaml:"default,omitempty"`
-	Required    bool                   `yaml:"required,omitempty"`
-	Remainings  map[string]interface{} `yaml:",inline"`
+	Name        string                            `yaml:"name,omitempty"`
+	Description string                            `yaml:"description,omitempty"`
+	Type        string                            `yaml:"type,omitempty"`
+	Default     interface{}                       `yaml:"default,omitempty"`
+	Required    bool                              `yaml:"required,omitempty"`
+	Properties  map[string]map[string]interface{} `yaml:"properties,omitempty"`
+	Remainings  map[string]interface{}            `yaml:",inline"`
 }
 
 type OptionConfig struct {
-	Name        string                 `yaml:"name,omitempty"`
-	Description string                 `yaml:"description,omitempty"`
-	Type        string                 `yaml:"type,omitempty"`
-	Default     interface{}            `yaml:"default,omitempty"`
-	Required    bool                   `yaml:"required,omitempty"`
-	Remainings  map[string]interface{} `yaml:",inline"`
+	Name        string                            `yaml:"name,omitempty"`
+	Description string                            `yaml:"description,omitempty"`
+	Type        string                            `yaml:"type,omitempty"`
+	Default     interface{}                       `yaml:"default,omitempty"`
+	Required    bool                              `yaml:"required,omitempty"`
+	Properties  map[string]map[string]interface{} `yaml:"properties,omitempty"`
+	Remainings  map[string]interface{}            `yaml:",inline"`
 }

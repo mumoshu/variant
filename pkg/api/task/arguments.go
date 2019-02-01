@@ -20,7 +20,7 @@ func NewArguments(raw ...map[string]interface{}) Arguments {
 	}
 }
 
-func (in Arguments) Get(name string) (interface{}, error) {
+func (in Arguments) GetString(name string) (string, error) {
 	var err error
 
 	log.Debugf("fetching argument named %s in %v", name, in)
@@ -28,7 +28,7 @@ func (in Arguments) Get(name string) (interface{}, error) {
 	result, internalError := maputil.GetStringAtPath(in, name)
 	log.Debugf("failed fetching argument %s: %v", name, internalError)
 	if result == "" {
-		return nil, nil
+		return "", nil
 	}
 
 	log.WithField("raw", in).Debugf("argument named \"%s\" fetched: %v", name, result)

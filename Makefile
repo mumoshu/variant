@@ -50,6 +50,10 @@ dist/$(VERSION):
 	#  6dff9c R _/Users/me/path/to/variant/cli/version.VERSION.str
 	go build -ldflags "-X '_$(shell pwd)/pkg/cli/version.VERSION=$(VERSION)'" -o dist/$(VERSION)/var .
 
+install:
+	go build -ldflags "-X '_$(shell pwd)/pkg/cli/version.VERSION=$(VERSION)'" -o ~/bin/variant .
+
+
 release: dist/$(VERSION)
 	ghr -u $(GITHUB_USER) -r $(GITHUB_REPO) -c master --prerelease v$(VERSION) dist/$(VERSION)
 

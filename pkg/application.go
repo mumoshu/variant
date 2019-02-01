@@ -80,15 +80,15 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 
 	ctx.Debugf("app started task %s", taskName.ShortString())
 
-	provided := p.GetTmplOrTypedValueForConfigKey(taskName.ShortString(), "string")
-
-	if provided != nil {
-		p := fmt.Sprintf("%v", provided)
-		ctx.Debugf("app skipped task %s via provided value: %s", taskName.ShortString(), p)
-		ctx.Info(p)
-		println(p)
-		return p, nil
-	}
+	//provided := p.GetTmplOrTypedValueForConfigKey(taskName.ShortString(), "string")
+	//
+	//if provided != nil {
+	//	p := fmt.Sprintf("%v", provided)
+	//	ctx.Debugf("app skipped task %s via provided value: %s", taskName.ShortString(), p)
+	//	ctx.Info(p)
+	//	println(p)
+	//	return p, nil
+	//}
 
 	taskDef := p.TaskRegistry.FindTask(taskName)
 
@@ -116,9 +116,15 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 
 		s, err := jsonschemaFromInputs(taskDef.Inputs)
 		if err != nil {
-			return "", errors.Wrapf(err, "app failed while generating jsonschema from: %v", taskDef.Inputs)
+			ins := []InputConfig{}
+			for _, v := range taskDef.Inputs {
+				if v != nil {
+					ins = append(ins, *v)
+				}
+			}
+			return "", errors.Wrapf(err, "app failed while generating jsonschema from:\n%+v", ins)
 		}
-		doc := gojsonschema.NewGoLoader(kv)
+		doc := gojsonschema.NewGoLoader(vars)
 		result, err := s.Validate(doc)
 		if result.Valid() {
 			ctx.Debugf("all the inputs are valid")
@@ -127,7 +133,8 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 			if err != nil {
 				return "", errors.Wrapf(err, "failed marshaling error vars data %v: err", vars, err)
 			}
-			ctx.Errorf("one or more inputs are not valid in vars:\n%s:", varsDump)
+			ctx.Errorf("one or more inputs are not valid in vars:\n%+v:", vars)
+			ctx.Errorf("one or more inputs are not valid in varsDumo:\n%s:", varsDump)
 			kvDump, err := json.MarshalIndent(kv, "", "  ")
 			if err != nil {
 				return "", errors.Wrapf(err, "failed marshaling error kv data %v: err", kv, err)
@@ -243,7 +250,7 @@ func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) inter
 				provided = nil
 			}
 
-			ctx.Debugf("app fetched %s[%s]: %s", k1, k2, provided)
+			ctx.Debugf("app fetched %s[%s]: %v(%T)", k1, k2, provided, provided)
 
 			if provided != nil {
 				return provided
@@ -336,6 +343,14 @@ func ensureType(raw interface{}, tpe string) (interface{}, bool) {
 		return nil, false
 	}
 
+	if tpe == "object" {
+		switch raw.(type) {
+		case map[string]interface{}:
+			return raw, true
+		}
+		return nil, false
+	}
+
 	return nil, false
 }
 
@@ -377,16 +392,22 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 		}
 
 		if tmplOrStaticVal == nil {
-			if v, err := arguments.Get(input.Name); err == nil {
-				tmplOrStaticVal = v
+			if str, err := arguments.GetString(input.Name); err == nil && str != "" {
+				tmplOrStaticVal, err = parseSupportedValueFromString(str, input.TypeName())
+				if err != nil {
+					return nil, err
+				}
 			} else {
 				errs = multierror.Append(errs, fmt.Errorf("no value for argument `%s`", input.Name))
 			}
 		}
 
 		if tmplOrStaticVal == nil && input.Name != input.ShortName() {
-			if v, err := arguments.Get(input.ShortName()); err == nil {
-				tmplOrStaticVal = v
+			if str, err := arguments.GetString(input.ShortName()); err == nil && str != "" {
+				tmplOrStaticVal, err = parseSupportedValueFromString(str, input.TypeName())
+				if err != nil {
+					return nil, err
+				}
 			} else {
 				errs = multierror.Append(errs, fmt.Errorf("no value for argument `%s`", input.ShortName()))
 			}
@@ -416,9 +437,17 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 			}
 		}
 
-		pathComponents := strings.Split(input.Name, ".")
+		inTaskName := p.TaskNamer.FromResolvedInput(input)
+		if tmplOrStaticVal == nil {
+			inputName := inTaskName.ShortString()
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(inputName, input.TypeName())
+			if tmplOrStaticVal == nil {
+				errs = multierror.Append(errs, fmt.Errorf("no value for config `%s`", inputName))
+			}
+		}
 
 		// Missed all the value sources(default, args, params, options)
+		pathComponents := strings.Split(input.Name, ".")
 		if tmplOrStaticVal == nil {
 			var err error
 			tmplOrStaticVal, err = maputil.GetValueAtPath(p.CachedTaskOutputs, pathComponents)
@@ -427,7 +456,6 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 			}
 			if tmplOrStaticVal == nil {
 				args := arguments.GetSubOrEmpty(input.Name)
-				inTaskName := p.TaskNamer.FromResolvedInput(input)
 				var output string
 				output, err = p.RunTask(inTaskName, []string{}, args, map[string]interface{}{}, true, currentTask)
 				if output != "" {
@@ -501,12 +529,12 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 					return nil, errors.Wrap(err, "failed to render task template")
 				}
 				renderedValue = r
-				log.Debugf("converting type of %v", renderedValue)
+				log.Debugf("converting type of %v(%T) to %s", renderedValue, renderedValue, input.TypeName())
 				tmplOrStaticVal, err = parseSupportedValueFromString(renderedValue, input.TypeName())
 				if err != nil {
 					return nil, err
 				}
-				log.Debugf("value after type conversion=%v", tmplOrStaticVal)
+				log.Debugf("value after type conversion=%v(%T)", tmplOrStaticVal, tmplOrStaticVal)
 			}
 		} else {
 			// the dependent task succeeded with no output
@@ -560,21 +588,59 @@ func (p *Application) Tasks() map[string]*Task {
 }
 
 func jsonschemaFromInputs(inputs []*InputConfig) (*gojsonschema.Schema, error) {
-	required := []string{}
-	props := map[string]map[string]interface{}{}
-	for _, input := range inputs {
-		name := strings.Replace(input.Name, "-", "_", -1)
-		props[name] = input.JSONSchema()
-
-		if input.Required() {
-			required = append(required, name)
+	newObjSchema := func() map[string]interface{} {
+		return map[string]interface{}{
+			"type":       "object",
+			"properties": map[string]interface{}{},
+			"required":   []string{},
 		}
 	}
-	goschema := map[string]interface{}{
-		"type":       "object",
-		"properties": props,
-		"required":   required,
+	root := newObjSchema()
+	//map[string]interface{}{}
+	for _, input := range inputs {
+		name := strings.Replace(input.Name, "-", "_", -1)
+		keys := strings.Split(name, ".")
+		lastKeyIndex := len(keys) - 1
+		for i := range keys {
+			var parentSchema map[string]interface{}
+			var prop interface{}
+
+			schemaPath := keys[0:i]
+			if len(schemaPath) == 0 {
+				parentSchema = root
+			} else {
+				parentSchemaKeys := strings.Split(strings.Join(schemaPath, ".properties."), ".")
+				par, err := maputil.GetValueAtPath(root, parentSchemaKeys)
+				if err != nil {
+					return nil, err
+				}
+				if par == nil {
+					parentSchema = newObjSchema()
+					if err := maputil.SetValueAtPath(root, parentSchemaKeys, parentSchema); err != nil {
+						return nil, err
+					}
+				} else {
+					parentSchema = par.(map[string]interface{})
+				}
+			}
+
+			props := parentSchema["properties"].(map[string]interface{})
+			required := parentSchema["required"].([]string)
+
+			if i == lastKeyIndex {
+				prop = input.JSONSchema()
+			} else {
+				prop = newObjSchema()
+			}
+			currentKey := keys[i]
+			props[currentKey] = prop
+
+			if input.Required() {
+				required = append(required, currentKey)
+			}
+		}
 	}
-	schemaLoader := gojsonschema.NewGoLoader(goschema)
+	fmt.Fprintf(os.Stderr, "schema = %+v", root)
+	schemaLoader := gojsonschema.NewGoLoader(root)
 	return gojsonschema.NewSchema(schemaLoader)
 }
