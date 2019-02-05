@@ -59,6 +59,7 @@ func (f *TaskTemplate) createFuncMap() template.FuncMap {
 		"toYaml":             toYaml,
 		"fromYaml":           fromYaml,
 		"toFlags":            ctx.toFlags,
+		"validate":           ctx.validate,
 		"escapeDoubleQuotes": escapeDoubleQuotes,
 	}
 

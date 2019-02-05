@@ -2,8 +2,11 @@ package variant
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"github.com/mumoshu/variant/pkg/util/maputil"
+	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"strconv"
@@ -191,4 +194,26 @@ func (c templateContext) toFlags(val interface{}) (string, error) {
 	}
 
 	return strings.Join(flags, " "), nil
+}
+
+func (c templateContext) validate(schema interface{}, doc interface{}) error {
+	schemaLoader := gojsonschema.NewGoLoader(schema)
+	s, err := gojsonschema.NewSchema(schemaLoader)
+	if err != nil {
+		return err
+	}
+
+	loader := gojsonschema.NewGoLoader(doc)
+	result, err := s.Validate(loader)
+	if err != nil {
+		return err
+	}
+	if !result.Valid() {
+		var errs error
+		for _, err := range result.Errors() {
+			errs = multierror.Append(errs, errors.New(err.String()))
+		}
+		return errs
+	}
+	return nil
 }
