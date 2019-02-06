@@ -640,7 +640,7 @@ func jsonschemaFromInputs(inputs []*InputConfig) (*gojsonschema.Schema, error) {
 			}
 		}
 	}
-	fmt.Fprintf(os.Stderr, "schema = %+v", root)
+	log.Debugf("schema = %+v", root)
 	schemaLoader := gojsonschema.NewGoLoader(root)
 	return gojsonschema.NewSchema(schemaLoader)
 }
