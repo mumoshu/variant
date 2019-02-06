@@ -450,9 +450,13 @@ func (t ScriptStep) runCommand(name string, args []string, depended bool, contex
 	var waitStatus syscall.WaitStatus
 	err := cmd.Wait()
 
-	log.Debugf("waiting for all the stdout/stderr contents to be consumed...")
+	if done != nil {
+		log.Debugf("waiting for all the stdout/stderr contents to be consumed...in case this hangs, file a bug report.")
 
-	<-done
+		<-done
+
+		log.Debugf("done consuming stdout and stderr")
+	}
 
 	if err != nil {
 		tasklog.Errorf("script step failed: %v", err)
