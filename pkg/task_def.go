@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/mumoshu/variant/pkg/util/maputil"
+	"strings"
 )
 
 type TaskDef struct {
@@ -45,7 +46,7 @@ type TaskDefV2 struct {
 	Options     []*OptionConfig               `yaml:"options,omitempty"`
 	TaskDefs    map[string]*TaskDef           `yaml:"tasks,omitempty"`
 	Runner      map[string]interface{}        `yaml:"runner,omitempty"`
-	Script      string                        `yaml:"script,omitempty"`
+	Script      interface{}                   `yaml:"script,omitempty"`
 	StepDefs    []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
 	Autodir     bool                          `yaml:"autodir,omitempty"`
@@ -137,7 +138,19 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 		err = unmarshal(&v2)
 
-		if len(v2.TaskDefs) == 0 && v2.Script == "" && len(v2.StepDefs) == 0 {
+		var script string
+		switch s := v2.Script.(type) {
+		case string:
+			script = s
+		case []interface{}:
+			ss := make([]string, len(s))
+			for i := range s {
+				ss[i] = s[i].(string)
+			}
+			script = strings.Join(ss, "\n")
+		}
+
+		if len(v2.TaskDefs) == 0 && script == "" && len(v2.StepDefs) == 0 {
 			e := fmt.Errorf("Not v2 format: `tasks`, `script`, `steps` are missing.")
 			log.Debugf("%s", e)
 			err = e
@@ -174,12 +187,12 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 				}
 			}
 			t.TaskDefs = TransformV2FlowConfigMapToArray(v2.TaskDefs)
-			steps, err := readStepsFromStepDefs(v2.Script, v2.Runner, v2.StepDefs)
+			steps, err := readStepsFromStepDefs(script, v2.Runner, v2.StepDefs)
 			if err != nil {
 				return errors.Wrapf(err, "Error while reading v2 config")
 			}
 			t.Steps = steps
-			t.Script = v2.Script
+			t.Script = script
 			t.Autoenv = v2.Autoenv
 			t.Autodir = v2.Autodir
 			t.Interactive = v2.Interactive

@@ -1,0 +1,13 @@
+#!/usr/bin/env var
+mixins:
+  header: &header |
+    {{ $foo := get "foo" }}
+tasks:
+  run:
+    parameters:
+    - name: foo
+      default: bar
+    script:
+    - *header
+    - |
+      echo {{ $foo }} | grep bar

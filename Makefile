@@ -148,8 +148,11 @@ smoke25: build
 	./defaults ok --bool3=true --integer3=3 | grep foo=FOO,empty1=,empty2=,task=task,bar=bar,baz=baz,bool1=false,bool2=true,bool3=true,integer1=0,integer2=1,integer3=3 && \
 	! ./defaults ng1 && ! ./defaults ng2 && ! ./defaults ng3 && echo smoke25 passed.
 
+smoke26: build
+	cd $(IT_DIR)/script-header-reuse && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./test --logtostderr run > out && cat out | tee /dev/stderr && echo smoke26 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26}
 
 smoke-ci:
-	bash -c 'make smoke{1..18} smoke{23,24,25}'
+	bash -c 'make smoke{1..18} smoke{23,24,25,26}'
