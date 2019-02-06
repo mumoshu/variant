@@ -54,7 +54,9 @@ type TaskDefV2 struct {
 
 func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	v3 := map[string]interface{}{}
-	v3err := unmarshal(&v3)
+	if err := unmarshal(&v3); err != nil {
+		return err
+	}
 
 	log.Debugf("Unmarshalling: %v", v3)
 
@@ -183,32 +185,6 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Interactive = v2.Interactive
 		}
 
-	}
-
-	if err != nil {
-		log.Debugf("Trying to parse v3 format")
-
-		if v3err != nil {
-			return errors.Wrap(v3err, "Failed to unmarshal as a map.")
-		}
-
-		if v3["tasks"] != nil {
-			rawTasks, ok := v3["tasks"].(map[interface{}]interface{})
-			if !ok {
-				return fmt.Errorf("Not a map[interface{}]interface{}: v3[\"tasks\"]'s type: %s, value: %s", reflect.TypeOf(v3["tasks"]), v3["tasks"])
-			}
-			tasks, err := maputil.CastKeysToStrings(rawTasks)
-			if err != nil {
-				return errors.Wrap(err, "Failed to unmarshal as a map[string]interface{}")
-			}
-			t.Autoenv = false
-			t.Autodir = false
-			t.Inputs = []*InputConfig{}
-
-			t.TaskDefs = TransformV3TaskDefMapToArray(tasks)
-
-			return nil
-		}
 	}
 
 	return errors.WithStack(err)

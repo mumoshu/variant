@@ -76,7 +76,7 @@ smoke5: build
 	cd $(IT_DIR) && $(CMD) all -v --web-deploy-target tar --job-deploy-job-id jobid
 
 smoke6: build
-	cd $(IT_DIR) && VARFILE=var.definition.v3.yaml $(CMD) foo bar --message foo
+	cd $(IT_DIR) && VARFILE=variable-reference.yaml $(CMD) foo bar --message foo
 
 smoke7: build
 	cd $(IT_DIR) && $(CMD) env set dev && $(CMD) test2

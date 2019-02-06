@@ -1,9 +1,0 @@
-tasks:
-  foo:
-    bar:
-      description: |
-        the foo bar command
-      inputs:
-        - name: message
-      script: |
-        echo {{.message}}
