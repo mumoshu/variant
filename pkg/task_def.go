@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/mumoshu/variant/pkg/get"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"strings"
 )
@@ -44,6 +45,7 @@ type TaskDefV2 struct {
 	Inputs      []*InputConfig                `yaml:"inputs,omitempty"`
 	Parameters  []*ParameterConfig            `yaml:"parameters,omitempty"`
 	Options     []*OptionConfig               `yaml:"options,omitempty"`
+	Import      string                        `yaml:"import,omitempty"`
 	TaskDefs    map[string]*TaskDef           `yaml:"tasks,omitempty"`
 	Runner      map[string]interface{}        `yaml:"runner,omitempty"`
 	Script      interface{}                   `yaml:"script,omitempty"`
@@ -59,9 +61,9 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		return err
 	}
 
-	log.Debugf("Unmarshalling: %v", v3)
+	log.Tracef("Unmarshalling: %v", v3)
 
-	log.Debugf("Trying to parse v1 format")
+	log.Tracef("Trying to parse v1 format")
 
 	v1 := TaskDefV1{
 		Autoenv:  false,
@@ -75,7 +77,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	if v1.Name == "" && len(v1.TaskDefs) == 0 {
 		e := fmt.Errorf("Not v1 format: Both `name` and `tasks` are empty")
-		log.Debugf("%s", e)
+		log.Tracef("%s", e)
 		err = e
 	}
 
@@ -123,10 +125,21 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Steps = steps
 	}
 
+	//newTaskDefV2 := func() *TaskDefV2 {
+	//	return &TaskDefV2{
+	//		Autoenv:     false,
+	//		Autodir:     false,
+	//		Interactive: false,
+	//		Inputs:      []*InputConfig{},
+	//		TaskDefs:    map[string]*TaskDef{},
+	//		StepDefs:    []map[interface{}]interface{}{},
+	//	}
+	//}
+	//
 	var v2 *TaskDefV2
 
 	if err != nil {
-		log.Debugf("Trying to parse v2 format")
+		log.Tracef("Trying to parse v2 format")
 		v2 = &TaskDefV2{
 			Autoenv:     false,
 			Autodir:     false,
@@ -137,6 +150,19 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 
 		err = unmarshal(&v2)
+
+		if err != nil {
+			return err
+		}
+
+		if v2.Import != "" {
+			log.Debugf("Importing %s", v2.Import)
+
+			err := get.Unmarshal(v2.Import, &v2)
+			if err != nil {
+				return err
+			}
+		}
 
 		var script string
 		switch s := v2.Script.(type) {
@@ -152,7 +178,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 		if len(v2.TaskDefs) == 0 && script == "" && len(v2.StepDefs) == 0 {
 			e := fmt.Errorf("Not v2 format: `tasks`, `script`, `steps` are missing.")
-			log.Debugf("%s", e)
+			log.Tracef("%s", e)
 			err = e
 		}
 

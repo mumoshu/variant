@@ -60,3 +60,7 @@
 [[constraint]]
   name = "github.com/hashicorp/go-multierror"
   version = "1.0.0"
+
+[[constraint]]
+  name = "github.com/hashicorp/go-getter"
+  version = "1.0.2"

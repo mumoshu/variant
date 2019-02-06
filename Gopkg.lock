@@ -2,6 +2,57 @@
 
 
 [[projects]]
+  digest = "1:da2b04104921d2a43d3bad2f9993c8fa8798702788fff27cee8a24c39e05a074"
+  name = "github.com/aws/aws-sdk-go"
+  packages = [
+    "aws",
+    "aws/awserr",
+    "aws/awsutil",
+    "aws/client",
+    "aws/client/metadata",
+    "aws/corehandlers",
+    "aws/credentials",
+    "aws/credentials/ec2rolecreds",
+    "aws/credentials/endpointcreds",
+    "aws/credentials/processcreds",
+    "aws/credentials/stscreds",
+    "aws/csm",
+    "aws/defaults",
+    "aws/ec2metadata",
+    "aws/endpoints",
+    "aws/request",
+    "aws/session",
+    "aws/signer/v4",
+    "internal/ini",
+    "internal/s3err",
+    "internal/sdkio",
+    "internal/sdkrand",
+    "internal/sdkuri",
+    "internal/shareddefaults",
+    "private/protocol",
+    "private/protocol/eventstream",
+    "private/protocol/eventstream/eventstreamapi",
+    "private/protocol/query",
+    "private/protocol/query/queryutil",
+    "private/protocol/rest",
+    "private/protocol/restxml",
+    "private/protocol/xml/xmlutil",
+    "service/s3",
+    "service/sts",
+  ]
+  pruneopts = ""
+  revision = "b974aa42e62f8e576fc3e8d793b8e1b2b1f6bbe6"
+  version = "v1.16.28"
+
+[[projects]]
+  branch = "master"
+  digest = "1:98e84060475ed245c3b355042afd43a74aa7d32efe50658f4f995977916f9fc3"
+  name = "github.com/bgentry/go-netrc"
+  packages = ["netrc"]
+  pruneopts = ""
+  revision = "9fd32a8b3d3d3f9d43c341bfe098430e07609480"
+
+[[projects]]
   digest = "1:0deddd908b6b4b768cfc272c16ee61e7088a60f7fe2f06c547bd3d8e1f8b8e77"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -26,12 +77,47 @@
   version = "v1.0.0"
 
 [[projects]]
+  digest = "1:05334858a0cfb538622a066e065287f63f42bee26a7fda93a789674225057201"
+  name = "github.com/hashicorp/go-cleanhttp"
+  packages = ["."]
+  pruneopts = ""
+  revision = "e8ab9daed8d1ddd2d3c4efba338fe2eeae2e4f18"
+  version = "v0.5.0"
+
+[[projects]]
+  digest = "1:0c219fdab6c4f107cf2f315c4a80500381beaf94ee35dc01f2337bf4f046c71c"
+  name = "github.com/hashicorp/go-getter"
+  packages = [
+    ".",
+    "helper/url",
+  ]
+  pruneopts = ""
+  revision = "244ff472147290528195500b7d2557620d2d056e"
+  version = "v1.0.2"
+
+[[projects]]
   digest = "1:72308fdd6d5ef61106a95be7ca72349a5565809042b6426a3cfb61d99483b824"
   name = "github.com/hashicorp/go-multierror"
   packages = ["."]
   pruneopts = ""
   revision = "886a7fbe3eb1c874d46f623bfa70af45f425b3d1"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:82f6c9a55c0bd9744064418f049d5232bb8b8cc45eb32e72c0adefaf158a0f9b"
+  name = "github.com/hashicorp/go-safetemp"
+  packages = ["."]
+  pruneopts = ""
+  revision = "c9a55de4fe06c920a71964b53cfe3dd293a3c743"
+  version = "v1.0.0"
+
+[[projects]]
+  digest = "1:b759103c9b4135568253c17d2866064cde398e93764b611caabf5aa8e3059685"
+  name = "github.com/hashicorp/go-version"
+  packages = ["."]
+  pruneopts = ""
+  revision = "d40cf49b3a77bba84a7afdbd7f1dc295d114efb1"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:d14365c51dd1d34d5c79833ec91413bfbb166be978724f15701e17080dc06dec"
@@ -59,6 +145,13 @@
   pruneopts = ""
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
+
+[[projects]]
+  digest = "1:13fe471d0ed891e8544eddfeeb0471fd3c9f2015609a1c000aefdedf52a19d40"
+  name = "github.com/jmespath/go-jmespath"
+  packages = ["."]
+  pruneopts = ""
+  revision = "c2b33e84"
 
 [[projects]]
   branch = "master"
@@ -93,14 +186,6 @@
   version = "v0.1.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:095e6cc12b2b7063e6f30d6f8d3b2440f9a0c9a4e552b3d2facf601e73ff439f"
-  name = "github.com/logrusorgru/aurora"
-  packages = ["."]
-  pruneopts = ""
-  revision = "a7b3b318ed4e1ae5b80602b08627267303c68572"
-
-[[projects]]
   digest = "1:961dc3b1d11f969370533390fdf203813162980c858e1dabe827b60940c909a5"
   name = "github.com/magiconair/properties"
   packages = ["."]
@@ -115,6 +200,22 @@
   packages = ["."]
   pruneopts = ""
   revision = "8631ce90f28644f54aeedcb3e389a85174e067d1"
+
+[[projects]]
+  digest = "1:6dbb0eb72090871f2e58d1e37973fe3cb8c0f45f49459398d3fc740cb30e13bd"
+  name = "github.com/mitchellh/go-homedir"
+  packages = ["."]
+  pruneopts = ""
+  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
+  version = "v1.1.0"
+
+[[projects]]
+  digest = "1:9adf43f9a17af07a6d587e3b493e2111ad8e07283d5cd58e44e70d23bf6dc644"
+  name = "github.com/mitchellh/go-testing-interface"
+  packages = ["."]
+  pruneopts = ""
+  revision = "6d0b8010fcc857872e42fc6c931227569016843c"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:bcc46a0fbd9e933087bef394871256b5c60269575bb661935874729c65bbbf60"
@@ -208,6 +309,19 @@
   version = "v1.3.1"
 
 [[projects]]
+  digest = "1:3f86e5e877dde45a8c767ba92f1526b41d1daa756f07e217db3177d23c54bbc5"
+  name = "github.com/ulikunitz/xz"
+  packages = [
+    ".",
+    "internal/hash",
+    "internal/xlog",
+    "lzma",
+  ]
+  pruneopts = ""
+  revision = "590df8077fbcb06ad62d7714da06c00e5dd2316d"
+  version = "v0.5.5"
+
+[[projects]]
   branch = "master"
   digest = "1:e6338f2518362ff701a556bd76afd90a2168d1c658ec5d1ea1e9c5ef30a7d157"
   name = "github.com/xeipuuv/gojsonpointer"
@@ -278,10 +392,10 @@
   analyzer-version = 1
   input-imports = [
     "github.com/davecgh/go-spew/spew",
+    "github.com/hashicorp/go-getter",
     "github.com/hashicorp/go-multierror",
     "github.com/juju/errors",
     "github.com/kr/pretty",
-    "github.com/logrusorgru/aurora",
     "github.com/mitchellh/colorstring",
     "github.com/mitchellh/mapstructure",
     "github.com/mumoshu/logrus-bunyan-formatter",
