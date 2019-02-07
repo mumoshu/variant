@@ -2,9 +2,6 @@ package variant
 
 import (
 	"fmt"
-	"reflect"
-
-	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
@@ -338,51 +335,4 @@ func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDef
 	}
 
 	return result, nil
-}
-
-func TransformV3TaskDefMapToArray(v3 map[string]interface{}) []*TaskDef {
-	result := []*TaskDef{}
-	for k, v := range v3 {
-		t := &TaskDef{
-			Autoenv:  false,
-			Autodir:  false,
-			Inputs:   []*InputConfig{},
-			TaskDefs: []*TaskDef{},
-		}
-
-		log.Debugf("Arrived %s: %v", k, v)
-		log.Debugf("Type of value: %v", reflect.TypeOf(v))
-
-		t.Name = k
-
-		var err error
-
-		i2i, ok := v.(map[interface{}]interface{})
-
-		if !ok {
-			panic(fmt.Errorf("Not a map[interface{}]interface{}: %s", v))
-		}
-
-		s2i, err := maputil.CastKeysToStrings(i2i)
-
-		if err != nil {
-			panic(errors.Wrap(err, "Unexpected structure"))
-		}
-
-		leaf := s2i["script"] != nil
-
-		if !leaf {
-			t.TaskDefs = TransformV3TaskDefMapToArray(s2i)
-		} else {
-			log.Debugf("Not a nested map")
-			err = mapstructure.Decode(s2i, t)
-			if err != nil {
-				panic(errors.WithStack(err))
-			}
-			log.Debugf("Loaded %v", t)
-		}
-
-		result = append(result, t)
-	}
-	return result
 }
