@@ -1,75 +1,75 @@
 inputs:
 - name: env
 tasks:
-- name: test2
-  inputs:
-    - name: foo
-  script: |
-    echo aa {{.foo}}
-- name: all
-  inputs:
-    - name: web.deploy
-    - name: job.deploy
-  script: |
-    echo all
-- name: web
-  description: web関連のコマンド
-  tasks:
-  - name: deploy
-    description: webをデプロイする
+  test2:
     inputs:
-    - name: target
+      - name: foo
+    script: |
+      echo aa {{.foo}}
+  all:
+    inputs:
+      - name: web.deploy
+      - name: job.deploy
+    script: |
+      echo all
+  web:
+    description: web関連のコマンド
+    tasks:
+      deploy:
+        description: webをデプロイする
+        inputs:
+        - name: target
+          argument-index: 0
+        - name: mysql.host
+          description: Webサーバの接続先となるMySQLホスト
+        script: |
+          echo deploy"(mysql_host={{.mysql.host}})"
+          echo {{.target}}
+          echo err message 1>&2
+          echo {{.env}}
+          export
+          MYSQL_HOST={{.mysql.host}} sh -c 'export | grep MYSQL_HOST'
+        autoenv: true
+  job:
+    tasks:
+      deploy:
+        inputs:
+        - name: job-id
+          description: 実行対象のジョブID
+        script: |
+          echo {{.job_id}}
+          export | grep JOB_ID
+        autoenv: true
+  mysql:
+    tasks:
+      host:
+        script: |
+          echo mysql
+  add:
+    inputs:
+    - name: left
       argument-index: 0
-    - name: mysql.host
-      description: Webサーバの接続先となるMySQLホスト
+    - name: right
+      argument-index: 1
     script: |
-      echo deploy"(mysql_host={{.mysql.host}})"
-      echo {{.target}}
-      echo err message 1>&2
-      echo {{.env}}
-      export 
-      MYSQL_HOST={{.mysql.host}} sh -c 'export | grep MYSQL_HOST'
-    autoenv: true
-- name: job
-  tasks:
-  - name: deploy
+      echo $(( {{.left}} + {{.right}} ))
+  test:
     inputs:
-    - name: job-id
-      description: 実行対象のジョブID
-    script: |
-      echo {{.job_id}}
-      export | grep JOB_ID
-    autoenv: true
-- name: mysql
-  tasks:
-  - name: host
-    script: |
-      echo mysql
-- name: add
-  inputs:
-  - name: left
-    argument-index: 0
-  - name: right
-    argument-index: 1
-  script: |
-    echo $(( {{.left}} + {{.right}} ))
-- name: test
-  inputs:
-  - name: foo
-  - name: bar
-  - name: baz
-  - name: mysql.host
-  script: |
-    echo {{.foo}} {{.bar}} {{.baz}}
-    echo $FOO $BAR $BAZ
-    echo {{.mysql.host}}
-    echo $MYSQL_HOST
-- name: tests
-  tasks:
-  - name: run
-    inputs:
-    - name: a
-    - name: b
+    - name: foo
+    - name: bar
+    - name: baz
     - name: mysql.host
     script: |
-      echo $(pwd) $A $B $MYSQL_HOST {{.a}} {{.b}} {{.mysql.host}}
+      echo {{.foo}} {{.bar}} {{.baz}}
+      echo $FOO $BAR $BAZ
+      echo {{.mysql.host}}
+      echo $MYSQL_HOST
+  tests:
+    tasks:
+      run:
+        inputs:
+        - name: a
+        - name: b
+        - name: mysql.host
+        script: |
+          echo $(pwd) $A $B $MYSQL_HOST {{.a}} {{.b}} {{.mysql.host}}

@@ -63,172 +63,89 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	log.Tracef("Unmarshalling: %v", v3)
 
-	log.Tracef("Trying to parse v1 format")
-
-	v1 := TaskDefV1{
-		Autoenv:  false,
-		Autodir:  false,
-		Inputs:   []*InputConfig{},
-		TaskDefs: []*TaskDef{},
-		StepDefs: []map[interface{}]interface{}{},
-	}
-
-	err := unmarshal(&v1)
-
-	if v1.Name == "" && len(v1.TaskDefs) == 0 {
-		e := fmt.Errorf("Not v1 format: Both `name` and `tasks` are empty")
-		log.Tracef("%s", e)
-		err = e
-	}
-
-	if err == nil {
-		t.Name = v1.Name
-		t.Description = v1.Description
-		t.Inputs = v1.Inputs
-		if len(v1.Inputs) > 0 {
-			t.Inputs = v1.Inputs
-		} else {
-			for i, p := range v1.Parameters {
-				c := i
-				input := &InputConfig{
-					Name:          p.Name,
-					Description:   p.Description,
-					ArgumentIndex: &c,
-					Type:          p.Type,
-					Default:       p.Default,
-					Remainings:    p.Remainings,
-					Properties:    p.Properties,
-				}
-				t.Inputs = append(t.Inputs, input)
-			}
-			for _, o := range v1.Options {
-				input := &InputConfig{
-					Name:        o.Name,
-					Description: o.Description,
-					Type:        o.Type,
-					Default:     o.Default,
-					Remainings:  o.Remainings,
-					Properties:  o.Properties,
-				}
-				t.Inputs = append(t.Inputs, input)
-			}
-		}
-		t.TaskDefs = v1.TaskDefs
-		t.Script = v1.Script
-		t.Autoenv = v1.Autoenv
-		t.Autodir = v1.Autodir
-		t.Interactive = v1.Interactive
-		t.Private = v1.Private
-		steps, err := readStepsFromStepDefs(v1.Script, v1.Runner, v1.StepDefs)
-		if err != nil {
-			return errors.Wrapf(err, "Error while reading v1 config")
-		}
-		t.Steps = steps
-	}
-
-	//newTaskDefV2 := func() *TaskDefV2 {
-	//	return &TaskDefV2{
-	//		Autoenv:     false,
-	//		Autodir:     false,
-	//		Interactive: false,
-	//		Inputs:      []*InputConfig{},
-	//		TaskDefs:    map[string]*TaskDef{},
-	//		StepDefs:    []map[interface{}]interface{}{},
-	//	}
-	//}
-	//
 	var v2 *TaskDefV2
 
-	if err != nil {
-		log.Tracef("Trying to parse v2 format")
-		v2 = &TaskDefV2{
-			Autoenv:     false,
-			Autodir:     false,
-			Interactive: false,
-			Inputs:      []*InputConfig{},
-			TaskDefs:    map[string]*TaskDef{},
-			StepDefs:    []map[interface{}]interface{}{},
-		}
+	log.Tracef("Trying to parse v2 format")
+	v2 = &TaskDefV2{
+		Autoenv:     false,
+		Autodir:     false,
+		Interactive: false,
+		Inputs:      []*InputConfig{},
+		TaskDefs:    map[string]*TaskDef{},
+		StepDefs:    []map[interface{}]interface{}{},
+	}
 
-		err = unmarshal(&v2)
+	if err := unmarshal(&v2); err != nil {
+		return err
+	}
 
+	if v2.Import != "" {
+		log.Debugf("Importing %s", v2.Import)
+
+		err := get.Unmarshal(v2.Import, &v2)
 		if err != nil {
 			return err
 		}
-
-		if v2.Import != "" {
-			log.Debugf("Importing %s", v2.Import)
-
-			err := get.Unmarshal(v2.Import, &v2)
-			if err != nil {
-				return err
-			}
-		}
-
-		var script string
-		switch s := v2.Script.(type) {
-		case string:
-			script = s
-		case []interface{}:
-			ss := make([]string, len(s))
-			for i := range s {
-				ss[i] = s[i].(string)
-			}
-			script = strings.Join(ss, "\n")
-		}
-
-		if len(v2.TaskDefs) == 0 && script == "" && len(v2.StepDefs) == 0 {
-			e := fmt.Errorf("Not v2 format: `tasks`, `script`, `steps` are missing.")
-			log.Tracef("%s", e)
-			err = e
-		}
-
-		if err == nil {
-			t.Description = v2.Description
-			if len(v2.Inputs) > 0 {
-				t.Inputs = v2.Inputs
-			} else {
-				for i, p := range v2.Parameters {
-					c := i
-					input := &InputConfig{
-						Name:          p.Name,
-						Description:   p.Description,
-						ArgumentIndex: &c,
-						Type:          p.Type,
-						Default:       p.Default,
-						Remainings:    p.Remainings,
-						Properties:    p.Properties,
-					}
-					t.Inputs = append(t.Inputs, input)
-				}
-				for _, o := range v2.Options {
-					input := &InputConfig{
-						Name:        o.Name,
-						Description: o.Description,
-						Type:        o.Type,
-						Default:     o.Default,
-						Remainings:  o.Remainings,
-						Properties:  o.Properties,
-					}
-					t.Inputs = append(t.Inputs, input)
-				}
-			}
-			t.TaskDefs = TransformV2FlowConfigMapToArray(v2.TaskDefs)
-			steps, err := readStepsFromStepDefs(script, v2.Runner, v2.StepDefs)
-			if err != nil {
-				return errors.Wrapf(err, "Error while reading v2 config")
-			}
-			t.Steps = steps
-			t.Script = script
-			t.Autoenv = v2.Autoenv
-			t.Autodir = v2.Autodir
-			t.Interactive = v2.Interactive
-			t.Private = v2.Private
-		}
-
 	}
 
-	return errors.WithStack(err)
+	var script string
+	switch s := v2.Script.(type) {
+	case string:
+		script = s
+	case []interface{}:
+		ss := make([]string, len(s))
+		for i := range s {
+			ss[i] = s[i].(string)
+		}
+		script = strings.Join(ss, "\n")
+	}
+
+	if len(v2.TaskDefs) == 0 && script == "" && len(v2.StepDefs) == 0 {
+		return fmt.Errorf("Not v2 format: `tasks`, `script`, `steps` are missing.")
+	}
+
+	t.Description = v2.Description
+	if len(v2.Inputs) > 0 {
+		t.Inputs = v2.Inputs
+	} else {
+		for i, p := range v2.Parameters {
+			c := i
+			input := &InputConfig{
+				Name:          p.Name,
+				Description:   p.Description,
+				ArgumentIndex: &c,
+				Type:          p.Type,
+				Default:       p.Default,
+				Remainings:    p.Remainings,
+				Properties:    p.Properties,
+			}
+			t.Inputs = append(t.Inputs, input)
+		}
+		for _, o := range v2.Options {
+			input := &InputConfig{
+				Name:        o.Name,
+				Description: o.Description,
+				Type:        o.Type,
+				Default:     o.Default,
+				Remainings:  o.Remainings,
+				Properties:  o.Properties,
+			}
+			t.Inputs = append(t.Inputs, input)
+		}
+	}
+	t.TaskDefs = TransformV2FlowConfigMapToArray(v2.TaskDefs)
+	steps, err := readStepsFromStepDefs(script, v2.Runner, v2.StepDefs)
+	if err != nil {
+		return errors.Wrapf(err, "Error while reading v2 config")
+	}
+	t.Steps = steps
+	t.Script = script
+	t.Autoenv = v2.Autoenv
+	t.Autodir = v2.Autodir
+	t.Interactive = v2.Interactive
+	t.Private = v2.Private
+
+	return nil
 }
 
 func (t *TaskDef) CopyTo(other *TaskDef) {
