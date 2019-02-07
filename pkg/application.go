@@ -203,6 +203,20 @@ type AnyMap map[string]interface{}
 func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) interface{} {
 	ctx := log.WithFields(log.Fields{"app": p.Name, "key": k})
 
+	convert := func(v interface{}) (interface{}, bool) {
+		// From flags
+		if any, ok := stringToTypedValue(v, tpe); ok {
+			return any, true
+		}
+		// From configs
+		if any, ok := ensureType(v, tpe); ok {
+			return any, true
+		}
+		ctx.Debugf("ignoring value: found %v(%T), but unable to convert it to %s", v, v, tpe)
+
+		return nil, false
+	}
+
 	if tpe == "boolean" {
 		// To conform jsonschema type `boolean` to golang `bool`
 		tpe = "bool"
@@ -216,47 +230,37 @@ func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) inter
 	valueFromFlag := viper.Get(flagKey)
 	ctx.Debugf("fetched %s: %v(%T)", flagKey, valueFromFlag, valueFromFlag)
 	if valueFromFlag != nil && valueFromFlag != "" {
-		// From flags
-		if any, ok := stringToTypedValue(valueFromFlag, tpe); ok {
+		if any, ok := convert(valueFromFlag); ok {
 			return any
 		}
-		// From configs
-		if any, ok := ensureType(valueFromFlag, tpe); ok {
-			return any
-		}
-		ctx.Debugf("found %v(%T), but unable to convert it to %s", valueFromFlag, valueFromFlag, tpe)
 	}
 
 	ctx.Debugf("index: %d", lastIndex)
 
+	var value interface{}
+
 	if lastIndex != -1 {
 		a := []rune(k)
-		k1 := string(a[:lastIndex])
-		k2 := string(a[lastIndex+1:])
+		parentKey := string(a[:lastIndex])
+		childKey := string(a[lastIndex+1:])
 
-		ctx.Debugf("viper.Get(%v): %v", k1, viper.Get(k1))
+		parentValue := viper.Get(parentKey)
+		ctx.Debugf("viper.Get(%v): %v", parentKey, parentValue)
 
-		if viper.Get(k1) != nil {
+		if parentValue != nil {
 
-			values := viper.Sub(k1)
+			values := viper.Sub(parentKey)
 
-			ctx.Debugf("app fetched %s: %v", k1, values)
+			ctx.Debugf("app fetched %s: %v", parentKey, values)
 
-			var provided interface{}
+			var childValue interface{}
 
-			if values != nil && values.Get(k2) != nil {
-				provided = values.Get(k2)
-			} else {
-				provided = nil
-			}
-
-			ctx.Debugf("app fetched %s[%s]: %v(%T)", k1, k2, provided, provided)
-
-			if provided != nil {
-				return provided
+			if values != nil {
+				childValue = values.Get(childKey)
+				ctx.Debugf("app fetched %s[%s]: %v(%T)", parentKey, childKey, childValue, childValue)
+				value = childValue
 			}
 		}
-		return nil
 	} else {
 		raw := viper.Get(k)
 		ctx.Debugf("app fetched raw value for key %s: %v", k, raw)
@@ -265,20 +269,18 @@ func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) inter
 			return nil
 		}
 
-		// From flags
-		if s, ok := raw.(string); ok {
-			return s
-		}
+		value = raw
+	}
 
-		// From configs
-		v, ok := ensureType(raw, tpe)
-		if ok {
+	if value == "" {
+		return value
+	} else if value != nil {
+		if v, ok := convert(value); ok {
 			return v
 		}
-
-		ctx.Debugf("ignoring: unexpected type of value fetched: expected %s, but got %v", tpe, reflect.TypeOf(raw))
-		return nil
 	}
+
+	return nil
 }
 
 func stringToTypedValue(raw interface{}, tpe string) (interface{}, bool) {
