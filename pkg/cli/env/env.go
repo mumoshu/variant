@@ -57,7 +57,7 @@ func GetOrSet(defaultEnv string) (string, error) { return e.GetOrSet(defaultEnv)
 func (e *EnvFile) GetOrSet(defaultEnv string) (string, error) {
 	env, err := e.Get()
 	if err != nil {
-		log.Errorf("%s", err)
+		log.Debugf("%s", err)
 		err := e.Set(defaultEnv)
 		if err != nil {
 			return "", errors.WithStack(err)
