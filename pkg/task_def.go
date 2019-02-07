@@ -20,6 +20,7 @@ type TaskDef struct {
 	Autoenv     bool           `yaml:"autoenv,omitempty"`
 	Autodir     bool           `yaml:"autodir,omitempty"`
 	Interactive bool           `yaml:"interactive,omitempty"`
+	Private     bool           `yaml:"private,omitempty"`
 }
 
 type TaskDefV1 struct {
@@ -35,6 +36,7 @@ type TaskDefV1 struct {
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
 	Autodir     bool                          `yaml:"autodir,omitempty"`
 	Interactive bool                          `yaml:"interactive,omitempty"`
+	Private     bool                          `yaml:"private,omitempty"`
 }
 
 type TaskDefV2 struct {
@@ -50,6 +52,7 @@ type TaskDefV2 struct {
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
 	Autodir     bool                          `yaml:"autodir,omitempty"`
 	Interactive bool                          `yaml:"interactive,omitempty"`
+	Private     bool                          `yaml:"private,omitempty"`
 }
 
 func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -115,6 +118,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		t.Autoenv = v1.Autoenv
 		t.Autodir = v1.Autodir
 		t.Interactive = v1.Interactive
+		t.Private = v1.Private
 		steps, err := readStepsFromStepDefs(v1.Script, v1.Runner, v1.StepDefs)
 		if err != nil {
 			return errors.Wrapf(err, "Error while reading v1 config")
@@ -219,6 +223,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			t.Autoenv = v2.Autoenv
 			t.Autodir = v2.Autodir
 			t.Interactive = v2.Interactive
+			t.Private = v2.Private
 		}
 
 	}
@@ -235,6 +240,7 @@ func (t *TaskDef) CopyTo(other *TaskDef) {
 	other.Autoenv = t.Autoenv
 	other.Autodir = t.Autodir
 	other.Interactive = t.Interactive
+	other.Private = t.Private
 }
 
 func TransformV2FlowConfigMapToArray(v2 map[string]*TaskDef) []*TaskDef {

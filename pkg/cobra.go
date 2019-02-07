@@ -42,6 +42,8 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 		cmd.Long = task.Description
 	}
 
+	cmd.Hidden = task.Private
+
 	taskName := task.Name
 
 	if len(task.Steps) > 0 {
