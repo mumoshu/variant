@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/mitchellh/colorstring"
 	"github.com/mumoshu/variant/pkg/api/task"
+	"github.com/mumoshu/variant/pkg/get"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/xeipuuv/gojsonschema"
 	"reflect"
@@ -126,6 +127,9 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 		}
 		doc := gojsonschema.NewGoLoader(vars)
 		result, err := s.Validate(doc)
+		if err != nil {
+			return "", errors.Wrapf(err, "fix your parameter value")
+		}
 		if result.Valid() {
 			ctx.Debugf("all the inputs are valid")
 		} else {
@@ -204,6 +208,21 @@ func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) inter
 	ctx := log.WithFields(log.Fields{"app": p.Name, "key": k})
 
 	convert := func(v interface{}) (interface{}, bool) {
+		// Imports
+		if s, ok := v.(string); ok && s != "" && tpe == "object" {
+			dst := map[string]interface{}{}
+			if err := get.Unmarshal(s, &dst); err != nil {
+				ctx.Errorf("%v", err)
+				return nil, false
+			}
+			r, err := maputil.RecursivelyStringifyKeys(dst)
+			if err != nil {
+				ctx.Errorf("%v", err)
+				return nil, false
+			}
+			return r, true
+		}
+
 		// From flags
 		if any, ok := stringToTypedValue(v, tpe); ok {
 			return any, true

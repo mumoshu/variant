@@ -171,3 +171,44 @@ func CastKeysToStrings(m map[interface{}]interface{}) (map[string]interface{}, e
 	}
 	return r, nil
 }
+
+// RecursivelyStringifyKeys helps converting any map object into a go-jsonscheme-friendly map
+func RecursivelyStringifyKeys(m interface{}) (interface{}, error) {
+	switch src := m.(type) {
+	case map[string]interface{}:
+		dst := map[string]interface{}{}
+		for k, v1 := range src {
+			v2, err := RecursivelyStringifyKeys(v1)
+			if err != nil {
+				return nil, err
+			}
+			dst[k] = v2
+		}
+		return dst, nil
+	case []interface{}:
+		dst := make([]interface{}, len(src))
+		for i, v1 := range src {
+			v2, err := RecursivelyStringifyKeys(v1)
+			if err != nil {
+				return nil, err
+			}
+			dst[i] = v2
+		}
+		return dst, nil
+	case map[interface{}]interface{}:
+		dst := map[string]interface{}{}
+		for k1, v1 := range src {
+			k2, ok := k1.(string)
+			if !ok {
+				return nil, fmt.Errorf("unexpected type of key \"%v\": %T", k1, k1)
+			}
+			v2, err := RecursivelyStringifyKeys(v1)
+			if err != nil {
+				return nil, err
+			}
+			dst[k2] = v2
+		}
+		return dst, nil
+	}
+	return m, nil
+}
