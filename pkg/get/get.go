@@ -14,7 +14,7 @@ import (
 )
 
 func Unmarshal(src string, dst interface{}) error {
-	bytes, err := GetBytes(src)
+	bytes, err := GetFileBytes(src)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func Unmarshal(src string, dst interface{}) error {
 	return nil
 }
 
-func GetBytes(goGetterSrc string) ([]byte, error) {
+func GetFileBytes(goGetterSrc string) ([]byte, error) {
 	// This should be shared across variant commands, so that they can share cache for the shared imports
 	cacheBaseDir := ".variant"
 
@@ -55,7 +55,7 @@ func GetBytes(goGetterSrc string) ([]byte, error) {
 
 	getterSrcParts := strings.Split(goGetterSrc, "//")
 	if len(getterSrcParts) != 2 {
-		return nil, fmt.Errorf("format the src description with $repo//$path, like github.com/mumoshu/kodedeploy//kode: %s", goGetterSrc)
+		return ioutil.ReadFile(goGetterSrc)
 	}
 
 	lastIndex := len(getterSrcParts) - 1
