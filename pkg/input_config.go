@@ -50,6 +50,10 @@ func (c *InputConfig) DefaultAsArray() ([]interface{}, error) {
 }
 
 func (c *InputConfig) DefaultAsObject() (map[string]interface{}, error) {
+	if s, ok := c.Default.(string); ok {
+		return sourceToObject(s)
+	}
+
 	v, ok := getOrDefault(c.Default, reflect.Map, map[string]interface{}{}).(map[string]interface{})
 	if !ok {
 		return nil, fmt.Errorf("default value is not a map: %v", c.Default)

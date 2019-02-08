@@ -1,0 +1,11 @@
+parameters:
+- name: event
+  type: object
+  # This is equivalent to `variant --event event.json` or `variant --event ./event.json`, `variant --event $(pwd)/event.json`.
+  # The file "event.json" is unmarshalled to map[string]interface{}, and can be obtained with `{{ get "event" }}`
+  default: "event.json"
+  # default: "/github/workflow/event.json"
+script: |
+  cat <<EOF
+  {{ get "event" | toYaml }}
+  EOF

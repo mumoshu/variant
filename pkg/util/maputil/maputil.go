@@ -173,12 +173,23 @@ func CastKeysToStrings(m map[interface{}]interface{}) (map[string]interface{}, e
 }
 
 // RecursivelyStringifyKeys helps converting any map object into a go-jsonscheme-friendly map
-func RecursivelyStringifyKeys(m interface{}) (interface{}, error) {
+func RecursivelyStringifyKeys(m interface{}) (map[string]interface{}, error) {
+	mm, err := _recursivelyStringifyKeys(m)
+	if err != nil {
+		return nil, err
+	}
+	if ms, ok := mm.(map[string]interface{}); ok {
+		return ms, nil
+	}
+	return nil, fmt.Errorf("bug: unexpected type of m: %T", mm)
+}
+
+func _recursivelyStringifyKeys(m interface{}) (interface{}, error) {
 	switch src := m.(type) {
 	case map[string]interface{}:
 		dst := map[string]interface{}{}
 		for k, v1 := range src {
-			v2, err := RecursivelyStringifyKeys(v1)
+			v2, err := _recursivelyStringifyKeys(v1)
 			if err != nil {
 				return nil, err
 			}
@@ -188,7 +199,7 @@ func RecursivelyStringifyKeys(m interface{}) (interface{}, error) {
 	case []interface{}:
 		dst := make([]interface{}, len(src))
 		for i, v1 := range src {
-			v2, err := RecursivelyStringifyKeys(v1)
+			v2, err := _recursivelyStringifyKeys(v1)
 			if err != nil {
 				return nil, err
 			}
@@ -202,7 +213,7 @@ func RecursivelyStringifyKeys(m interface{}) (interface{}, error) {
 			if !ok {
 				return nil, fmt.Errorf("unexpected type of key \"%v\": %T", k1, k1)
 			}
-			v2, err := RecursivelyStringifyKeys(v1)
+			v2, err := _recursivelyStringifyKeys(v1)
 			if err != nil {
 				return nil, err
 			}

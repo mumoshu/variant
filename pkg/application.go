@@ -204,23 +204,35 @@ func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []st
 
 type AnyMap map[string]interface{}
 
+func sourceToObject(v interface{}) (map[string]interface{}, error) {
+	if s, ok := v.(string); ok && s != "" {
+		dst := map[string]interface{}{}
+		if err := get.Unmarshal(s, &dst); err != nil {
+			return nil, err
+		}
+		r, err := maputil.RecursivelyStringifyKeys(dst)
+		if err != nil {
+			return nil, err
+		}
+		return r, nil
+	}
+	return nil, nil
+}
+
 func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) interface{} {
 	ctx := log.WithFields(log.Fields{"app": p.Name, "key": k})
 
 	convert := func(v interface{}) (interface{}, bool) {
 		// Imports
-		if s, ok := v.(string); ok && s != "" && tpe == "object" {
-			dst := map[string]interface{}{}
-			if err := get.Unmarshal(s, &dst); err != nil {
-				ctx.Errorf("%v", err)
-				return nil, false
-			}
-			r, err := maputil.RecursivelyStringifyKeys(dst)
+		if tpe == "object" {
+			r, err := sourceToObject(v)
 			if err != nil {
 				ctx.Errorf("%v", err)
 				return nil, false
 			}
-			return r, true
+			if r != nil {
+				return r, true
+			}
 		}
 
 		// From flags
