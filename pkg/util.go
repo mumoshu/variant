@@ -1,9 +1,9 @@
 package variant
 
 import (
+	"github.com/mumoshu/variant/pkg/util/maputil"
 	"log"
 	"reflect"
-	"github.com/mumoshu/variant/pkg/util/maputil"
 )
 
 func getOrDefault(nillable interface{}, kind reflect.Kind, defValue interface{}) interface{} {

@@ -3,12 +3,12 @@ package variant
 import (
 	"bytes"
 	"fmt"
+	"github.com/Masterminds/sprig"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"text/template"
-	"github.com/Masterminds/sprig"
 )
 
 type TaskTemplate struct {
