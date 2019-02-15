@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"text/template"
+	"github.com/Masterminds/sprig"
 )
 
 type TaskTemplate struct {
@@ -71,7 +72,7 @@ func (t *TaskTemplate) Render(expr string, name string) (string, error) {
 	tmpl := template.New(fmt.Sprintf("%s.definition.yaml: %s.%s.script", task.ProjectName, name, task.Name.ShortString()))
 	tmpl.Option("missingkey=error")
 
-	tmpl, err := tmpl.Funcs(t.createFuncMap()).Parse(expr)
+	tmpl, err := tmpl.Funcs(sprig.HermeticTxtFuncMap()).Funcs(t.createFuncMap()).Parse(expr)
 	if err != nil {
 		log.Errorf("Error: %v", err)
 	}
