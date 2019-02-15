@@ -3,6 +3,7 @@ package variant
 import (
 	"log"
 	"reflect"
+	"github.com/mumoshu/variant/pkg/util/maputil"
 )
 
 func getOrDefault(nillable interface{}, kind reflect.Kind, defValue interface{}) interface{} {
@@ -19,6 +20,14 @@ func getOrDefault(nillable interface{}, kind reflect.Kind, defValue interface{})
 			return v.Int()
 		case reflect.Bool:
 			return v.Bool()
+		case reflect.Map:
+			m, err := maputil.RecursivelyStringifyKeys(v.Interface())
+			if err != nil {
+				panic(err)
+			}
+			return m
+		case reflect.Slice:
+			return v.Interface()
 		default:
 			log.Fatalf("unsupported kind %v", k)
 		}

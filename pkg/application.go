@@ -384,6 +384,23 @@ func ensureType(raw interface{}, tpe string) (interface{}, bool) {
 		return nil, false
 	}
 
+	if tpe == "array" {
+		switch r := raw.(type) {
+		case []interface{}:
+			a := []interface{}{}
+			for i := range r {
+				m, err := maputil.RecursivelyStringifyKeys(r[i])
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "unexpected error while processing array: %v", err)
+					return nil, false
+				}
+				a = append(a, m)
+			}
+			return a, true
+		}
+		return nil, false
+	}
+
 	return nil, false
 }
 
