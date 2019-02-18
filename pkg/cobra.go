@@ -2,6 +2,7 @@ package variant
 
 import (
 	"fmt"
+	"github.com/huandu/xstrings"
 	taskapi "github.com/mumoshu/variant/pkg/api/task"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -110,7 +111,7 @@ func (p *CobraAdapter) GenerateAllFlags() {
 
 			log.Debugf("short=%s, full=%s, name=%s, selected=%s", input.ShortName(), input.FullName, input.Name, name)
 
-			flagName := strings.Replace(name, ".", "-", -1)
+			flagName := strings.Replace(xstrings.ToKebabCase(name), ".", "-", -1)
 
 			var keyForConfigFromFlag string
 			if input.TaskKey.ShortString() == task.Name.ShortString() {
