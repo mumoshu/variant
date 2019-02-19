@@ -4,7 +4,7 @@
 
 `Variant` is a task runner / CLI generator.
 
-Write your workflows in YAML. Add a shebang to call `variant`. `Variant` transforms your workflows into a modern CLI application.
+Write your workflows in YAML. Add a shebang to call `variant`. `Variant` transforms your workflows into a modern CLI application and [GitHub Actions](https://github.com/mumoshu/github-actions/tree/master/variant).
 
 ```yaml
 #!/usr/bin/env variant
