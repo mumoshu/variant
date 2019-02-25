@@ -1,0 +1,3 @@
+[[constraint]]
+  name = "github.com/mumoshu/variant"
+  version = "v0.24.1"

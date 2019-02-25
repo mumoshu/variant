@@ -137,22 +137,25 @@ Hello variant you are in the heaven
 While Variant makes it easy for you to develop a modern CLI without recompiling,
 it is able to produce an single executable binary of your command.
 
+Example: [examples/hello](https://github.com/mumoshu/variant/tree/master/examples/hello)
+
 Write a small shell script that wraps your variant command into a simple golang program:
 
 ```console
 $ cat <<EOF > main.go
+package main
 import "github.com/mumoshu/variant/pkg/run"
 func main() {
-    run.YAML(`
+    run.YAML(\`
 $(cat yourcmd)
-`)
+\`)
 }
 EOF
 
 $ cat <<EOF > Gopkg.toml
 [[constraint]]
   name = "github.com/mumoshu/variant"
-  version = v0.24.0"
+  version = "v0.24.0"
 EOF
 ```
 

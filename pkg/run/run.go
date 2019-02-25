@@ -95,7 +95,7 @@ func Dev() {
 	RunTaskDef(cmdPath, taskDef, args)
 }
 
-func RunYAML(yaml string) {
+func YAML(yaml string) {
 	cmdPath := os.Args[0]
 	cmdName := path.Base(cmdPath)
 
