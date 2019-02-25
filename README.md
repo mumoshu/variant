@@ -132,6 +132,46 @@ $ ./myfirstcmd foo
 Hello variant you are in the heaven
 ```
 
+# Releasing a variant-made command
+
+While Variant makes it easy for you to develop a modern CLI without recompiling,
+it is able to produce an single executable binary of your command.
+
+Write a small shell script that wraps your variant command into a simple golang program:
+
+```console
+$ cat <<EOF > main.go
+import "github.com/mumoshu/variant/pkg/run"
+func main() {
+    run.YAML(`
+$(cat yourcmd)
+`)
+}
+EOF
+
+$ cat <<EOF > Gopkg.toml
+[[constraint]]
+  name = "github.com/mumoshu/variant"
+  version = v0.24.0"
+EOF
+```
+
+And then build with a standard golang toolchain:
+
+```console
+$ dep ensure
+$ go build -o dist/yourcmd .
+```
+
+```console
+$ ./mycli --target variant
+Hello variant!
+```
+
+It is recommended to version-control the produced `Gopkg.toml` and `Gopkg.lock` because it is just more straight-forward than managing embedded version of em in the shell snippet.
+
+It is NOT recommended to version-control `main.go`. One of the benefit of Variant is you don't need to recompile while developing. So it is your Variant command written in YAML that should be version-controlled, rather than `main.go` which is necessary only while releasing.
+
 # How it works
 
 Variant is a framework to build a CLI application which becomes the single entry point to your DevOps workflows.

@@ -20,12 +20,14 @@ func NewDefaultTaskConfig() *TaskDef {
 	}
 }
 
-func ReadTaskConfigFromString(data string) (*TaskDef, error) {
-	err, t := ReadTaskConfigFromBytes([]byte(data))
+func ReadTaskDefFromString(data string) (*TaskDef, error) {
+	err, t := ReadTaskDefFromBytes([]byte(data))
 	return err, t
 }
 
-func ReadTaskConfigFromBytes(data []byte) (*TaskDef, error) {
+func ReadTaskDefFromBytes(data []byte) (*TaskDef, error) {
+	log.Debugf("%s", string(data))
+
 	c := NewDefaultTaskConfig()
 	if err := yaml.Unmarshal(data, c); err != nil {
 		return nil, errors.Wrapf(err, "yaml.Unmarshal failed: %v", err)
@@ -33,7 +35,7 @@ func ReadTaskConfigFromBytes(data []byte) (*TaskDef, error) {
 	return c, nil
 }
 
-func ReadTaskConfigFromFile(path string) (*TaskDef, error) {
+func ReadTaskDefFromFile(path string) (*TaskDef, error) {
 	log.Debugf("Loading %s", path)
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -46,9 +48,7 @@ func ReadTaskConfigFromFile(path string) (*TaskDef, error) {
 		return nil, fmt.Errorf("Error while loading %s", path)
 	}
 
-	log.Debugf("%s", string(yamlBytes))
-
-	t, err := ReadTaskConfigFromBytes(yamlBytes)
+	t, err := ReadTaskDefFromBytes(yamlBytes)
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error while loading %s", path)

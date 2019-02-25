@@ -40,7 +40,7 @@ func TestMinimalConfigParsing(t *testing.T) {
 		Autoenv: true,
 		Autodir: true,
 	}
-	actual, err := ReadTaskConfigFromString(minimalConfigYaml)
+	actual, err := ReadTaskDefFromString(minimalConfigYaml)
 
 	if err != nil {
 		t.Errorf("Error: %v", err)
