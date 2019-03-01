@@ -1,0 +1,11 @@
+#!/usr/bin/env bash -e
+
+cat <<EOF > main.go
+package main
+import "github.com/mumoshu/variant/pkg/run"
+func main() {
+    run.YAML(\`
+$(cat yourcmd)
+\`)
+}
+EOF
