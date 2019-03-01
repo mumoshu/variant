@@ -1,0 +1,8 @@
+#!/usr/bin/env variant
+
+tasks:
+  hello:
+   parameters:
+   - name: target
+   script: |
+     echo Hello {{ get "target" }}!
