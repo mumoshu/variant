@@ -3,6 +3,7 @@ package env
 import (
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -50,7 +51,7 @@ func (e *EnvFile) Get() (string, error) {
 	if err != nil {
 		return "", errors.WithStack(err)
 	}
-	return string(env), nil
+	return strings.Trim(string(env), " \t\r\n"), nil
 }
 
 func GetOrSet(defaultEnv string) (string, error) { return e.GetOrSet(defaultEnv) }
