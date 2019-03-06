@@ -10,6 +10,8 @@
 
 Integrations: [GitHub Actions](https://github.com/mumoshu/github-actions/tree/master/variant)
 
+</div>
+
 ```console
 $ cat <<EOF | variant init mycmd
 tasks:
@@ -37,8 +39,6 @@ $ ./mycmd hello --target variant
 mycmd ≫ starting task hello
 Hello variant!
 ```
-
-</div>
 
 # Rationale
 
