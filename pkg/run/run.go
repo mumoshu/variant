@@ -152,6 +152,7 @@ func RunTaskDef(commandPath string, rootTaskConfig *engine.TaskDef, args []strin
 
 	rootCmd, err := adapter.GenerateCommand(rootTask, nil)
 	rootCmd.AddCommand(cmd.EnvCmd)
+	rootCmd.AddCommand(cmd.InitCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
 
 	adapter.GenerateAllFlags()
