@@ -58,9 +58,11 @@ func (l ScriptStepLoader) LoadStep(def StepDef, context LoadingContext) (Step, e
 				panic(fmt.Errorf("unexpected type of artifacts"))
 			}
 			runConf = &runnerConfig{
-				Image:     runner["image"].(string),
 				Args:      args,
 				Artifacts: artifacts,
+			}
+			if image, ok := runner["image"].(string); ok {
+				runConf.Image = image
 			}
 			if entrypoint, ok := runner["entrypoint"].(string); ok {
 				runConf.Entrypoint = &entrypoint
