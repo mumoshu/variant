@@ -141,10 +141,18 @@ func DeepMerge(dest map[string]interface{}, src map[string]interface{}) {
 	for k, v := range src {
 		if m, isMap := v.(map[string]interface{}); isMap {
 			if _, destIsMap := dest[k].(map[string]interface{}); !destIsMap {
-				if dest[k] != nil {
-					log.Panicf("maputil manics! unexpected type of value in map: dest=%v, k=%v, dest[k]=%v", dest, k, dest[k])
+				if d, destIsInterfaceMap := dest[k].(map[interface{}]interface{}); !destIsInterfaceMap {
+					if dest[k] != nil {
+						log.Panicf("maputil panics! unexpected type of value in map: dest=%v, k=%v, dest[k]=%v", dest, k, dest[k])
+					}
+					dest[k] = map[string]interface{}{}
+				} else {
+					ds, err := CastKeysToStrings(d)
+					if err != nil {
+						log.Panicf("maputil panics! unexpected state of d: %v", d)
+					}
+					dest[k] = ds
 				}
-				dest[k] = map[string]interface{}{}
 			}
 			d, ok := dest[k].(map[string]interface{})
 
