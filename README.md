@@ -46,8 +46,8 @@ Automating DevOps workflows is difficult because it often involve multiple `exec
 
 Because those executables vary in:
 
-* Their quality; from originally one-off script written in a day but living for several months or even years, to serious commands which are well-designed and written in richer programming languages with enough testing.
-* Their interface; some passing parameters via environment variables, others having application specific command-line flags, or configuration files
+* Their quality; from scripts written in a day, intended as a one-off command, but which wind up sticking around for months or even years, to serious commands which are well-designed and written in richer programming languages with adequate tests.
+* Their interface; some passing parameters via environment variables, others having application specific command-line flags, or configuration files.
 
 Writing a single tool which
 
