@@ -44,17 +44,17 @@ Hello variant!
 
 Automating DevOps workflows is difficult because it often involve multiple `executables` like shell/ruby/perl/etc scripts and commands.
 
-Bause those executables vary in:
+Because those executables vary in:
 
-* Its quality, from originally one-off script written in a day but living for several months or even years, to serious commands which are well-designed and written in richer programming languages with enough testing,
-* Its interface. Passing parameters via environment variables, application specific command-line flags, configuration files
+* Their quality; from scripts written in a day, intended as a one-off command, but which wind up sticking around for months or even years, to serious commands which are well-designed and written in richer programming languages with adequate tests.
+* Their interface; some passing parameters via environment variables, others having application specific command-line flags, or configuration files.
 
 Writing a single tool which
 
 * wires up all the executables
 * re-implements all the things currently done in various tools
 
-is both time-consuming.
+is time-consuming.
 
 # Getting Started
 
@@ -109,16 +109,16 @@ Flags:
 Use "myfirstcmd [command] --help" for more information about a command.
 ```
 
-Each task in the `myfirstcmd` is given a sub-command. Run `myfistcmd foo` to run the task named `foo`:
+Each task in the `myfirstcmd` is given a sub-command. Run `myfirstcmd foo` to run the task named `foo`:
 
 ```console
 $ ./myfirstcmd foo
 Hello dude you are in the heaven
 ```
 
-Look at the substring `dude` contained in the output above. The value `dude` is coming from the the parameter `bar` of the task `foo`. As we didn't specify the value for the parameter, `variant` automatically run the task `bar` to fulfill it.
+Look at the substring `dude` contained in the output above. The value `dude` is coming from the the parameter `bar` of the task `foo`. As we didn't specify the value for the parameter, `variant` automatically runs the task `bar` to fulfill it.
 
-To confirm that it is the task `bar` who fulfilled the value `dude`, run it:
+To confirm that the task `bar` is emitting the value `dude`, try running it:
 
 ```console
 $ ./myfirstcmd bar
@@ -152,7 +152,7 @@ Hello variant you are in the heaven
 # Releasing a variant-made command
 
 While Variant makes it easy for you to develop a modern CLI without recompiling,
-it is able to produce an single executable binary of your command.
+it is able to produce a single executable binary of your command.
 
 Example: [examples/hello](https://github.com/mumoshu/variant/tree/master/examples/hello)
 
@@ -176,7 +176,7 @@ $ cat <<EOF > Gopkg.toml
 EOF
 ```
 
-And then build with a standard golang toolchain:
+And then build with the standard golang toolchain:
 
 ```console
 $ dep ensure
@@ -190,7 +190,7 @@ Hello variant!
 
 It is recommended to version-control the produced `Gopkg.toml` and `Gopkg.lock` because it is just more straight-forward than managing embedded version of em in the shell snippet.
 
-It is NOT recommended to version-control `main.go`. One of the benefit of Variant is you don't need to recompile while developing. So it is your Variant command written in YAML that should be version-controlled, rather than `main.go` which is necessary only while releasing.
+It is NOT recommended to version-control `main.go`. One of the benefits of Variant is you don't need to recompile while developing. So it is your Variant command written in YAML that should be version-controlled, rather than `main.go` which is necessary only while releasing.
 
 # How it works
 
@@ -218,7 +218,7 @@ It consists of:
 
 ## Dependency injection
 
-An input named `myinput` for the task `mytask` can be one of follows, in order of precedense:
+An input named `myinput` for the task `mytask` can be one of follows, in order of precedence:
 
 * Value of the command-line option `--myinput`
 * Value of the configuration variable `mytask.myinput`
