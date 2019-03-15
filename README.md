@@ -1,13 +1,31 @@
+<div align="center">
+
 # Variant
+
+![image](https://user-images.githubusercontent.com/22009/51234992-b1899380-19b1-11e9-83c3-dbfdb1517b1c.png)
+
+##### Build modern command line applications in **YAML** and **any scripting language** of your choice
 
 [![CircleCI](https://circleci.com/gh/mumoshu/variant.svg?style=svg)](https://circleci.com/gh/mumoshu/variant)
 
-`Variant` is a task runner / CLI generator.
+Integrations: [GitHub Actions](https://github.com/mumoshu/github-actions/tree/master/variant)
 
-Write your workflows in YAML. Add a shebang to call `variant`. `Variant` transforms your workflows into a modern CLI application and [GitHub Actions](https://github.com/mumoshu/github-actions/tree/master/variant).
+</div>
+
+```console
+$ cat <<EOF | variant init mycmd
+tasks:
+  hello:
+   parameters:
+   - name: target
+   script: |
+     echo Hello {{ get "target" }}!
+EOF
+```
 
 ```yaml
 #!/usr/bin/env variant
+
 tasks:
   hello:
    parameters:
@@ -17,11 +35,10 @@ tasks:
 ```
 
 ```console
-$ ./mycli --target variant
-Hello variant! 
+$ ./mycmd hello --target variant
+mycmd ≫ starting task hello
+Hello variant!
 ```
-
-![image](https://user-images.githubusercontent.com/22009/51234992-b1899380-19b1-11e9-83c3-dbfdb1517b1c.png)
 
 # Rationale
 

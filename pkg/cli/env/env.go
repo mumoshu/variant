@@ -3,6 +3,7 @@ package env
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -33,7 +34,15 @@ func SetAppName(name string) {
 
 func GetPath() string { return e.GetPath() }
 func (e *EnvFile) GetPath() string {
-	return fmt.Sprintf(".%senv", e.appName)
+	f := fmt.Sprintf(".%senv", e.appName)
+	if _, err := os.Stat(f); !os.IsNotExist(err) {
+		return f
+	}
+	f = ".variantenv"
+	if _, err := os.Stat(f); !os.IsNotExist(err) {
+		return f
+	}
+	return ".varenv"
 }
 
 func Set(env string) error { return e.Set(env) }
