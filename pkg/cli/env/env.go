@@ -58,20 +58,20 @@ func Get() (string, error) { return e.Get() }
 func (e *EnvFile) Get() (string, error) {
 	env, err := ioutil.ReadFile(e.GetPath())
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", err
 	}
 	return strings.Trim(string(env), " \t\r\n"), nil
 }
 
-func GetOrSet(defaultEnv string) (string, error) { return e.GetOrSet(defaultEnv) }
-func (e *EnvFile) GetOrSet(defaultEnv string) (string, error) {
+func GetOrSet(defaultEnv string) (string, error) { return e.GetOrDefault(defaultEnv) }
+func (e *EnvFile) GetOrDefault(defaultEnv string) (string, error) {
 	env, err := e.Get()
 	if err != nil {
 		log.Debugf("%s", err)
-		err := e.Set(defaultEnv)
-		if err != nil {
-			return "", errors.WithStack(err)
+		if os.IsNotExist(err) {
+			return defaultEnv, nil
 		}
+		return "", errors.WithStack(err)
 	}
 	return env, nil
 }

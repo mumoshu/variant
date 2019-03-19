@@ -117,7 +117,7 @@ func RunTaskDef(commandPath string, rootTaskConfig *variant.TaskDef, args []stri
 
 	var envFromFile string
 	commandName := rootTaskConfig.Name
-	envFromFile, err = env.New(commandName).GetOrSet("dev")
+	envFromFile, err = env.New(commandName).GetOrDefault("dev")
 	if err != nil {
 		panic(errors.Trace(err))
 	}
