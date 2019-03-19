@@ -35,9 +35,11 @@ type Application struct {
 	InputResolver       InputResolver
 	TaskNamer           *TaskNamer
 	LogToStderr         bool
+
+	Viper Viper
 }
 
-func (p Application) UpdateLoggingConfiguration() {
+func (p Application) UpdateLoggingConfiguration() error {
 	if p.Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
@@ -61,13 +63,23 @@ func (p Application) UpdateLoggingConfiguration() {
 	} else if p.Output == "message" {
 		log.SetFormatter(&MessageOnlyFormatter{})
 	} else {
-		log.Fatalf("Unexpected output format specified: %s", p.Output)
+		return fmt.Errorf("unexpected output format specified: %s", p.Output)
 	}
+	return nil
 }
 
 func (p Application) RunTaskForKeyString(keyStr string, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
 	taskKey := p.TaskNamer.FromString(fmt.Sprintf("%s.%s", p.Name, keyStr))
 	return p.RunTask(taskKey, args, arguments, scope, asInput, caller...)
+}
+
+func (p Application) Run(taskName TaskName, args []string) error {
+	errMsg, err := p.RunTask(taskName, args, task.NewArguments(), map[string]interface{}{}, false)
+
+	if err != nil {
+		return CommandError{error: err, TaskName: taskName, Cause: errMsg}
+	}
+	return nil
 }
 
 func (p Application) RunTask(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
@@ -258,7 +270,7 @@ func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) inter
 	ctx.Debugf("fetching %s for %s", k, tpe)
 
 	flagKey := fmt.Sprintf("flags.%s", k)
-	valueFromFlag := viper.Get(flagKey)
+	valueFromFlag := p.Viper.Get(flagKey)
 	ctx.Debugf("fetched %s: %v(%T)", flagKey, valueFromFlag, valueFromFlag)
 	if valueFromFlag != nil && valueFromFlag != "" {
 		if any, ok := convert(valueFromFlag); ok {
@@ -280,7 +292,7 @@ func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) inter
 
 		if parentValue != nil {
 
-			values := viper.Sub(parentKey)
+			values := p.Viper.Sub(parentKey)
 
 			ctx.Debugf("app fetched %s: %v", parentKey, values)
 
@@ -293,7 +305,7 @@ func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) inter
 			}
 		}
 	} else {
-		raw := viper.Get(k)
+		raw := p.Viper.Get(k)
 		ctx.Debugf("app fetched raw value for key %s: %v", k, raw)
 		ctx.Debugf("type of value fetched: expected %s, got %v", tpe, reflect.TypeOf(raw))
 		if raw == nil {

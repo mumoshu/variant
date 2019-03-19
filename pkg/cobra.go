@@ -3,12 +3,10 @@ package variant
 import (
 	"fmt"
 	"github.com/huandu/xstrings"
-	taskapi "github.com/mumoshu/variant/pkg/api/task"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"os"
 	"strings"
 )
 
@@ -20,6 +18,12 @@ func NewCobraAdapter(app *Application) *CobraAdapter {
 	return &CobraAdapter{
 		app: app,
 	}
+}
+
+type CommandError struct {
+	error
+	TaskName TaskName
+	Cause    string
 }
 
 func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (*cobra.Command, error) {
@@ -48,24 +52,8 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 	taskName := task.Name
 
 	if len(task.Steps) > 0 {
-		cmd.Run = func(cmd *cobra.Command, args []string) {
-			p.app.UpdateLoggingConfiguration()
-
-			errMsg, err := p.app.RunTask(taskName, args, taskapi.NewArguments(), map[string]interface{}{}, false)
-
-			if err != nil {
-				c := strings.Join(strings.Split(taskName.String(), "."), " ")
-				if log.GetLevel() == log.DebugLevel {
-					log.Errorf("Stack trace: %+v", err)
-				}
-				errs := strings.Split(err.Error(), ": ")
-				msg := strings.Join(errs, "\n")
-				log.Errorf("Error: `%s` failed: %s", c, msg)
-				if strings.Trim(errMsg, " \n\t") != "" {
-					log.Errorf("Caused by: %s", errMsg)
-				}
-				os.Exit(1)
-			}
+		cmd.RunE = func(cmd *cobra.Command, args []string) error {
+			return p.app.Run(taskName, args)
 		}
 	}
 

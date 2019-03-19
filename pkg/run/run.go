@@ -11,10 +11,11 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/mumoshu/variant/cmd"
-	engine "github.com/mumoshu/variant/pkg"
+	"github.com/mumoshu/variant/pkg"
 	"github.com/mumoshu/variant/pkg/cli/env"
 	"github.com/mumoshu/variant/pkg/util/envutil"
 	"github.com/mumoshu/variant/pkg/util/fileutil"
+	"github.com/spf13/cobra"
 	"path"
 )
 
@@ -42,14 +43,14 @@ func init() {
 		log.SetOutput(os.Stderr)
 	}
 
-	engine.Register(engine.NewTaskStepLoader())
-	engine.Register(engine.NewScriptStepLoader())
-	engine.Register(engine.NewOrStepLoader())
-	engine.Register(engine.NewIfStepLoader())
+	variant.Register(variant.NewTaskStepLoader())
+	variant.Register(variant.NewScriptStepLoader())
+	variant.Register(variant.NewOrStepLoader())
+	variant.Register(variant.NewIfStepLoader())
 }
 
 func Dev() {
-	var taskDef *engine.TaskDef
+	var taskDef *variant.TaskDef
 	var args []string
 
 	var cmdName string
@@ -79,7 +80,7 @@ func Dev() {
 	}
 
 	if fileutil.Exists(varfile) {
-		taskConfigFromFile, err := engine.ReadTaskDefFromFile(varfile)
+		taskConfigFromFile, err := variant.ReadTaskDefFromFile(varfile)
 
 		if err != nil {
 			log.Errorf("%+v", err)
@@ -87,7 +88,7 @@ func Dev() {
 		}
 		taskDef = taskConfigFromFile
 	} else {
-		taskDef = engine.NewDefaultTaskConfig()
+		taskDef = variant.NewDefaultTaskConfig()
 	}
 
 	taskDef.Name = cmdName
@@ -99,7 +100,7 @@ func YAML(yaml string) {
 	cmdPath := os.Args[0]
 	cmdName := path.Base(cmdPath)
 
-	taskDef, err := engine.ReadTaskDefFromBytes([]byte(yaml))
+	taskDef, err := variant.ReadTaskDefFromBytes([]byte(yaml))
 
 	if err != nil {
 		log.Errorf("%+v", err)
@@ -111,7 +112,7 @@ func YAML(yaml string) {
 	RunTaskDef(cmdPath, taskDef, os.Args[1:])
 }
 
-func RunTaskDef(commandPath string, rootTaskConfig *engine.TaskDef, args []string) {
+func RunTaskDef(commandPath string, rootTaskConfig *variant.TaskDef, args []string) {
 	var err error
 
 	var envFromFile string
@@ -121,22 +122,22 @@ func RunTaskDef(commandPath string, rootTaskConfig *engine.TaskDef, args []strin
 		panic(errors.Trace(err))
 	}
 
-	taskNamer := engine.NewTaskNamer(commandName)
+	taskNamer := variant.NewTaskNamer(commandName)
 
-	g := engine.NewTaskCreator(taskNamer)
+	g := variant.NewTaskCreator(taskNamer)
 
 	rootTask, err1 := g.Create(rootTaskConfig, []string{}, commandName)
 	if err1 != nil {
 		panic(err1)
 	}
 
-	taskRegistry := engine.NewTaskRegistry()
+	taskRegistry := variant.NewTaskRegistry()
 	taskRegistry.RegisterTasks(rootTask)
 
-	inputResolver := engine.NewRegistryBasedInputResolver(taskRegistry, taskNamer)
+	inputResolver := variant.NewRegistryBasedInputResolver(taskRegistry, taskNamer)
 	inputResolver.ResolveInputs()
 
-	p := &engine.Application{
+	p := &variant.Application{
 		Name:                commandName,
 		CommandRelativePath: commandPath,
 		CachedTaskOutputs:   map[string]interface{}{},
@@ -146,14 +147,23 @@ func RunTaskDef(commandPath string, rootTaskConfig *engine.TaskDef, args []strin
 		TaskNamer:           taskNamer,
 		TaskRegistry:        taskRegistry,
 		InputResolver:       inputResolver,
+		Viper:               viper.GetViper(),
 	}
 
-	adapter := engine.NewCobraAdapter(p)
+	adapter := variant.NewCobraAdapter(p)
 
 	rootCmd, err := adapter.GenerateCommand(rootTask, nil)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+
 	rootCmd.AddCommand(cmd.EnvCmd)
 	rootCmd.AddCommand(cmd.InitCmd)
 	rootCmd.AddCommand(cmd.VersionCmd(log.StandardLogger()))
+
+	rootCmd.PersistentPostRunE = func(_ *cobra.Command, _ []string) error {
+		return p.UpdateLoggingConfiguration()
+	}
 
 	adapter.GenerateAllFlags()
 
@@ -166,9 +176,8 @@ func RunTaskDef(commandPath string, rootTaskConfig *engine.TaskDef, args []strin
 	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
 	rootCmd.ParseFlags(args)
 
-	// Workaround: We want to set log leve via command-line option before the rootCmd is run
-	p.UpdateLoggingConfiguration()
-
+	// Workaround: We want to set log level via command-line option before the rootCmd is run
+	err = p.UpdateLoggingConfiguration()
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
@@ -237,6 +246,27 @@ func RunTaskDef(commandPath string, rootTaskConfig *engine.TaskDef, args []strin
 
 	//	var rootCmd = &cobra.Command{Use: c.Name}
 
-	rootCmd.SetArgs(args)
-	rootCmd.Execute()
+	cobraApp := &CobraApp{
+		viperCfg: viper.GetViper(),
+		cobraCmd: rootCmd,
+	}
+
+	if err := cobraApp.Run(args); err != nil {
+		switch cmdErr := err.(type) {
+		case variant.CommandError:
+			c := strings.Join(strings.Split(cmdErr.TaskName.String(), "."), " ")
+			if log.GetLevel() == log.DebugLevel {
+				log.Errorf("Stack trace: %+v", err)
+			}
+			errs := strings.Split(err.Error(), ": ")
+			msg := strings.Join(errs, "\n")
+			log.Errorf("Error: `%s` failed: %s", c, msg)
+			if strings.Trim(cmdErr.Cause, " \n\t") != "" {
+				log.Errorf("Caused by: %s", cmdErr.Cause)
+			}
+		default:
+			log.Errorf("Unexpected type of error %T: %s", err, err)
+		}
+		os.Exit(1)
+	}
 }
