@@ -19,7 +19,7 @@ func (l TaskStepLoader) LoadStep(stepConfig StepDef, context LoadingContext) (St
 			Name:          stepConfig.GetName(),
 			TaskKeyString: taskKey,
 			Arguments:     inputs,
-			silent:        stepConfig.Silent(),
+			Silent:        stepConfig.Silent(),
 		}, nil
 	}
 
@@ -34,7 +34,7 @@ type TaskStep struct {
 	Name          string
 	TaskKeyString string
 	Arguments     task.Arguments
-	silent        bool
+	Silent        bool
 }
 
 func (s TaskStep) Run(context ExecutionContext) (StepStringOutput, error) {
@@ -52,6 +52,6 @@ func (s TaskStep) GetName() string {
 	return s.Name
 }
 
-func (s TaskStep) Silent() bool {
-	return s.silent
+func (s TaskStep) Silenced() bool {
+	return s.Silent
 }

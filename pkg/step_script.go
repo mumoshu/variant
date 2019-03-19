@@ -23,7 +23,7 @@ type ScriptStepLoader struct{}
 func (l ScriptStepLoader) LoadStep(def StepDef, context LoadingContext) (Step, error) {
 	script, isStr := def.Script()
 
-	var runConf *runnerConfig
+	var runConf *RunnerConfig
 	{
 		runner, ok := def.Get("runner").(map[string]interface{})
 		log.Debugf("runner: %+v", runner)
@@ -57,7 +57,7 @@ func (l ScriptStepLoader) LoadStep(def StepDef, context LoadingContext) (Step, e
 			default:
 				panic(fmt.Errorf("unexpected type of artifacts"))
 			}
-			runConf = &runnerConfig{
+			runConf = &RunnerConfig{
 				Args:      args,
 				Artifacts: artifacts,
 			}
@@ -109,10 +109,10 @@ func (l ScriptStepLoader) LoadStep(def StepDef, context LoadingContext) (Step, e
 		step := ScriptStep{
 			Name:   def.GetName(),
 			Code:   script,
-			silent: def.Silent(),
+			Silent: def.Silent(),
 		}
 		if runConf != nil {
-			step.runnerConfig = *runConf
+			step.RunnerConfig = *runConf
 		}
 		return step, nil
 	}
@@ -127,8 +127,8 @@ func NewScriptStepLoader() ScriptStepLoader {
 type ScriptStep struct {
 	Name         string
 	Code         string
-	silent       bool
-	runnerConfig runnerConfig
+	Silent       bool
+	RunnerConfig RunnerConfig
 }
 
 type Artifact struct {
@@ -137,7 +137,7 @@ type Artifact struct {
 	Via  string
 }
 
-type runnerConfig struct {
+type RunnerConfig struct {
 	Image      string
 	Command    string
 	Entrypoint *string
@@ -150,7 +150,7 @@ type runnerConfig struct {
 	Workdir    string
 }
 
-func (c runnerConfig) commandNameAndArgsToRunScript(script string, context ExecutionContext) (string, []string) {
+func (c RunnerConfig) commandNameAndArgsToRunScript(script string, context ExecutionContext) (string, []string) {
 	var cmd string
 	if c.Command != "" {
 		cmd = c.Command
@@ -224,8 +224,8 @@ tar zxvf %s.tgz 1>&2
 	}
 }
 
-func (s ScriptStep) Silent() bool {
-	return s.silent
+func (s ScriptStep) Silenced() bool {
+	return s.Silent
 }
 
 func (s ScriptStep) GetName() string {
@@ -257,7 +257,7 @@ func (s ScriptStep) Run(context ExecutionContext) (StepStringOutput, error) {
 }
 
 func (t ScriptStep) runScriptWithArtifacts(script string, depended bool, context ExecutionContext) (string, error) {
-	for _, a := range t.runnerConfig.Artifacts {
+	for _, a := range t.RunnerConfig.Artifacts {
 		err := createTarFromGlob(fmt.Sprintf("%s.tgz", a.Name), a.Path)
 		if err != nil {
 			return "", err
@@ -267,14 +267,14 @@ func (t ScriptStep) runScriptWithArtifacts(script string, depended bool, context
 			return "", err
 		}
 		setup := fmt.Sprintf(`aws s3 cp %s.tgz %s/%s.tgz 1>&2`, a.Name, via, a.Name)
-		name, args := runnerConfig{}.commandNameAndArgsToRunScript(setup, context)
+		name, args := RunnerConfig{}.commandNameAndArgsToRunScript(setup, context)
 		out, err := t.runCommand(name, args, depended, context)
 		if err != nil {
 			return out, err
 		}
 	}
 
-	name, args := t.runnerConfig.commandNameAndArgsToRunScript(script, context)
+	name, args := t.RunnerConfig.commandNameAndArgsToRunScript(script, context)
 	output, err := t.runCommand(name, args, depended, context)
 	if err != nil {
 		return output, err

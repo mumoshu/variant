@@ -5,6 +5,10 @@ import (
 	"reflect"
 )
 
+func Int(v int) *int {
+	return &v
+}
+
 type InputConfig struct {
 	Name          string                            `yaml:"name,omitempty"`
 	Description   string                            `yaml:"description,omitempty"`
@@ -13,6 +17,26 @@ type InputConfig struct {
 	Default       interface{}                       `yaml:"default,omitempty"`
 	Properties    map[string]map[string]interface{} `yaml:"properties,omitempty"`
 	Remainings    map[string]interface{}            `yaml:",inline"`
+}
+
+func (c *InputConfig) GoString() string {
+	var argIdx string
+	if c.ArgumentIndex == nil {
+		argIdx = "nil"
+	} else {
+		argIdx = fmt.Sprintf("variant.Int(%d)", *c.ArgumentIndex)
+	}
+	var def string
+	if c.Default == nil {
+		def = "nil"
+	} else {
+		def = fmt.Sprintf("%#v", c.Default)
+	}
+
+	return fmt.Sprintf(
+		`&variant.InputConfig{Name:%#v, Description:%#v, ArgumentIndex:%s, Type:%#v, Default:%s, Properties:%#v, Remainings:%#v}`,
+		c.Name, c.Description, argIdx, c.Type, def, c.Properties, c.Remainings,
+	)
 }
 
 func (c *InputConfig) Required() bool {

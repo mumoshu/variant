@@ -8,7 +8,7 @@ import (
 
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
 	"encoding/json"
@@ -37,31 +37,33 @@ type Application struct {
 	LogToStderr         bool
 
 	Viper Viper
+
+	Log *logrus.Logger
 }
 
 func (p Application) UpdateLoggingConfiguration() error {
 	if p.Verbose {
-		log.SetLevel(log.DebugLevel)
+		p.Log.SetLevel(logrus.DebugLevel)
 	}
 
 	if p.LogToStderr {
-		log.SetOutput(os.Stderr)
+		p.Log.SetOutput(os.Stderr)
 	}
 
 	commandName := path.Base(os.Args[0])
 	if p.Output == "bunyan" {
-		log.SetFormatter(&bunyan.Formatter{Name: commandName})
+		p.Log.SetFormatter(&bunyan.Formatter{Name: commandName})
 	} else if p.Output == "json" {
-		log.SetFormatter(&log.JSONFormatter{})
+		p.Log.SetFormatter(&logrus.JSONFormatter{})
 	} else if p.Output == "text" {
 		colorize := &colorstring.Colorize{
 			Colors:  colorstring.DefaultColors,
 			Disable: !p.Colorize,
 			Reset:   true,
 		}
-		log.SetFormatter(&variantTextFormatter{colorize: colorize})
+		p.Log.SetFormatter(&variantTextFormatter{colorize: colorize})
 	} else if p.Output == "message" {
-		log.SetFormatter(&MessageOnlyFormatter{})
+		p.Log.SetFormatter(&MessageOnlyFormatter{})
 	} else {
 		return fmt.Errorf("unexpected output format specified: %s", p.Output)
 	}
@@ -83,12 +85,12 @@ func (p Application) Run(taskName TaskName, args []string) error {
 }
 
 func (p Application) RunTask(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
-	var ctx *log.Entry
+	var ctx *logrus.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"app": p.Name, "task": taskName.ShortString(), "caller": caller[0].GetKey().ShortString()})
+		ctx = p.Log.WithFields(logrus.Fields{"app": p.Name, "task": taskName.ShortString(), "caller": caller[0].GetKey().ShortString()})
 	} else {
-		ctx = log.WithFields(log.Fields{"app": p.Name, "task": taskName.ShortString()})
+		ctx = p.Log.WithFields(logrus.Fields{"app": p.Name, "task": taskName.ShortString()})
 	}
 
 	ctx.Debugf("app started task %s", taskName.ShortString())
@@ -127,7 +129,7 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 	{
 		kv := maputil.Flatten(vars)
 
-		s, err := jsonschemaFromInputs(taskDef.Inputs)
+		s, err := p.jsonschemaFromInputs(taskDef.Inputs)
 		if err != nil {
 			ins := []InputConfig{}
 			for _, v := range taskDef.Inputs {
@@ -232,7 +234,7 @@ func sourceToObject(v interface{}) (map[string]interface{}, error) {
 }
 
 func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) interface{} {
-	ctx := log.WithFields(log.Fields{"app": p.Name, "key": k})
+	ctx := p.Log.WithFields(logrus.Fields{"app": p.Name, "key": k})
 
 	convert := func(v interface{}) (interface{}, bool) {
 		// Imports
@@ -419,12 +421,12 @@ func ensureType(raw interface{}, tpe string) (interface{}, bool) {
 func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (map[string]interface{}, error) {
 	var errs *multierror.Error
 
-	var ctx *log.Entry
+	var ctx *logrus.Entry
 
 	if len(caller) == 1 {
-		ctx = log.WithFields(log.Fields{"app": p.Name, "caller": caller[0].Name.ShortString(), "task": taskName.ShortString()})
+		ctx = p.Log.WithFields(logrus.Fields{"app": p.Name, "caller": caller[0].Name.ShortString(), "task": taskName.ShortString()})
 	} else {
-		ctx = log.WithFields(log.Fields{"app": p.Name, "task": taskName.ShortString()})
+		ctx = p.Log.WithFields(logrus.Fields{"app": p.Name, "task": taskName.ShortString()})
 	}
 
 	values := map[string]interface{}{}
@@ -455,7 +457,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 		if tmplOrStaticVal == nil {
 			if str, err := arguments.GetString(input.Name); err == nil && str != "" {
-				tmplOrStaticVal, err = parseSupportedValueFromString(str, input.TypeName())
+				tmplOrStaticVal, err = p.parseSupportedValueFromString(str, input.TypeName())
 				if err != nil {
 					return nil, err
 				}
@@ -466,7 +468,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 		if tmplOrStaticVal == nil && input.Name != input.ShortName() {
 			if str, err := arguments.GetString(input.ShortName()); err == nil && str != "" {
-				tmplOrStaticVal, err = parseSupportedValueFromString(str, input.TypeName())
+				tmplOrStaticVal, err = p.parseSupportedValueFromString(str, input.TypeName())
 				if err != nil {
 					return nil, err
 				}
@@ -579,24 +581,24 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 		}
 
 		// Now that the tmplOrStaticVal exists, render add type it
-		log.Debugf("tmplOrStaticVal=%#v", tmplOrStaticVal)
+		p.Log.Debugf("tmplOrStaticVal=%#v", tmplOrStaticVal)
 		if tmplOrStaticVal != nil {
 			var renderedValue string
 			expr, ok := tmplOrStaticVal.(string)
 			if ok {
 				taskTemplate := NewTaskTemplate(currentTask, scope)
-				log.Debugf("rendering %s", expr)
+				p.Log.Debugf("rendering %s", expr)
 				r, err := taskTemplate.Render(expr, input.Name)
 				if err != nil {
 					return nil, errors.Wrap(err, "failed to render task template")
 				}
 				renderedValue = r
-				log.Debugf("converting type of %v(%T) to %s", renderedValue, renderedValue, input.TypeName())
-				tmplOrStaticVal, err = parseSupportedValueFromString(renderedValue, input.TypeName())
+				p.Log.Debugf("converting type of %v(%T) to %s", renderedValue, renderedValue, input.TypeName())
+				tmplOrStaticVal, err = p.parseSupportedValueFromString(renderedValue, input.TypeName())
 				if err != nil {
 					return nil, err
 				}
-				log.Debugf("value after type conversion=%v(%T)", tmplOrStaticVal, tmplOrStaticVal)
+				p.Log.Debugf("value after type conversion=%v(%T)", tmplOrStaticVal, tmplOrStaticVal)
 			}
 		} else {
 			// the dependent task succeeded with no output
@@ -610,20 +612,20 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 	return values, nil
 }
 
-func parseSupportedValueFromString(renderedValue string, typeName string) (interface{}, error) {
+func (p *Application) parseSupportedValueFromString(renderedValue string, typeName string) (interface{}, error) {
 	switch typeName {
 	case "string":
-		log.Debugf("string=%v", renderedValue)
+		p.Log.Debugf("string=%v", renderedValue)
 		return renderedValue, nil
 	case "integer":
-		log.Debugf("integer=%v", renderedValue)
+		p.Log.Debugf("integer=%v", renderedValue)
 		value, err := strconv.Atoi(renderedValue)
 		if err != nil {
 			return nil, errors.Wrapf(err, "%v can't be casted to integer", renderedValue)
 		}
 		return value, nil
 	case "boolean":
-		log.Debugf("boolean=%v", renderedValue)
+		p.Log.Debugf("boolean=%v", renderedValue)
 		switch renderedValue {
 		case "true":
 			return true, nil
@@ -633,14 +635,14 @@ func parseSupportedValueFromString(renderedValue string, typeName string) (inter
 			return nil, fmt.Errorf("%v can't be parsed as boolean", renderedValue)
 		}
 	case "array", "object":
-		log.Debugf("converting this to either array or object=%v", renderedValue)
+		p.Log.Debugf("converting this to either array or object=%v", renderedValue)
 		var dst interface{}
 		if err := json.Unmarshal([]byte(renderedValue), &dst); err != nil {
 			return nil, errors.Wrapf(err, "failed converting: failed to parse %s as json", renderedValue)
 		}
 		return dst, nil
 	default:
-		log.Debugf("foobar")
+		p.Log.Debugf("foobar")
 		return nil, fmt.Errorf("unsupported input type `%s` found. the type should be one of: string, integer, boolean", typeName)
 	}
 }
@@ -649,7 +651,7 @@ func (p *Application) Tasks() map[string]*Task {
 	return p.TaskRegistry.Tasks()
 }
 
-func jsonschemaFromInputs(inputs []*InputConfig) (*gojsonschema.Schema, error) {
+func (p *Application) jsonschemaFromInputs(inputs []*InputConfig) (*gojsonschema.Schema, error) {
 	newObjSchema := func() map[string]interface{} {
 		return map[string]interface{}{
 			"type":       "object",
@@ -702,7 +704,7 @@ func jsonschemaFromInputs(inputs []*InputConfig) (*gojsonschema.Schema, error) {
 			}
 		}
 	}
-	log.Debugf("schema = %+v", root)
+	p.Log.Debugf("schema = %+v", root)
 	schemaLoader := gojsonschema.NewGoLoader(root)
 	return gojsonschema.NewSchema(schemaLoader)
 }

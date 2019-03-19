@@ -11,16 +11,36 @@ import (
 )
 
 type TaskDef struct {
-	Name        string         `yaml:"name,omitempty"`
-	Description string         `yaml:"description,omitempty"`
-	Inputs      []*InputConfig `yaml:"inputs,omitempty"`
-	TaskDefs    []*TaskDef     `yaml:"tasks,omitempty"`
-	Script      string         `yaml:"script,omitempty"`
-	Steps       []Step         `yaml:"steps,omitempty"`
-	Autoenv     bool           `yaml:"autoenv,omitempty"`
-	Autodir     bool           `yaml:"autodir,omitempty"`
-	Interactive bool           `yaml:"interactive,omitempty"`
-	Private     bool           `yaml:"private,omitempty"`
+	Name        string       `yaml:"name,omitempty"`
+	Description string       `yaml:"description,omitempty"`
+	Inputs      InputConfigs `yaml:"inputs,omitempty"`
+	TaskDefs    TaskDefs     `yaml:"tasks,omitempty"`
+	Script      string       `yaml:"script,omitempty"`
+	Steps       []Step       `yaml:"steps,omitempty"`
+	Autoenv     bool         `yaml:"autoenv,omitempty"`
+	Autodir     bool         `yaml:"autodir,omitempty"`
+	Interactive bool         `yaml:"interactive,omitempty"`
+	Private     bool         `yaml:"private,omitempty"`
+}
+
+type TaskDefs []*TaskDef
+
+func (d TaskDefs) GoString() string {
+	taskDefs := []string{}
+	for _, t := range d {
+		taskDefs = append(taskDefs, fmt.Sprintf("%#v", t))
+	}
+	return fmt.Sprintf("variant.TaskDefs{%s}", strings.Join(taskDefs, ", "))
+}
+
+type InputConfigs []*InputConfig
+
+func (c InputConfigs) GoString() string {
+	inputConfs := []string{}
+	for _, t := range c {
+		inputConfs = append(inputConfs, fmt.Sprintf("%#v", t))
+	}
+	return fmt.Sprintf("variant.InputConfigs{%s}", strings.Join(inputConfs, ", "))
 }
 
 type TaskDefV1 struct {

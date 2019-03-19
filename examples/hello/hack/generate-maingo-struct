@@ -1,0 +1,15 @@
+#!/usr/bin/env bash -e
+
+cat <<EOF > main.go
+package main
+import (
+  "github.com/mumoshu/variant/pkg"
+  "github.com/mumoshu/variant/pkg/run"
+)
+func main() {
+    run.Def(
+      $(variant build yourcmd),
+      variant.Opts{},
+    )
+}
+EOF
