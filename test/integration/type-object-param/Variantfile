@@ -1,0 +1,27 @@
+#!/usr/bin/env var
+
+tasks:
+  json:
+    script: |
+      echo '{"foo":"FOO"}'
+  yaml:
+    script: |
+      cat <<YAML
+      bar: BAR
+      YAML
+  parsejson:
+    parameters:
+    - name: json
+      type: object
+    script: |
+      echo '{{ get "json" | dig "foo" }}' | grep FOO
+  parseyaml:
+    parameters:
+    - name: yaml
+      type: object
+    script: |
+      echo '{{ get "yaml" | dig "bar" }}' | grep BAR
+
+steps:
+- task: parsejson
+- task: parseyaml

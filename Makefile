@@ -156,10 +156,14 @@ smoke26: build
 	cd $(IT_DIR)/script-header-reuse && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./test --logtostderr run > out && cat out | tee /dev/stderr && echo smoke26 passed.
 
 smoke27: build
-	cd $(IT_DIR)/github-action && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && var --logtostderr > out && cat out | tee /dev/stderr && grep "action: created" out && echo smoke26 passed.
+	cd $(IT_DIR)/github-action && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && var --logtostderr > out && cat out | tee /dev/stderr && grep "action: created" out && echo smoke27 passed.
+
+smoke28: build
+	cd $(IT_DIR)/type-object-param && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && var --logtostderr > out && cat out | tee /dev/stderr && echo smoke28 passed.
+
 
 smoke-tests:
 	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27}
 
 smoke-ci:
-	bash -c 'make smoke{1..18} smoke{23,24,25,26,27}'
+	bash -c 'make smoke{1..18} smoke{23,24,25,26,27,28}'

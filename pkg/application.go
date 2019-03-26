@@ -18,6 +18,7 @@ import (
 	"github.com/mumoshu/variant/pkg/get"
 	"github.com/mumoshu/variant/pkg/util/maputil"
 	"github.com/xeipuuv/gojsonschema"
+	"gopkg.in/yaml.v2"
 	"reflect"
 	"strconv"
 )
@@ -237,7 +238,7 @@ func (p Application) GetTmplOrTypedValueForConfigKey(k string, tpe string) inter
 	ctx := p.Log.WithFields(logrus.Fields{"app": p.Name, "key": k})
 
 	convert := func(v interface{}) (interface{}, bool) {
-		// Imports
+		// Import a file and parse the content into a value
 		if tpe == "object" {
 			r, err := sourceToObject(v)
 			if err != nil {
@@ -637,8 +638,16 @@ func (p *Application) parseSupportedValueFromString(renderedValue string, typeNa
 	case "array", "object":
 		p.Log.Debugf("converting this to either array or object=%v", renderedValue)
 		var dst interface{}
-		if err := json.Unmarshal([]byte(renderedValue), &dst); err != nil {
+		if err := yaml.Unmarshal([]byte(renderedValue), &dst); err != nil {
 			return nil, errors.Wrapf(err, "failed converting: failed to parse %s as json", renderedValue)
+		}
+		switch dst.(type) {
+		case map[interface{}]interface{}:
+			d, err := maputil.RecursivelyStringifyKeys(dst)
+			if err != nil {
+				return nil, err
+			}
+			dst = d
 		}
 		return dst, nil
 	default:
