@@ -56,7 +56,7 @@ func Dev() {
 	var cmdPath string
 	var varfile string
 
-	if len(os.Args) > 1 && (os.Args[0] != "var" || os.Args[0] != "/usr/bin/env") && fileutil.Exists(os.Args[1]) {
+	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") && fileutil.Exists(os.Args[1]) {
 		varfile = os.Args[1]
 		args = os.Args[2:]
 		cmdPath = varfile
@@ -134,7 +134,7 @@ func Def(rootTaskConfig *variant.TaskDef, opts variant.Opts) {
 	if opts.CommandPath == "" {
 		opts.CommandPath = os.Args[0]
 	}
-	if opts.Args == nil || len(opts.Args) == 0 {
+	if opts.Args == nil {
 		opts.Args = os.Args[1:]
 	}
 	if opts.ExtraCmds == nil || len(opts.ExtraCmds) == 0 {
@@ -167,6 +167,11 @@ func Def(rootTaskConfig *variant.TaskDef, opts variant.Opts) {
 				log.Errorf("Caused by: %s", cmdErr.Cause)
 			}
 		default:
+			// Variant command should produce the command help,
+			// because it is run without any args and the root command is not defined
+			if len(args) == 0 {
+				os.Exit(0)
+			}
 			log.Errorf("Unexpected type of error %T: %s", err, err)
 		}
 		os.Exit(1)
