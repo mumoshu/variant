@@ -31,7 +31,7 @@ func VersionCmd(log *logrus.Logger) *cobra.Command {
 			if err != nil {
 				panic(err)
 			}
-			log.WithFields(logrus.Fields{"framework_version": ver.FrameworkVersion, "application_version": ver.ApplicationVersion}).Infof("version")
+			log.Infof("%s", ver.FrameworkVersion)
 		},
 	}
 }

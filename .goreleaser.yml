@@ -2,6 +2,8 @@ project_name: variant
 builds:
 - env:
   - CGO_ENABLED=0
+  ldflags:
+  - -s -w -X github.com/mumoshu/variant/pkg/cli/version.VERSION={{.Version}}
 changelog:
   filters:
     # commit messages matching the regexp listed here will be removed from

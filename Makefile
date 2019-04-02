@@ -52,10 +52,10 @@ dist/$(VERSION):
 	# $ go tool nm dist/v$(VERSION)/var | grep VERSION
 	#  8b0780 D _/Users/me/path/to/variant/cli/version.VERSION
 	#  6dff9c R _/Users/me/path/to/variant/cli/version.VERSION.str
-	go build -ldflags "-X '_$(shell pwd)/pkg/cli/version.VERSION=$(VERSION)'" -o dist/$(VERSION)/var .
+	go build -ldflags "-X 'github.com/mumoshu/variant/pkg/cli/version.VERSION=$(VERSION)'" -o dist/$(VERSION)/var .
 
 install:
-	go build -ldflags "-X '_$(shell pwd)/pkg/cli/version.VERSION=$(VERSION)'" -o ~/bin/variant .
+	go build -ldflags "-X 'github.com/mumoshu/variant/pkg/cli/version.VERSION=$(VERSION)'" -o ~/bin/variant .
 
 
 release: dist/$(VERSION)
