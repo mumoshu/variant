@@ -3,11 +3,11 @@ package load
 import (
 	"github.com/mumoshu/variant/pkg"
 	"io/ioutil"
-	"path"
+	"path/filepath"
 )
 
 func File(cmdPath string) (*variant.TaskDef, error) {
-	cmdName := path.Base(cmdPath)
+	cmdName := filepath.Base(cmdPath)
 
 	yaml, err := ioutil.ReadFile(cmdPath)
 	if err != nil {
