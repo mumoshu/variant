@@ -28,8 +28,11 @@ jobs:
     - image: circleci/golang:1.12.4
     steps:
     - checkout
-    - attach_workspace:
-        at: /
+    # We can't use attach_workpace due to that CircleCI skips `test` when it is already run before tagging
+    - restore_cache:
+        keys:
+        - go-mod-cache-v1-{{ checksum "./go.sum" }}
+        - go-mod-cache-v1-
     - run: curl -sL https://git.io/goreleaser | bash
 workflows:
   version: 2
@@ -38,7 +41,14 @@ workflows:
     - test
   release:
     jobs:
-    - test
+    - test:
+        requires:
+        - test
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /v[0-9]+(\.[0-9]+)*(-.*)*/
     - release:
         requires:
         - test
