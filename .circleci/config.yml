@@ -2,17 +2,34 @@ version: 2
 jobs:
   test:
     docker:
-    - image: circleci/golang:1.10
-    working_directory: /go/src/github.com/mumoshu/variant
+    - image: circleci/golang:1.12.4
+    environment:
+      GOPATH: /go
     steps:
     - checkout
+    - run: go env
+    - run: pwd
+    - restore_cache:
+        keys:
+        - go-mod-cache-v1-{{ checksum "./go.sum" }}
+        - go-mod-cache-v1-
+    - run: go mod download
     - run: make smoke-ci
+    - save_cache:
+        key: go-mod-cache-v1-{{ checksum "./go.sum" }}
+        paths:
+        - /go/pkg/mod
+    - persist_to_workspace:
+        root: /
+        paths:
+        - go
   release:
     docker:
-    - image: circleci/golang:1.10
-    working_directory: /go/src/github.com/mumoshu/variant
+    - image: circleci/golang:1.12.4
     steps:
     - checkout
+    - attach_workspace:
+        at: /
     - run: curl -sL https://git.io/goreleaser | bash
 workflows:
   version: 2
