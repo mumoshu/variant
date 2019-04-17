@@ -3,7 +3,7 @@ package variant
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	bunyan "github.com/mumoshu/logrus-bunyan-formatter"
@@ -51,7 +51,7 @@ func (p Application) UpdateLoggingConfiguration() error {
 		p.Log.SetOutput(os.Stderr)
 	}
 
-	commandName := path.Base(os.Args[0])
+	commandName := filepath.Base(os.Args[0])
 	if p.Output == "bunyan" {
 		p.Log.SetFormatter(&bunyan.Formatter{Name: commandName})
 	} else if p.Output == "json" {

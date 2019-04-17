@@ -15,7 +15,7 @@ import (
 	"github.com/mumoshu/variant/pkg/util/envutil"
 	"github.com/mumoshu/variant/pkg/util/fileutil"
 	"github.com/spf13/cobra"
-	"path"
+	"path/filepath"
 )
 
 func init() {
@@ -60,10 +60,10 @@ func Dev() {
 		varfile = os.Args[1]
 		args = os.Args[2:]
 		cmdPath = varfile
-		cmdName = path.Base(cmdPath)
+		cmdName = filepath.Base(cmdPath)
 	} else {
 		cmdPath = os.Args[0]
-		cmdName = path.Base(cmdPath)
+		cmdName = filepath.Base(cmdPath)
 		varfile = fmt.Sprintf("%s.definition.yaml", cmdName)
 		args = os.Args[1:]
 	}
@@ -114,7 +114,7 @@ func YAML(yaml string) {
 		panic(errors.Trace(err))
 	}
 
-	taskDef.Name = path.Base(cmdPath)
+	taskDef.Name = filepath.Base(cmdPath)
 
 	Def(taskDef, variant.Opts{
 		CommandPath: cmdPath,
