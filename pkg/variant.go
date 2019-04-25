@@ -106,14 +106,17 @@ func Init(rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
 	rootCmd.PersistentFlags().StringVarP(&(p.ConfigFile), "config-file", "c", "", "Path to config file")
 	rootCmd.PersistentFlags().BoolVar(&(p.LogToStderr), "logtostderr", true, "write log messages to stderr")
 
+	// Set default colors for the logs.
+	v.SetDefault("log_color_panic", "red")
+	v.SetDefault("log_color_fatal", "red")
+	v.SetDefault("log_color_error", "red")
+	v.SetDefault("log_color_warn", "red")
+	v.SetDefault("log_color_info", "cyan")
+	v.SetDefault("log_color_debug", "dark_gray")
+	v.SetDefault("log_color_trace", "dark_gray")
+
 	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
 	rootCmd.ParseFlags(o.Args)
-
-	// Workaround: We want to set log level via command-line option before the rootCmd is run
-	err = p.UpdateLoggingConfiguration()
-	if err != nil {
-		return nil, err
-	}
 
 	// Deferred to respect output format specified via the --output flag
 	//if !varfileExists {
@@ -175,6 +178,12 @@ func Init(rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
 	//Substitute the . and - to _,
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	v.SetEnvKeyReplacer(replacer)
+
+	// Workaround: We want to set log level via command-line option before the rootCmd is run
+	err = p.UpdateLoggingConfiguration()
+	if err != nil {
+		return nil, err
+	}
 
 	//	var rootCmd = &cobra.Command{Use: c.Name}
 
