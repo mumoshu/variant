@@ -65,12 +65,12 @@ func (p Application) UpdateLoggingConfiguration() error {
 
 		p.Log.SetFormatter(&variantTextFormatter{
 			colorize: colorize,
-		    colors: map[logrus.Level] string {
+			colors: map[logrus.Level]string{
 				logrus.PanicLevel: p.Viper.Get("log_color_panic").(string),
 				logrus.FatalLevel: p.Viper.Get("log_color_fatal").(string),
 				logrus.ErrorLevel: p.Viper.Get("log_color_error").(string),
-				logrus.WarnLevel: p.Viper.Get("log_color_warn").(string),
-				logrus.InfoLevel: p.Viper.Get("log_color_info").(string),
+				logrus.WarnLevel:  p.Viper.Get("log_color_warn").(string),
+				logrus.InfoLevel:  p.Viper.Get("log_color_info").(string),
 				logrus.DebugLevel: p.Viper.Get("log_color_debug").(string),
 				logrus.TraceLevel: p.Viper.Get("log_color_trace").(string),
 			},

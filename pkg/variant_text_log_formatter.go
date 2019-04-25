@@ -8,7 +8,7 @@ import (
 
 type variantTextFormatter struct {
 	colorize *colorstring.Colorize
-	colors map[logrus.Level]string
+	colors   map[logrus.Level]string
 }
 
 func (f *variantTextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
