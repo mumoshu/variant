@@ -113,6 +113,10 @@ func (t *TaskRunner) Run(project *Application, asInput bool, caller ...*Task) (s
 			return lastout.String, errors.Wrap(err, "Task#Run failed while running a script")
 		}
 
+		if s.GetName() != "" {
+			context = context.WithAdditionalValues(map[string]interface{}{s.GetName(): lastout.String})
+		}
+
 		if !s.Silenced() && len(lastout.String) > 0 {
 			var sep string
 			if output.String != "" && !strings.HasSuffix(output.String, "\n") {

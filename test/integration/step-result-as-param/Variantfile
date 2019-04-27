@@ -1,0 +1,33 @@
+#!/usr/bin/env var
+
+tasks:
+  duplicate:
+    parameters:
+    - name: input
+      type: string
+      default: ""
+    script: |
+      echo "{{.input}}_{{.input}}"
+  test:
+    parameters:
+    - name: input
+      type: string
+    - name: expected
+      type: string
+    steps:
+    - name: res
+      task: duplicate
+      arguments:
+        input: "{{.input}}"
+    - name: actual
+      script: |
+        echo "Double {{.input}} will be: {{.res}}"
+    - name: test
+      script: |
+        echo "{{ .actual }}" | grep "{{ .expected }}"
+
+steps:
+- task: test
+  arguments:
+    input: "FOO"
+    expected: "Double FOO will be: FOO_FOO"
