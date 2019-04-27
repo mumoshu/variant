@@ -22,6 +22,12 @@ func NewStepExecutionContext(app Application, taskRunner TaskRunner, taskTemplat
 	}
 }
 
+func (c ExecutionContext) WithAdditionalValues(vs map[string]interface{}) ExecutionContext {
+	ctx := c
+	ctx.taskTemplate = c.taskTemplate.WithAdditionalValues(vs)
+	return ctx
+}
+
 func (c ExecutionContext) GenerateAutoenv() (map[string]string, error) {
 	return c.taskRunner.GenerateAutoenv()
 }

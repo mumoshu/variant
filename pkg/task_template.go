@@ -84,3 +84,17 @@ func (t *TaskTemplate) Render(expr string, name string) (string, error) {
 
 	return buff.String(), nil
 }
+
+func (t *TaskTemplate) WithAdditionalValues(vs map[string]interface{}) *TaskTemplate {
+	newVals := map[string]interface{}{}
+	for k, v := range t.values {
+		newVals[k] = v
+	}
+	for k, v := range vs {
+		newVals[k] = v
+	}
+
+	newTmpl := *t
+	newTmpl.values = newVals
+	return &newTmpl
+}
