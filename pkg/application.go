@@ -45,6 +45,13 @@ type Application struct {
 func (p Application) UpdateLoggingConfiguration() error {
 	if p.Verbose {
 		p.Log.SetLevel(logrus.DebugLevel)
+	} else {
+		ls := p.Viper.Get("log_level").(string)
+		l, err := logrus.ParseLevel(ls)
+		if err != nil {
+			return fmt.Errorf("log level is not specified properly: \"%s\", use one of the: \"panic\", \"fatal\", \"error\", \"warn\", \"info\", \"debug\", \"trace\"", ls)
+		}
+		p.Log.SetLevel(l)
 	}
 
 	if p.LogToStderr {

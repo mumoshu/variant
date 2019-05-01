@@ -106,6 +106,9 @@ func Init(rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
 	rootCmd.PersistentFlags().StringVarP(&(p.ConfigFile), "config-file", "c", "", "Path to config file")
 	rootCmd.PersistentFlags().BoolVar(&(p.LogToStderr), "logtostderr", true, "write log messages to stderr")
 
+	// Set default log level.
+	v.SetDefault("log_level", "info")
+
 	// Set default colors for the logs.
 	v.SetDefault("log_color_panic", "red")
 	v.SetDefault("log_color_fatal", "red")
