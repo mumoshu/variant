@@ -123,6 +123,9 @@ func Init(rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
 	//	log.Infof("%s does not exist", varfile)
 	//}
 
+	v.SetConfigType("yaml")
+	v.AddConfigPath(".")
+
 	if p.ConfigFile != "" {
 		v.SetConfigFile(p.ConfigFile)
 
@@ -130,9 +133,6 @@ func Init(rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
 			return nil, err
 		}
 	} else {
-		v.SetConfigType("yaml")
-		v.AddConfigPath(".")
-
 		// See "How to merge two config files" https://github.com/spf13/viper/issues/181
 		v.SetConfigName(commandName)
 		commonConfigFile := fmt.Sprintf("%s.yaml", commandName)
