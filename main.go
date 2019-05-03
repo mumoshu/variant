@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/mumoshu/variant/pkg/run"
+	"github.com/mumoshu/variant/cmd"
 )
 
 func main() {
-	run.Dev()
+	cmd.Dev()
 }

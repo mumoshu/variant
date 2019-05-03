@@ -37,12 +37,16 @@ type Application struct {
 	TaskNamer           *TaskNamer
 	LogToStderr         bool
 
+	LastRun string
+
+	LastOutputs map[string]string
+
 	Viper Viper
 
 	Log *logrus.Logger
 }
 
-func (p Application) UpdateLoggingConfiguration() error {
+func (p *Application) UpdateLoggingConfiguration() error {
 	if p.Verbose {
 		p.Log.SetLevel(logrus.DebugLevel)
 	} else {
@@ -90,12 +94,14 @@ func (p Application) UpdateLoggingConfiguration() error {
 	return nil
 }
 
-func (p Application) RunTaskForKeyString(keyStr string, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
+func (p *Application) RunTaskForKeyString(keyStr string, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
 	taskKey := p.TaskNamer.FromString(fmt.Sprintf("%s.%s", p.Name, keyStr))
 	return p.RunTask(taskKey, args, arguments, scope, asInput, caller...)
 }
 
-func (p Application) Run(taskName TaskName, args []string) error {
+func (p *Application) Run(taskName TaskName, args []string) error {
+	p.LastRun = taskName.ShortString()
+
 	errMsg, err := p.RunTask(taskName, args, task.NewArguments(), map[string]interface{}{}, false)
 
 	if err != nil {
@@ -104,7 +110,7 @@ func (p Application) Run(taskName TaskName, args []string) error {
 	return nil
 }
 
-func (p Application) RunTask(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
+func (p *Application) RunTask(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, asInput bool, caller ...*Task) (string, error) {
 	var ctx *logrus.Entry
 
 	if len(caller) == 1 {
@@ -194,13 +200,18 @@ func (p Application) RunTask(taskName TaskName, args []string, arguments task.Ar
 		return "", errors.Wrapf(err, "failed to initialize task runner")
 	}
 
-	output, error := taskRunner.Run(&p, asInput, caller...)
+	output, error := taskRunner.Run(p, asInput, caller...)
 
 	ctx.Debugf("app received output from task %s: %s", taskName.ShortString(), output)
 
 	if error != nil {
 		error = errors.Wrapf(error, "%s failed running task %s", p.Name, taskName.ShortString())
 	}
+
+	if p.LastOutputs == nil {
+		p.LastOutputs = map[string]string{}
+	}
+	p.LastOutputs[taskName.ShortString()] = output
 
 	ctx.Debugf("app finished running task %s", taskName.ShortString())
 

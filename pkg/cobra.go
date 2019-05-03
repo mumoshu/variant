@@ -20,6 +20,10 @@ func NewCobraAdapter(app *Application) *CobraAdapter {
 	}
 }
 
+type InitError struct {
+	error
+}
+
 type CommandError struct {
 	error
 	TaskName TaskName
@@ -51,7 +55,7 @@ func (p *CobraAdapter) GenerateCommand(task *Task, rootCommand *cobra.Command) (
 
 	taskName := task.Name
 
-	if len(task.Steps) > 0 {
+	if len(task.Steps) > 0 || task.fun != nil {
 		cmd.RunE = func(cmd *cobra.Command, args []string) error {
 			return p.app.Run(taskName, args)
 		}
