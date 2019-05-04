@@ -4,7 +4,7 @@
 
 ![image](https://user-images.githubusercontent.com/22009/51234992-b1899380-19b1-11e9-83c3-dbfdb1517b1c.png)
 
-##### Build modern command line applications in **YAML** and **any scripting language** of your choice
+##### Build modern command line applications in **YAML** and **any scripting language** of your choice, and eventually enhance it with golang
 
 [![CircleCI](https://circleci.com/gh/mumoshu/variant.svg?style=svg)](https://circleci.com/gh/mumoshu/variant)
 
@@ -39,6 +39,8 @@ $ ./mycmd hello --target variant
 mycmd ≫ starting task hello
 Hello variant!
 ```
+
+You can then [build a single go executable of your command](https://github.com/mumoshu/variant#releasing-a-variant-made-command) and finally [enhance it with golang code](https://github.com/mumoshu/variant/blob/master/cmd/run_test.go).
 
 # Rationale
 
