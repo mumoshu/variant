@@ -12,13 +12,19 @@ import (
 )
 
 type CobraApp struct {
-	viperCfg *viper.Viper
-	cobraCmd *cobra.Command
+	VariantApp *Application
+	viperCfg   *viper.Viper
+	cobraCmd   *cobra.Command
 }
 
-func (a *CobraApp) Run(args []string) error {
+func (a *CobraApp) Run(args []string) (map[string]string, error) {
 	a.cobraCmd.SetArgs(args)
-	return a.cobraCmd.Execute()
+
+	if err := a.cobraCmd.Execute(); err != nil {
+		return nil, err
+	}
+
+	return a.VariantApp.LastOutputs, nil
 }
 
 type Opts struct {
@@ -29,7 +35,7 @@ type Opts struct {
 	ExtraCmds []*cobra.Command
 }
 
-func Init(rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
+func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
 	var o Opts
 	if len(opts) == 0 {
 		o = Opts{Args: []string{}}
@@ -71,7 +77,7 @@ func Init(rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
 
 	p := &Application{
 		Name:                commandName,
-		CommandRelativePath: o.CommandPath,
+		CommandRelativePath: commandPath,
 		CachedTaskOutputs:   map[string]interface{}{},
 		Verbose:             false,
 		Output:              "text",
@@ -191,7 +197,8 @@ func Init(rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp, error) {
 	//	var rootCmd = &cobra.Command{Use: c.Name}
 
 	return &CobraApp{
-		viperCfg: v,
-		cobraCmd: rootCmd,
+		VariantApp: p,
+		viperCfg:   v,
+		cobraCmd:   rootCmd,
 	}, nil
 }

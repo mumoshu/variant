@@ -161,9 +161,9 @@ Write a small shell script that wraps your variant command into a simple golang 
 ```console
 $ cat <<EOF > main.go
 package main
-import "github.com/mumoshu/variant/pkg/run"
+import "github.com/mumoshu/variant/cmd"
 func main() {
-    run.YAML(\`
+    cmd.YAML(\`
 $(cat yourcmd)
 \`)
 }

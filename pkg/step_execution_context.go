@@ -22,6 +22,10 @@ func NewStepExecutionContext(app Application, taskRunner TaskRunner, taskTemplat
 	}
 }
 
+func (c ExecutionContext) Values() map[string]interface{} {
+	return c.taskTemplate.values
+}
+
 func (c ExecutionContext) WithAdditionalValues(vs map[string]interface{}) ExecutionContext {
 	ctx := c
 	ctx.taskTemplate = c.taskTemplate.WithAdditionalValues(vs)

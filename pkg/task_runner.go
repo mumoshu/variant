@@ -106,6 +106,10 @@ func (t *TaskRunner) Run(project *Application, asInput bool, caller ...*Task) (s
 
 	context := NewStepExecutionContext(*project, *t, t.Template, asInput, append(append([]*Task{t.Task}, caller...)))
 
+	if t.TaskDef.fun != nil {
+		return t.TaskDef.fun(context)
+	}
+
 	for _, s := range t.Steps {
 		lastout, err = s.Run(context)
 

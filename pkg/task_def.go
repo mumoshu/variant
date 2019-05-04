@@ -21,6 +21,8 @@ type TaskDef struct {
 	Autodir     bool         `yaml:"autodir,omitempty"`
 	Interactive bool         `yaml:"interactive,omitempty"`
 	Private     bool         `yaml:"private,omitempty"`
+
+	fun func(ctx ExecutionContext) (string, error)
 }
 
 type TaskDefs []*TaskDef
@@ -178,6 +180,35 @@ func (t *TaskDef) CopyTo(other *TaskDef) {
 	other.Autodir = t.Autodir
 	other.Interactive = t.Interactive
 	other.Private = t.Private
+}
+
+func (t *TaskDef) Add(args []string, taskDef *TaskDef, f func(ctx ExecutionContext) (string, error)) error {
+	return t.add([]string{}, args, taskDef, f)
+}
+
+func (t *TaskDef) add(ctx []string, args []string, taskDef *TaskDef, f func(ctx ExecutionContext) (string, error)) error {
+	if len(args) == 0 {
+		return errors.New("invalid argument: args should not be empty")
+	}
+	taskName := args[0]
+	ctx = append([]string{}, ctx...)
+	ctx = append(ctx, taskName)
+	rest := args[1:]
+
+	for i := range t.TaskDefs {
+		if t.TaskDefs[i].Name == taskName {
+			return t.TaskDefs[i].add(ctx, rest, taskDef, f)
+		}
+	}
+	if len(args) == 1 {
+		td := *taskDef
+		td.fun = f
+		td.Name = taskName
+		t.TaskDefs = append(t.TaskDefs, &td)
+		return nil
+	}
+
+	return fmt.Errorf("parent task named \"%s\" does not exist: use TaskDef#Add([]string{%s}, ...) to add it", strings.Join(ctx, "."), strings.Join(ctx, ", "))
 }
 
 func TransformV2FlowConfigMapToArray(v2 map[string]*TaskDef) []*TaskDef {

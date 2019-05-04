@@ -4,10 +4,9 @@ cat <<EOF > main.go
 package main
 import (
   "github.com/mumoshu/variant/pkg"
-  "github.com/mumoshu/variant/pkg/run"
 )
 func main() {
-    run.Def(
+    variant.Def(
       $(variant build yourcmd),
       variant.Opts{},
     )
