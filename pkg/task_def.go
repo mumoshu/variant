@@ -301,7 +301,7 @@ func readStepsFromStepDefs(script string, runner map[string]interface{}, stepDef
 			s, err := LoadStep(NewStepDef(converted))
 
 			if err != nil {
-				return nil, errors.Wrapf(err, "Error reading step[%d]")
+				return nil, errors.Wrapf(err, "Error reading step[%d]", i)
 			}
 
 			result = append(result, s)

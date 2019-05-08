@@ -1,44 +1,48 @@
 package variant
 
 import (
+	"github.com/google/go-cmp/cmp/cmpopts"
 	log "github.com/sirupsen/logrus"
-	"reflect"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/google/go-cmp/cmp"
 )
 
 const minimalConfigYaml = `
 tasks:
   foo:
-    bar:
-      script: foobar
+    tasks:
+      bar:
+        script: foobar
 `
 
 func TestMinimalConfigParsing(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 	expected := &TaskDef{
-		Inputs: []*InputConfig{},
+		Inputs: InputConfigs{},
 		TaskDefs: []*TaskDef{
 			&TaskDef{
-				Autoenv: true,
-				Autodir: true,
+				Autoenv: false,
+				Autodir: false,
 				Name:    "foo",
-				Inputs:  []*InputConfig{},
+				Inputs:  nil,
+				Steps: []Step{},
 				TaskDefs: []*TaskDef{
 					&TaskDef{
-						Autoenv:  true,
-						Autodir:  true,
+						Autoenv:  false,
+						Autodir:  false,
 						Name:     "bar",
 						Script:   "foobar",
+						Steps: []Step{nil},
 						TaskDefs: []*TaskDef{},
-						Inputs:   []*InputConfig{},
+						Inputs:   nil,
 					},
 				},
 			},
 		},
-		Autoenv: true,
-		Autodir: true,
+		Steps: []Step{},
+		Autoenv: false,
+		Autodir: false,
 	}
 	actual, err := ReadTaskDefFromString(minimalConfigYaml)
 
@@ -46,7 +50,7 @@ func TestMinimalConfigParsing(t *testing.T) {
 		t.Errorf("Error: %v", err)
 	}
 
-	if !reflect.DeepEqual(actual, expected) {
-		t.Errorf("actual value %s doesn't match expected value %s in config %s", spew.Sdump(actual), spew.Sdump(expected), minimalConfigYaml)
+	if diff := cmp.Diff(expected, actual, cmpopts.IgnoreUnexported(TaskDef{})); diff != "" {
+		t.Errorf("ReadTaskDefFromString() mismatch (-want +got):\n%s", diff)
 	}
 }

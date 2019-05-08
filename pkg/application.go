@@ -175,13 +175,13 @@ func (p *Application) RunTask(taskName TaskName, args []string, arguments task.A
 		} else {
 			varsDump, err := json.MarshalIndent(vars, "", "  ")
 			if err != nil {
-				return "", errors.Wrapf(err, "failed marshaling error vars data %v: err", vars, err)
+				return "", errors.Wrapf(err, "failed marshaling error vars data %v: %v", vars, err)
 			}
 			ctx.Errorf("one or more inputs are not valid in vars:\n%+v:", vars)
 			ctx.Errorf("one or more inputs are not valid in varsDumo:\n%s:", varsDump)
 			kvDump, err := json.MarshalIndent(kv, "", "  ")
 			if err != nil {
-				return "", errors.Wrapf(err, "failed marshaling error kv data %v: err", kv, err)
+				return "", errors.Wrapf(err, "failed marshaling error kv data %v: %v", kv, err)
 			}
 			ctx.Errorf("one or more inputs are not valid in kv:\n%s:", kvDump)
 			for _, err := range result.Errors() {
