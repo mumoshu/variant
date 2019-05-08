@@ -242,6 +242,11 @@ $ var test
 #=> reads inputs from var.yaml + config/environments/prod.yaml
 ```
 
+# Integrations and useful companion tools
+
+- Use [liujianping/job](https://github.com/liujianping/job) for timeouts, retries, scheduled runs, etc.
+- Use [davidovich/summon](https://github.com/davidovich/summon) to bundle assets into your variant command by using the golang module system and `gobin`
+
 # Alternatives
 
 * [tj/robo](https://github.com/tj/robo)
