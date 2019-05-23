@@ -1,0 +1,9 @@
+#!/usr/bin/env var
+script: |
+  echo {{ index .args 0 }} | grep foo
+  echo {{ index .args 1 }} | grep bar
+
+tasks:
+  bar:
+    script: |
+      echo baz

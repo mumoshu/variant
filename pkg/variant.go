@@ -18,10 +18,29 @@ type CobraApp struct {
 }
 
 func (a *CobraApp) Run(args []string) (map[string]string, error) {
-	a.cobraCmd.SetArgs(args)
+	c := a.cobraCmd
 
-	if err := a.cobraCmd.Execute(); err != nil {
-		return nil, err
+	c.SetArgs(append([]string{}, args...))
+
+	c.SilenceErrors = true
+	cmd, err := a.cobraCmd.ExecuteC()
+	if err != nil {
+		if cmd != nil {
+			c = cmd
+		}
+		if strings.HasPrefix(err.Error(), `unknown command "`) && c.RunE != nil {
+			a.cobraCmd.Args = cobra.ArbitraryArgs
+			newargs := []string{}
+			newargs = append(newargs, args[0], "--")
+			newargs = append(newargs, args[1:]...)
+			a.cobraCmd.SetArgs(newargs)
+			err = a.cobraCmd.Execute()
+		} else {
+			err = InitError{fmt.Errorf("Error: %v\nRun '%v --help' for usage.", err, c.CommandPath())}
+		}
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return a.VariantApp.LastOutputs, nil

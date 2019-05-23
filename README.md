@@ -215,8 +215,35 @@ It consists of:
 
 # Features
 
+- Default Command
 - Task grouping
 - Dependency injection
+
+## Default Command
+
+The top-level `script` is executed whenever there's no sub-task that matches the provided command-line arguments.
+
+In the below example, `./mycmd bar` runs the task `bar`, while `./mycmd foo bar` fails with an "unknown command" error:
+
+```
+tasks:
+  bar:
+    script: |
+      echo bar
+```
+
+While in the next example, `./mycmd foo bar` runs the root task(=the top-level `script`):
+
+```
+script: |
+  echo {{ index .args 0 }}
+
+
+tasks:
+  bar:
+    script: |
+       echo bar
+```
 
 ## Dependency injection
 
