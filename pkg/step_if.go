@@ -30,10 +30,10 @@ func (l IfStepLoader) LoadStep(config StepDef, context LoadingContext) (Step, er
 		return nil, fmt.Errorf("no field named `then` exists, config=%v", config)
 	}
 
-	thenArray, ok2 := thenData.(interface{})
+	thenArray, ok := thenData.(interface{})
 
-	if !ok2 {
-		return nil, fmt.Errorf("field \"then\" must be an interface{} but it wasn't: %v", ifData)
+	if !ok {
+		return nil, fmt.Errorf("field \"then\" must be an interface{} but it wasn't: %v", thenData)
 	}
 
 	result := IfStep{
