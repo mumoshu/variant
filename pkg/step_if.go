@@ -40,6 +40,7 @@ func (l IfStepLoader) LoadStep(config StepDef, context LoadingContext) (Step, er
 		Name:   config.GetName(),
 		If:     []Step{},
 		Then:   []Step{},
+		Else:   []Step{},
 		Silent: config.Silent(),
 	}
 
@@ -57,6 +58,22 @@ func (l IfStepLoader) LoadStep(config StepDef, context LoadingContext) (Step, er
 
 	result.If = ifInput
 	result.Then = thenInput
+
+	var elseArray interface{}
+	elseData := config.Get("else")
+
+	if elseData != nil {
+		elseArray, ok = elseData.(interface{})
+		if !ok {
+			return nil, fmt.Errorf("field \"if\" must be an interface{} but it wasn't: %v", ifData)
+		}
+		elseInput, elseErr := readSteps(elseArray, context)
+
+		if elseErr != nil {
+			return nil, errors.Wrapf(elseErr, "reading `else` failed")
+		}
+		result.Else = elseInput
+	}
 
 	return result, nil
 }
@@ -105,6 +122,7 @@ type IfStep struct {
 	Name   string
 	If     []Step
 	Then   []Step
+	Else   []Step
 	Silent bool
 }
 
@@ -127,7 +145,13 @@ func (s IfStep) Run(context ExecutionContext) (StepStringOutput, error) {
 	_, ifErr := run(s.If, context)
 
 	if ifErr != nil {
-		return StepStringOutput{String: "if step failed"}, nil
+		if len(s.Else) > 0 {
+			elseOut, elseErr := run(s.Else, context)
+			if elseErr != nil {
+				return StepStringOutput{String: "else step failed"}, errors.Wrapf(elseErr, "`else` steps failed")
+			}
+			return elseOut, nil
+		}
 	}
 
 	thenOut, thenErr := run(s.Then, context)
