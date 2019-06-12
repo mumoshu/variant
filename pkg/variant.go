@@ -115,10 +115,6 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 		log.Fatalf("error: %v", err)
 	}
 
-	if len(o.ExtraCmds) > 0 {
-		rootCmd.AddCommand(o.ExtraCmds...)
-	}
-
 	rootCmd.PersistentPostRunE = func(_ *cobra.Command, _ []string) error {
 		return p.UpdateLoggingConfiguration()
 	}
@@ -206,6 +202,14 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 	//Substitute the . and - to _,
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	v.SetEnvKeyReplacer(replacer)
+
+	v.SetDefault("expose_extra_cmds", false)
+	if len(o.ExtraCmds) > 0 {
+		for k, _ := range o.ExtraCmds {
+			o.ExtraCmds[k].Hidden = v.GetBool("hide_extra_cmds")
+		}
+		rootCmd.AddCommand(o.ExtraCmds...)
+	}
 
 	// Workaround: We want to set log level via command-line option before the rootCmd is run
 	err = p.UpdateLoggingConfiguration()
