@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 	"strings"
 )
 
@@ -23,21 +24,38 @@ func (a *CobraApp) Run(args []string) (map[string]string, error) {
 	c.SetArgs(append([]string{}, args...))
 
 	c.SilenceErrors = true
+	c.SilenceUsage = true
 	cmd, err := a.cobraCmd.ExecuteC()
 	if err != nil {
 		if cmd != nil {
 			c = cmd
 		}
-		if strings.HasPrefix(err.Error(), `unknown command "`) && c.RunE != nil {
-			a.cobraCmd.Args = cobra.ArbitraryArgs
-			newargs := []string{}
-			newargs = append(newargs, args[0], "--")
-			newargs = append(newargs, args[1:]...)
-			a.cobraCmd.SetArgs(newargs)
-			err = a.cobraCmd.Execute()
-		} else {
+		msg := err.Error()
+		var usage bool
+		if strings.HasPrefix(msg, `unknown command "`) {
+			if c.RunE != nil {
+				a.cobraCmd.Args = cobra.ArbitraryArgs
+				newargs := []string{}
+				newargs = append(newargs, args[0], "--")
+				newargs = append(newargs, args[1:]...)
+				a.cobraCmd.SetArgs(newargs)
+				err = a.cobraCmd.Execute()
+			} else {
+				usage = true
+			}
+		} else if strings.HasPrefix(msg, `unknown flag: `) ||
+			strings.HasPrefix(msg, `unknown shorthand flag: `) ||
+			strings.HasPrefix(msg, `bad flag syntax: `) ||
+			strings.HasPrefix(msg, `flag needs an argument: `) {
+
+			usage = true
+		}
+
+		if usage {
+			fmt.Fprintf(os.Stderr, c.UsageString())
 			err = InitError{fmt.Errorf("Error: %v\nRun '%v --help' for usage.", err, c.CommandPath())}
 		}
+
 		if err != nil {
 			return nil, err
 		}
