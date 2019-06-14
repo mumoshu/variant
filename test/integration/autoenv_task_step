@@ -1,0 +1,16 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    autoenv: true
+    parameters:
+    - name: param1
+      type: string
+      default: test_value
+    steps:
+    - task: exec
+
+  exec:
+    script: |
+      echo ${PARAM1}
+

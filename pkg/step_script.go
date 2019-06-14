@@ -235,16 +235,6 @@ func (s ScriptStep) GetName() string {
 func (s ScriptStep) Run(context ExecutionContext) (StepStringOutput, error) {
 	depended := len(context.Caller()) > 0
 
-	if context.Autoenv() {
-		autoEnv, err := context.GenerateAutoenv()
-		if err != nil {
-			log.Errorf("script step failed to generate autoenv: %v", err)
-		}
-		for name, value := range autoEnv {
-			os.Setenv(fmt.Sprintf("%s", name), fmt.Sprintf("%s", value))
-		}
-	}
-
 	script, err := context.Render(s.Code, s.GetName())
 	if err != nil {
 		log.WithFields(log.Fields{"source": s.Code, "vars": context.Vars}).Errorf("script step failed templating")
