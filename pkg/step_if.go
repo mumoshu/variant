@@ -65,7 +65,7 @@ func (l IfStepLoader) LoadStep(config StepDef, context LoadingContext) (Step, er
 	if elseData != nil {
 		elseArray, ok = elseData.(interface{})
 		if !ok {
-			return nil, fmt.Errorf("field \"if\" must be an interface{} but it wasn't: %v", ifData)
+			return nil, fmt.Errorf("field \"else\" must be an interface{} but it wasn't: %v", elseData)
 		}
 		elseInput, elseErr := readSteps(elseArray, context)
 
