@@ -1,0 +1,22 @@
+#!/usr/bin/env var
+
+tasks:
+  level1:
+    parameters:
+    - name: param1
+      default: "level1"
+    tasks:
+      level2:
+        parameters:
+        - name: param1
+          default: "level2"
+        tasks:
+          level3:
+            parameters:
+            - name: param1
+              default: "level3"
+            steps:
+            - script: echo "{{.param1}}"
+  test:
+    steps:
+    - task: level1.level2.level3

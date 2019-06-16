@@ -221,27 +221,12 @@ func (p *Application) RunTask(taskName TaskName, args []string, arguments task.A
 func (p Application) InheritedInputValuesForTaskKey(taskName TaskName, args []string, arguments task.Arguments, scope map[string]interface{}, caller ...*Task) (map[string]interface{}, error) {
 	result := map[string]interface{}{}
 
-	// TODO make this parents-first instead of children-first?
-	direct, err := p.DirectInputValuesForTaskKey(taskName, args, arguments, scope, caller...)
-
-	if err != nil {
-		return nil, errors.Wrapf(err, "missing input for task `%s`", taskName.ShortString())
-	}
-
-	for k, v := range direct {
-		result[k] = v
-	}
-
-	parentKey, err := taskName.Parent()
-
-	if err == nil {
-		inherited, err := p.InheritedInputValuesForTaskKey(parentKey, []string{}, arguments, map[string]interface{}{}, caller...)
-
+	for k, _ := range taskName.Components {
+		direct, err := p.DirectInputValuesForTaskKey(TaskName{Components: taskName.Components[:k+1]}, args, arguments, scope, caller...)
 		if err != nil {
-			return nil, errors.Wrapf(err, "AggregateInputsForParent(%s) failed", taskName.ShortString())
+			return nil, errors.Wrapf(err, "missing input for task `%s`", taskName.ShortString())
 		}
-
-		maputil.DeepMerge(result, inherited)
+		maputil.DeepMerge(result, direct)
 	}
 
 	return result, nil
