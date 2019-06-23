@@ -1,6 +1,7 @@
 package variant
 
 import (
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -108,6 +109,16 @@ func (t *TaskRunner) Run(project *Application, asInput bool, caller ...*Task) (s
 
 	if t.TaskDef.fun != nil {
 		return t.TaskDef.fun(context)
+	}
+
+	if context.Autoenv() {
+		autoEnvVars, err := context.GenerateAutoenv()
+		if err != nil {
+			log.Errorf("task runner failed to generate autoenv: %v", err)
+		}
+		for k, v := range autoEnvVars {
+			os.Setenv(fmt.Sprintf("%s", k), fmt.Sprintf("%s", v))
+		}
 	}
 
 	for _, s := range t.Steps {
