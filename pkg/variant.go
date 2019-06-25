@@ -14,7 +14,6 @@ import (
 
 type CobraApp struct {
 	VariantApp *Application
-	viperCfg   *viper.Viper
 	cobraCmd   *cobra.Command
 }
 
@@ -239,7 +238,6 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 
 	return &CobraApp{
 		VariantApp: p,
-		viperCfg:   v,
 		cobraCmd:   rootCmd,
 	}, nil
 }
