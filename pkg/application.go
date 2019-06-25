@@ -41,7 +41,7 @@ type Application struct {
 
 	LastOutputs map[string]string
 
-	Viper Viper
+	Viper *viper.Viper
 
 	Log *logrus.Logger
 }
