@@ -1,0 +1,9 @@
+#!/usr/bin/env var
+
+tasks:
+  test:
+    bind_env_vars: true
+    parameters:
+    - name: PARAM1
+      default: ""
+    script: echo "${PARAM1}"
