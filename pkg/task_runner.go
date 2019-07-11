@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/huandu/xstrings"
 	log "github.com/sirupsen/logrus"
 
 	"fmt"
@@ -47,7 +48,7 @@ func (t TaskRunner) GetKey() Key {
 func (t TaskRunner) GenerateAutoenv() (map[string]string, error) {
 	replacer := strings.NewReplacer("-", "_", ".", "_")
 	toEnvName := func(parName string) string {
-		return strings.ToUpper(replacer.Replace(parName))
+		return strings.ToUpper(replacer.Replace(xstrings.ToKebabCase(parName)))
 	}
 	return t.GenerateAutoenvRecursively("", t.Values, toEnvName)
 }
