@@ -2,12 +2,11 @@ package variant
 
 import (
 	"fmt"
-	"github.com/huandu/xstrings"
+	"github.com/mumoshu/variant/pkg/util/stringutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"strings"
 )
 
 type CobraAdapter struct {
@@ -103,7 +102,7 @@ func (p *CobraAdapter) GenerateAllFlags() {
 
 			log.Debugf("short=%s, full=%s, name=%s, selected=%s", input.ShortName(), input.FullName, input.Name, name)
 
-			flagName := strings.Replace(xstrings.ToKebabCase(name), ".", "-", -1)
+			flagName := stringutil.ToArgumentName(name)
 
 			var keyForConfigFromFlag string
 			if input.TaskKey.ShortString() == task.Name.ShortString() {
