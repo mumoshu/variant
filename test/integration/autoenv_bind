@@ -2,7 +2,7 @@
 
 tasks:
   test:
-    bind_env_vars: true
+    bindParamsFromEnv: true
     parameters:
     - name: PARAM1
       default: ""

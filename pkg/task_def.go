@@ -11,17 +11,17 @@ import (
 )
 
 type TaskDef struct {
-	Name        string       `yaml:"name,omitempty"`
-	Description string       `yaml:"description,omitempty"`
-	Inputs      InputConfigs `yaml:"inputs,omitempty"`
-	TaskDefs    TaskDefs     `yaml:"tasks,omitempty"`
-	Script      string       `yaml:"script,omitempty"`
-	Steps       []Step       `yaml:"steps,omitempty"`
-	Autoenv     bool         `yaml:"autoenv,omitempty"`
-	Autodir     bool         `yaml:"autodir,omitempty"`
-	BindEnvVars bool         `yaml:"bind_env_vars,omitempty"`
-	Interactive bool         `yaml:"interactive,omitempty"`
-	Private     bool         `yaml:"private,omitempty"`
+	Name              string       `yaml:"name,omitempty"`
+	Description       string       `yaml:"description,omitempty"`
+	Inputs            InputConfigs `yaml:"inputs,omitempty"`
+	TaskDefs          TaskDefs     `yaml:"tasks,omitempty"`
+	Script            string       `yaml:"script,omitempty"`
+	Steps             []Step       `yaml:"steps,omitempty"`
+	Autoenv           bool         `yaml:"autoenv,omitempty"`
+	Autodir           bool         `yaml:"autodir,omitempty"`
+	BindParamsFromEnv bool         `yaml:"bindParamsFromEnv,omitempty"`
+	Interactive       bool         `yaml:"interactive,omitempty"`
+	Private           bool         `yaml:"private,omitempty"`
 
 	fun func(ctx ExecutionContext) (string, error)
 }
@@ -58,7 +58,7 @@ type TaskDefV1 struct {
 	StepDefs    []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
 	Autodir     bool                          `yaml:"autodir,omitempty"`
-	BindEnvVar  bool                          `yaml:"bind_env_vars,omitempty"`
+	BindEnvVar  bool                          `yaml:"bindParamsFromEnv,omitempty"`
 	Interactive bool                          `yaml:"interactive,omitempty"`
 	Private     bool                          `yaml:"private,omitempty"`
 }
@@ -75,7 +75,7 @@ type TaskDefV2 struct {
 	StepDefs    []map[interface{}]interface{} `yaml:"steps,omitempty"`
 	Autoenv     bool                          `yaml:"autoenv,omitempty"`
 	Autodir     bool                          `yaml:"autodir,omitempty"`
-	BindEnvVar  bool                          `yaml:"bind_env_vars,omitempty"`
+	BindEnvVar  bool                          `yaml:"bindParamsFromEnv,omitempty"`
 	Interactive bool                          `yaml:"interactive,omitempty"`
 	Private     bool                          `yaml:"private,omitempty"`
 }
@@ -168,7 +168,7 @@ func (t *TaskDef) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	t.Script = script
 	t.Autoenv = v2.Autoenv
 	t.Autodir = v2.Autodir
-	t.BindEnvVars = v2.BindEnvVar
+	t.BindParamsFromEnv = v2.BindEnvVar
 	t.Interactive = v2.Interactive
 	t.Private = v2.Private
 
@@ -183,7 +183,7 @@ func (t *TaskDef) CopyTo(other *TaskDef) {
 	other.Script = t.Script
 	other.Autoenv = t.Autoenv
 	other.Autodir = t.Autodir
-	other.BindEnvVars = t.BindEnvVars
+	other.BindParamsFromEnv = t.BindParamsFromEnv
 	other.Interactive = t.Interactive
 	other.Private = t.Private
 }
