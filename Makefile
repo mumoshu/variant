@@ -177,8 +177,11 @@ smoke31: build
 smoke32: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./multilevel-task-parameters test --logtostderr | grep level3 && echo smoke32 passed.
 
+smoke33: build
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && PARAM1="OK" ./autoenv_bind test --logtostderr | grep OK && echo smoke33 passed.
+
 smoke-tests:
 	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27}
 
 smoke-ci:
-	bash -c 'make smoke{1..18} smoke{23,24,25,26,27,28,29,30,31,32}'
+	bash -c 'make smoke{1..18} smoke{23,24,25,26,27,28,29,30,31,32,33}'
