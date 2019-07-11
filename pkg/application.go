@@ -499,7 +499,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 		confKeyBaseTask := fmt.Sprintf("%s.%s", baseTaskKey, input.ShortName())
 		if tmplOrStaticVal == nil && baseTaskKey != "" {
-			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyBaseTask, input.TypeName(), currentTask.TaskDef.BindEnvVars)
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyBaseTask, input.TypeName(), currentTask.TaskDef.BindParamsFromEnv)
 			if tmplOrStaticVal == nil {
 				errs = multierror.Append(errs, fmt.Errorf("no value for config `%s`", confKeyBaseTask))
 			}
@@ -507,7 +507,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 		confKeyTask := fmt.Sprintf("%s.%s", taskName.ShortString(), input.ShortName())
 		if tmplOrStaticVal == nil && strings.LastIndex(input.ShortName(), taskName.ShortString()) == -1 {
-			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyTask, input.TypeName(), currentTask.TaskDef.BindEnvVars)
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyTask, input.TypeName(), currentTask.TaskDef.BindParamsFromEnv)
 			if tmplOrStaticVal == nil {
 				errs = multierror.Append(errs, fmt.Errorf("no value for config `%s`", confKeyTask))
 			}
@@ -515,7 +515,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 
 		confKeyInput := input.ShortName()
 		if tmplOrStaticVal == nil {
-			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyInput, input.TypeName(), currentTask.TaskDef.BindEnvVars)
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(confKeyInput, input.TypeName(), currentTask.TaskDef.BindParamsFromEnv)
 			if tmplOrStaticVal == nil {
 				errs = multierror.Append(errs, fmt.Errorf("no value for config `%s`", confKeyInput))
 			}
@@ -524,7 +524,7 @@ func (p Application) DirectInputValuesForTaskKey(taskName TaskName, args []strin
 		inTaskName := p.TaskNamer.FromResolvedInput(input)
 		if tmplOrStaticVal == nil {
 			inputName := inTaskName.ShortString()
-			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(inputName, input.TypeName(), currentTask.TaskDef.BindEnvVars)
+			tmplOrStaticVal = p.GetTmplOrTypedValueForConfigKey(inputName, input.TypeName(), currentTask.TaskDef.BindParamsFromEnv)
 			if tmplOrStaticVal == nil {
 				errs = multierror.Append(errs, fmt.Errorf("no value for config `%s`", inputName))
 			}
