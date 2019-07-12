@@ -124,7 +124,7 @@ smoke15: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./params-and-opts --logtostderr test > out && cat out | tee /dev/stderr | grep "param1=myparam1 param2=myparam2 opt1=myopt1" && echo smoke15 passed.
 
 smoke16: build
-	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./input-validation run param1x param2x --opt-str-1=optstr1 --opt-bool-1=true --opt-int-1=10 --logtostderr > out && cat out | tee /dev/stderr | grep "param1=param1x param2=param2x opt_str_1=optstr1 opt_str_2=opt2_default opt_bool_1=true opt_bool_2=true opt_int_1=10 opt_int_2=100" && echo smoke16 passed.
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./input-validation run param1x param2x --opt-str1=optstr1 --opt-bool1=true --opt-int1=10 --logtostderr > out && cat out | tee /dev/stderr | grep "param1=param1x param2=param2x opt_str_1=optstr1 opt_str_2=opt2_default opt_bool_1=true opt_bool_2=true opt_int_1=10 opt_int_2=100" && echo smoke16 passed.
 
 smoke17: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./array-input test --logtostderr > out && cat out | tee /dev/stderr | ( grep "foo: foo/foo1.txt" out && grep "foo: foo/foo2.txt" && grep "bar: bar/bar1.txt" out && grep "bar: bar/bar2.txt" out) && echo smoke17 passed.
