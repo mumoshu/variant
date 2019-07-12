@@ -12,5 +12,5 @@ tasks:
 
   exec:
     script: |
-      echo ${PARAM_1}
+      echo ${PARAM1}
 
