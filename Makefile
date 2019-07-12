@@ -153,7 +153,7 @@ smoke24: build
 
 smoke25: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && \
-	./defaults ok --bool-3=true --integer-3=3 | grep foo=FOO,empty1=,empty2=,task=task,bar=bar,baz=baz,bool1=false,bool2=true,bool3=true,integer1=0,integer2=1,integer3=3 && \
+	./defaults ok --bool3=true --integer3=3 | grep foo=FOO,empty1=,empty2=,task=task,bar=bar,baz=baz,bool1=false,bool2=true,bool3=true,integer1=0,integer2=1,integer3=3 && \
 	! ./defaults ng1 && ! ./defaults ng2 && ! ./defaults ng3 && echo smoke25 passed.
 
 smoke26: build
