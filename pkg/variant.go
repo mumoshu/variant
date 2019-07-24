@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/juju/errors"
 	"github.com/mumoshu/variant/pkg/cli/env"
-	"github.com/mumoshu/variant/pkg/util/fileutil"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -94,13 +93,15 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 		return nil, errors.Trace(err)
 	}
 
+	env.SetAppName(commandName)
+
 	taskNamer := NewTaskNamer(commandName)
 
 	g := NewTaskCreator(taskNamer)
 
-	rootTask, err1 := g.Create(rootTaskConfig, []string{}, commandName)
-	if err1 != nil {
-		return nil, err1
+	rootTask, err := g.Create(rootTaskConfig, []string{}, commandName)
+	if err != nil {
+		return nil, err
 	}
 
 	taskRegistry := NewTaskRegistry()
@@ -115,14 +116,13 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 		Name:                commandName,
 		CommandRelativePath: commandPath,
 		CachedTaskOutputs:   map[string]interface{}{},
-		Verbose:             false,
-		Output:              "text",
 		Env:                 envFromFile,
 		TaskNamer:           taskNamer,
 		TaskRegistry:        taskRegistry,
 		InputResolver:       inputResolver,
 		Viper:               v,
 		Log:                 log,
+		CommandName:         commandName,
 	}
 
 	adapter := NewCobraAdapter(p)
@@ -143,90 +143,33 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 	rootCmd.PersistentFlags().BoolVarP(&(p.Colorize), "color", "C", true, "Colorize output")
 	rootCmd.PersistentFlags().StringVarP(&(p.ConfigFile), "config-file", "c", "", "Path to config file")
 	rootCmd.PersistentFlags().BoolVar(&(p.LogToStderr), "logtostderr", true, "write log messages to stderr")
+	rootCmd.PersistentFlags().StringArrayVarP(&(p.ConfigContexts), "config-context", "x", []string{}, "Config context")
+	rootCmd.PersistentFlags().StringArrayVarP(&(p.ConfigDirs), "config-dir", "d", []string{}, "Config dir")
 
-	// Set default log level.
-	v.SetDefault("log_level", "info")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogLevel), "log-level", "", "info", "Log level. One of: panic|fatal|error|warn|info|debug|trace")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogColorPanic), "log-color-panic", "", "red", "Log message color: panic")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogColorFatal), "log-color-fatal", "", "red", "Log message color: fatal")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogColorError), "log-color-error", "", "red", "Log message color: error")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogColorWarn), "log-color-warn", "", "red", "Log message color: warn")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogColorInfo), "log-color-info", "", "cyan", "Log message color: info")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogColorDebug), "log-color-debug", "", "dark_gray", "Log message color: debug")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogColorTrace), "log-color-trace", "", "dark_gray", "Log message color: trace")
 
-	// Set default colors for the logs.
-	v.SetDefault("log_color_panic", "red")
-	v.SetDefault("log_color_fatal", "red")
-	v.SetDefault("log_color_error", "red")
-	v.SetDefault("log_color_warn", "red")
-	v.SetDefault("log_color_info", "cyan")
-	v.SetDefault("log_color_debug", "dark_gray")
-	v.SetDefault("log_color_trace", "dark_gray")
-
-	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
-	rootCmd.ParseFlags(o.Args)
-
-	// Deferred to respect output format specified via the --output flag
-	//if !varfileExists {
-	//	log.Infof("%s does not exist", varfile)
-	//}
-
-	v.SetConfigType("yaml")
-	v.AddConfigPath(".")
-
-	if p.ConfigFile != "" {
-		v.SetConfigFile(p.ConfigFile)
-
-		if err := v.MergeInConfig(); err != nil {
-			return nil, err
-		}
-	} else {
-		// See "How to merge two config files" https://github.com/spf13/viper/issues/181
-		v.SetConfigName(commandName)
-		commonConfigFile := fmt.Sprintf("%s.yaml", commandName)
-		commonConfigMsg := fmt.Sprintf("loading config file %s...", commonConfigFile)
-		if fileutil.Exists(commonConfigFile) {
-			if err := v.MergeInConfig(); err != nil {
-				log.Errorf("%serror", commonConfigMsg)
-				return nil, err
-			}
-			log.Debugf("%sdone", commonConfigMsg)
-		} else {
-			log.Debugf("%smissing", commonConfigMsg)
-		}
-	}
-
-	env.SetAppName(commandName)
-	envMsg := fmt.Sprintf("loading env file %s...", env.GetPath())
-	envName, err := env.Get()
-	if err != nil {
-		log.Debugf("%smissing", envMsg)
-	} else {
-		log.Debugf("%sdone", envMsg)
-
-		envConfigName := fmt.Sprintf("config/environments/%s", envName)
-		envConfigFile := fmt.Sprintf("%s.yaml", envConfigName)
-		envConfigMsg := fmt.Sprintf("loading config file %s...", envConfigFile)
-		v.SetConfigName(envConfigName)
-		if fileutil.Exists(envConfigFile) {
-			if err := v.MergeInConfig(); err != nil {
-				log.Errorf("%serror", envConfigMsg)
-				panic(err)
-			}
-			log.Debugf("%sdone", envConfigMsg)
-		} else {
-			log.Debugf("%smissing", envConfigMsg)
-		}
-	}
-
-	//Set the environment prefix as app name
-	v.SetEnvPrefix(strings.ToUpper(commandName))
-	v.AutomaticEnv()
+	// Bind persistent flags to viper
+	viper.BindPFlags(rootCmd.PersistentFlags())
 
 	//Substitute the . and - to _,
 	replacer := strings.NewReplacer(".", "_", "-", "_")
 	v.SetEnvKeyReplacer(replacer)
 
-	v.SetDefault("expose_extra_cmds", false)
-	if len(o.ExtraCmds) > 0 {
-		for k, _ := range o.ExtraCmds {
-			o.ExtraCmds[k].Hidden = v.GetBool("hide_extra_cmds")
-		}
-		rootCmd.AddCommand(o.ExtraCmds...)
-	}
+	// Set the env prefix for global flags.
+	v.SetEnvPrefix("VARIANT")
+	v.AutomaticEnv()
+
+	// see `func ExecuteC` in https://github.com/spf13/cobra/blob/master/command.go#L671-L677 for usage of ParseFlags()
+	rootCmd.ParseFlags(o.Args)
+
+	p.setGlobalParams()
 
 	// Workaround: We want to set log level via command-line option before the rootCmd is run
 	err = p.UpdateLoggingConfiguration()
@@ -234,7 +177,35 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 		return nil, err
 	}
 
-	//	var rootCmd = &cobra.Command{Use: c.Name}
+	// Load a config from the provided flag (could be loaded through Viper as well)
+	if p.ConfigFile != "" {
+		p.loadConfig(p.ConfigFile)
+	}
+
+	// Load contexts configuration
+	p.loadContextConfigs()
+
+	envMsg := fmt.Sprintf("loading env file %s...", env.GetPath())
+	envName, err := env.Get()
+	if err != nil {
+		log.Debugf("%smissing", envMsg)
+	} else {
+		log.Debugf("%sdone", envMsg)
+		envConfigName := fmt.Sprintf("config/environments/%s", envName)
+		p.loadConfig(envConfigName)
+	}
+
+	// Hide built-in commands in help
+	v.SetDefault("hide_extra_cmds", false)
+	if len(o.ExtraCmds) > 0 {
+		for k, _ := range o.ExtraCmds {
+			o.ExtraCmds[k].Hidden = v.GetBool("hide_extra_cmds")
+		}
+		rootCmd.AddCommand(o.ExtraCmds...)
+	}
+
+	//Set the environment prefix as app name
+	v.SetEnvPrefix(strings.ToUpper(commandName))
 
 	return &CobraApp{
 		VariantApp: p,

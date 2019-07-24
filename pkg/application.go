@@ -2,6 +2,7 @@ package variant
 
 import (
 	"fmt"
+	"github.com/mumoshu/variant/pkg/util/fileutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +38,15 @@ type Application struct {
 	TaskNamer           *TaskNamer
 	LogToStderr         bool
 
+	LogLevel      string
+	LogColorPanic string
+	LogColorFatal string
+	LogColorError string
+	LogColorWarn  string
+	LogColorInfo  string
+	LogColorDebug string
+	LogColorTrace string
+
 	LastRun string
 
 	LastOutputs map[string]string
@@ -44,13 +54,95 @@ type Application struct {
 	Viper *viper.Viper
 
 	Log *logrus.Logger
+
+	ConfigContexts []string
+	ConfigDirs     []string
+	CommandName    string
+}
+
+func (p *Application) setGlobalParams() {
+	p.Verbose = p.Viper.GetBool("verbose")
+	p.Colorize = p.Viper.GetBool("color")
+	p.LogToStderr = p.Viper.GetBool("logtostderr")
+	p.Output = p.Viper.GetString("output")
+	p.ConfigFile = p.Viper.GetString("config-file")
+
+	p.LogLevel = p.Viper.GetString("log-level")
+	p.LogColorPanic = p.Viper.GetString("log-color-panic")
+	p.LogColorFatal = p.Viper.GetString("log-color-fatal")
+	p.LogColorError = p.Viper.GetString("log-color-error")
+	p.LogColorWarn = p.Viper.GetString("log-color-warn")
+	p.LogColorInfo = p.Viper.GetString("log-color-info")
+	p.LogColorDebug = p.Viper.GetString("log-color-debug")
+	p.LogColorTrace = p.Viper.GetString("log-color-trace")
+
+	// Handle multiple config contexts set
+	configContexts := p.Viper.GetStringSlice("config-context")
+	for _, c := range configContexts {
+		s := strings.Split(c, ",")
+		p.ConfigContexts = append(p.ConfigContexts, s...)
+	}
+	// Set default config contexts
+	p.ConfigContexts = append([]string{p.CommandName}, p.ConfigContexts...)
+
+	// Handle multiple config dirs set
+	configDirs := p.Viper.GetStringSlice("config-dir")
+	for _, c := range configDirs {
+		s := strings.Split(c, ",")
+		p.ConfigDirs = append(p.ConfigDirs, s...)
+	}
+	// Set default config contexts
+	p.ConfigDirs = maputil.SliceUnique(append([]string{filepath.Dir(p.CommandRelativePath), "."}, p.ConfigDirs...))
+}
+
+func (p *Application) loadContextConfigs() {
+	var contexts []string
+	for _, c := range p.ConfigContexts {
+		contexts = append(contexts, c)
+	}
+	for i, c1 := range p.ConfigContexts {
+		prefix := c1
+		for j, c2 := range p.ConfigContexts {
+			if j > i {
+				prefix = strings.Join([]string{prefix, c2}, ".")
+				combo := strings.Join([]string{c1, c2}, ".")
+				if combo != prefix && c1 != c2 {
+					contexts = append(contexts, combo)
+				}
+				contexts = append(contexts, prefix)
+			}
+		}
+	}
+	for _, d := range p.ConfigDirs {
+		for _, c := range contexts {
+			p.loadConfig(filepath.Join(d, c))
+		}
+	}
+}
+
+func (p *Application) loadConfig(configName string) error {
+	fileName := fmt.Sprintf("%s.yaml", configName)
+	msg := fmt.Sprintf("loading config file %s...", fileName)
+	if fileutil.Exists(fileName) {
+		p.Viper.SetConfigFile(fileName)
+
+		// See "How to merge two config files" https://github.com/spf13/viper/issues/181
+		if err := p.Viper.MergeInConfig(); err != nil {
+			p.Log.Errorf("%serror", fileName)
+			return err
+		}
+		p.Log.Infof("%s done", msg)
+	} else {
+		p.Log.Debugf("%s missing", msg)
+	}
+	return nil
 }
 
 func (p *Application) UpdateLoggingConfiguration() error {
 	if p.Verbose {
 		p.Log.SetLevel(logrus.DebugLevel)
 	} else {
-		ls := p.Viper.Get("log_level").(string)
+		ls := p.Viper.Get("log-level").(string)
 		l, err := logrus.ParseLevel(ls)
 		if err != nil {
 			return fmt.Errorf("log level is not specified properly: \"%s\", use one of the: \"panic\", \"fatal\", \"error\", \"warn\", \"info\", \"debug\", \"trace\"", ls)
@@ -77,13 +169,13 @@ func (p *Application) UpdateLoggingConfiguration() error {
 		p.Log.SetFormatter(&variantTextFormatter{
 			colorize: colorize,
 			colors: map[logrus.Level]string{
-				logrus.PanicLevel: p.Viper.Get("log_color_panic").(string),
-				logrus.FatalLevel: p.Viper.Get("log_color_fatal").(string),
-				logrus.ErrorLevel: p.Viper.Get("log_color_error").(string),
-				logrus.WarnLevel:  p.Viper.Get("log_color_warn").(string),
-				logrus.InfoLevel:  p.Viper.Get("log_color_info").(string),
-				logrus.DebugLevel: p.Viper.Get("log_color_debug").(string),
-				logrus.TraceLevel: p.Viper.Get("log_color_trace").(string),
+				logrus.PanicLevel: p.LogColorPanic,
+				logrus.FatalLevel: p.LogColorFatal,
+				logrus.ErrorLevel: p.LogColorError,
+				logrus.WarnLevel:  p.LogColorWarn,
+				logrus.InfoLevel:  p.LogColorInfo,
+				logrus.DebugLevel: p.LogColorDebug,
+				logrus.TraceLevel: p.LogColorTrace,
 			},
 		})
 	} else if p.Output == "message" {
