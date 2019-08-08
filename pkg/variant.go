@@ -179,7 +179,7 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 
 	// Load a config from the provided flag (could be loaded through Viper as well)
 	if p.ConfigFile != "" {
-		p.loadConfig(p.ConfigFile)
+		p.loadConfigFile(p.ConfigFile)
 	}
 
 	// Load contexts configuration

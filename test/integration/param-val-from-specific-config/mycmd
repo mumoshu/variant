@@ -1,0 +1,8 @@
+#!/usr/bin/env var
+tasks:
+  test:
+    parameters:
+    - name: foo
+    - name: bar
+    script: |
+      echo foo={{.foo}},bar={{.bar}}
