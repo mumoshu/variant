@@ -120,8 +120,7 @@ func (p *Application) loadContextConfigs() {
 	}
 }
 
-func (p *Application) loadConfig(configName string) error {
-	fileName := fmt.Sprintf("%s.yaml", configName)
+func (p *Application) loadConfigFile(fileName string) error {
 	msg := fmt.Sprintf("loading config file %s...", fileName)
 	if fileutil.Exists(fileName) {
 		p.Viper.SetConfigFile(fileName)
@@ -136,6 +135,10 @@ func (p *Application) loadConfig(configName string) error {
 		p.Log.Debugf("%s missing", msg)
 	}
 	return nil
+}
+
+func (p *Application) loadConfig(configName string) error {
+	return p.loadConfigFile(fmt.Sprintf("%s.yaml", configName))
 }
 
 func (p *Application) UpdateLoggingConfiguration() error {
