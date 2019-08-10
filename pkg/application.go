@@ -79,8 +79,10 @@ func (p *Application) setGlobalParams() {
 	// Handle multiple config contexts set
 	configContexts := p.Viper.GetStringSlice("config-context")
 	for _, c := range configContexts {
-		s := strings.Split(c, ",")
-		p.ConfigContexts = append(p.ConfigContexts, s...)
+		if c != "[]" {
+			s := strings.Split(c, ",")
+			p.ConfigContexts = append(p.ConfigContexts, s...)
+		}
 	}
 	// Set default config contexts
 	p.ConfigContexts = append([]string{p.CommandName}, p.ConfigContexts...)
@@ -88,8 +90,10 @@ func (p *Application) setGlobalParams() {
 	// Handle multiple config dirs set
 	configDirs := p.Viper.GetStringSlice("config-dir")
 	for _, c := range configDirs {
-		s := strings.Split(c, ",")
-		p.ConfigDirs = append(p.ConfigDirs, s...)
+		if c != "[]" {
+			s := strings.Split(c, ",")
+			p.ConfigDirs = append(p.ConfigDirs, s...)
+		}
 	}
 	// Set default config contexts
 	p.ConfigDirs = maputil.SliceUnique(append([]string{filepath.Dir(p.CommandRelativePath), "."}, p.ConfigDirs...))
