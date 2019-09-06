@@ -103,7 +103,7 @@ smoke10-ok: build
 	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./if-test ok1 && ./if-test ok2 && ./if-test ok3 && ./if-test ok4 && ./if-test ok5 && echo smoke10-ok passed.
 
 smoke10-ng: build
-	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && (./if-test ng1; [ $$? -eq 1 ]) && (./if-test ng2; [ $$? -eq 1 ]) && echo smoke10-ng passed.
+	cd $(IT_DIR) && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && (./if-test ng1; [ $$? -eq 1 ]) && (./if-test ng2; [ $$? -eq 1 ]) && (./if-test ng3; [ $$? -eq 1 ])  && (./if-test ng4; [ $$? -eq 1 ]) && echo smoke10-ng passed.
 
 smoke11: smoke11-ok smoke11-ng
 
@@ -192,7 +192,7 @@ smoke36: build
 	cd $(IT_DIR)/failing-if && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ! var ok --logtostderr && echo smoke36 passed.
 
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,35}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,35,36}
 
 smoke-ci:
-	bash -c 'make smoke{1..18} smoke{23,24,25,26,27,28,29,30,31,32,33,34,35}'
+	bash -c 'make smoke{1..18} smoke{23,24,25,26,27,28,29,30,31,32,33,34,35,36}'

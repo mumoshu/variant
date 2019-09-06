@@ -34,13 +34,16 @@ tasks:
           - task: fail
           then:
           - task: foo
+        - task: succeed
 
   ok5:
     steps:
-      - if:
-        - task: fail
-        then:
-        - task: foo
+    - if:
+      - task: fail
+      else:
+      - task: succeed
+      then:
+      - task: foo
 
   ng1:
     steps:
@@ -56,6 +59,21 @@ tasks:
         - task: succeed
         then:
         - task: fail
+
+  ng3:
+    steps:
+      - if:
+        - task: fail
+        then:
+        - task: foo
+
+  ng4:
+    steps:
+      - or:
+        - if:
+          - task: fail
+          then:
+          - task: foo
 
   succeed:
     script: echo true; exit 0
