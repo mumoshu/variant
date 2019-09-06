@@ -185,8 +185,11 @@ smoke33: build
 smoke34: build
 	cd $(IT_DIR)/param-val-from-specific-config && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ./mycmd test -c myconfig.yaml --logtostderr | grep foo=FOO,bar=BAR && echo smoke34 passed.
 
+smoke35: build
+	cd $(IT_DIR)/named-steps-in-if-then && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && var test1 --logtostderr && var test2 --logtostderr && echo smoke35 passed.
+
 smoke-tests:
-	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27}
+	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,35}
 
 smoke-ci:
-	bash -c 'make smoke{1..18} smoke{23,24,25,26,27,28,29,30,31,32,33,34}'
+	bash -c 'make smoke{1..18} smoke{23,24,25,26,27,28,29,30,31,32,33,34,35}'

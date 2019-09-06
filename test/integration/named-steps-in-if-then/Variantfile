@@ -1,0 +1,43 @@
+#!/usr/bin/env var
+
+tasks:
+  test1:
+    steps:
+      - name: foo
+        task: foo
+      - name: bar
+        task: bar
+      - task: foobar
+        arguments:
+          parameter1: "{{ .foo }}"
+          parameter2: "{{ .bar }}"
+
+  test2:
+    steps:
+      - if:
+          - task: success
+        then:
+          - name: foo
+            task: foo
+          - name: bar
+            task: bar
+          - task: foobar
+            arguments:
+              parameter1: "{{ .foo }}"
+              parameter2: "{{ .bar }}"
+
+  foobar:
+    parameters:
+      - name: parameter1
+        type: string
+      - name: parameter2
+        type: string
+
+    script: echo "{{ .parameter1 }}{{ .parameter2 }}"
+
+  success:
+    script: exit 0
+  foo:
+    script: echo foo
+  bar:
+    script: echo bar

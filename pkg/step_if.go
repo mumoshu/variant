@@ -136,6 +136,10 @@ func run(steps []Step, context ExecutionContext) (StepStringOutput, error) {
 		if lastError != nil {
 			return StepStringOutput{String: "run error"}, errors.Wrapf(lastError, "failed running step")
 		}
+
+		if s.GetName() != "" {
+			context = context.WithAdditionalValues(map[string]interface{}{s.GetName(): lastOutput.String})
+		}
 	}
 
 	return lastOutput, nil
