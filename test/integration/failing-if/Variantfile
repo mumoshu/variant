@@ -1,0 +1,14 @@
+#!/usr/bin/env var
+
+tasks:
+  ok:
+    steps:
+      - if:
+          - task: success
+        then:
+          - task: foo
+
+  success:
+    script: echo false; exit 1
+  foo:
+    script: echo foo

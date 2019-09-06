@@ -155,6 +155,8 @@ func (s IfStep) Run(context ExecutionContext) (StepStringOutput, error) {
 				return StepStringOutput{String: "else step failed"}, errors.Wrapf(elseErr, "`else` steps failed")
 			}
 			return elseOut, nil
+		} else {
+			return StepStringOutput{String: "if step failed"}, errors.Wrapf(ifErr, "`if` step failed")
 		}
 	}
 

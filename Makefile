@@ -188,6 +188,9 @@ smoke34: build
 smoke35: build
 	cd $(IT_DIR)/named-steps-in-if-then && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && var test1 --logtostderr && var test2 --logtostderr && echo smoke35 passed.
 
+smoke36: build
+	cd $(IT_DIR)/failing-if && export PATH=$(shell pwd)/dist/$(VERSION):$$PATH && ! var ok --logtostderr && echo smoke36 passed.
+
 smoke-tests:
 	make smoke{1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,35}
 
