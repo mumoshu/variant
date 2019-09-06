@@ -32,6 +32,7 @@ type Application struct {
 	Verbose             bool
 	Output              string
 	Colorize            bool
+	NoColorize          bool
 	Env                 string
 	TaskRegistry        *TaskRegistry
 	InputResolver       InputResolver
@@ -60,9 +61,13 @@ type Application struct {
 	CommandName    string
 }
 
+func (p *Application) Color() bool {
+	return p.Colorize && !p.NoColorize
+}
+
 func (p *Application) setGlobalParams() {
 	p.Verbose = p.Viper.GetBool("verbose")
-	p.Colorize = p.Viper.GetBool("color")
+	p.Colorize = p.Viper.GetBool("color") && !p.Viper.GetBool("no-color")
 	p.LogToStderr = p.Viper.GetBool("logtostderr")
 	p.Output = p.Viper.GetString("output")
 	p.ConfigFile = p.Viper.GetString("config-file")
@@ -169,7 +174,7 @@ func (p *Application) UpdateLoggingConfiguration() error {
 	} else if p.Output == "text" {
 		colorize := &colorstring.Colorize{
 			Colors:  colorstring.DefaultColors,
-			Disable: !p.Colorize,
+			Disable: !p.Color(),
 			Reset:   true,
 		}
 
