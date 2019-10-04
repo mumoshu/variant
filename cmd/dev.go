@@ -34,6 +34,13 @@ func Dev() {
 		args = os.Args[1:]
 	}
 
+	additionalArgs, err := variant.ArgsFromEnvVars()
+	if err != nil {
+		logrus.Errorf("%v", err)
+		os.Exit(1)
+	}
+	args = append(args, additionalArgs...)
+
 	environ := envutil.ParseEnviron()
 
 	if environ["VARFILE"] != "" {
