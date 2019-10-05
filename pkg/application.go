@@ -293,7 +293,7 @@ func (p *Application) RunTask(taskName TaskName, args []string, arguments task.A
 				ctx.Debugf("- %s", err)
 			}
 			firstErr := result.Errors()[0]
-			return firstErr.String(), fmt.Errorf("argument %q of task %q is invali", firstErr.Field(), taskName)
+			return firstErr.String(), fmt.Errorf("argument %q of task %q is invalid", firstErr.Field(), taskName)
 		}
 
 		ctx.WithField("variables", kv).Debugf("app bound variables for task %s", taskName.ShortString())
