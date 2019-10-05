@@ -27,13 +27,12 @@ func Def(rootTaskConfig *variant.TaskDef, opts variant.Opts) {
 			log.Errorf("%v", err)
 			os.Exit(1)
 		case variant.CommandError:
-			c := strings.Join(strings.Split(cmdErr.TaskName.String(), "."), " ")
 			if log.GetLevel() == logrus.DebugLevel {
 				log.Errorf("Stack trace: %+v", err)
 			}
 			errs := strings.Split(err.Error(), ": ")
 			msg := strings.Join(errs, "\n")
-			log.Errorf("Error: `%s` failed: %s", c, msg)
+			log.Errorf("Error: %s", msg)
 			if strings.Trim(cmdErr.Cause, " \n\t") != "" {
 				log.Errorf("Caused by: %s", cmdErr.Cause)
 			}

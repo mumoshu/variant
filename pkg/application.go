@@ -281,18 +281,19 @@ func (p *Application) RunTask(taskName TaskName, args []string, arguments task.A
 			if err != nil {
 				return "", errors.Wrapf(err, "failed marshaling error vars data %v: %v", vars, err)
 			}
-			ctx.Errorf("one or more inputs are not valid in vars:\n%+v:", vars)
-			ctx.Errorf("one or more inputs are not valid in varsDumo:\n%s:", varsDump)
+			ctx.Debugf("one or more inputs are not valid in vars:\n%+v:", vars)
+			ctx.Debugf("one or more inputs are not valid in varsDump:\n%s:", varsDump)
 			kvDump, err := json.MarshalIndent(kv, "", "  ")
 			if err != nil {
 				return "", errors.Wrapf(err, "failed marshaling error kv data %v: %v", kv, err)
 			}
-			ctx.Errorf("one or more inputs are not valid in kv:\n%s:", kvDump)
+			ctx.Debugf("one or more inputs are not valid in kv:\n%s:", kvDump)
 			for _, err := range result.Errors() {
 				// Err implements the ResultError interface
-				ctx.Errorf("- %s", err)
+				ctx.Debugf("- %s", err)
 			}
-			return "", errors.Wrapf(err, "app failed validating inputs: %v", doc)
+			firstErr := result.Errors()[0]
+			return firstErr.String(), fmt.Errorf("argument %q of task %q is invali", firstErr.Field(), taskName)
 		}
 
 		ctx.WithField("variables", kv).Debugf("app bound variables for task %s", taskName.ShortString())
