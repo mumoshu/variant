@@ -58,11 +58,15 @@ Writing a single tool which
 
 is time-consuming.
 
+# Install
+
+Run:
+
+```
+curl -sL https://raw.githubusercontent.com/variantdev/get/master/get | INSTALL_TO=/usr/local/bin sh
+```
+
 # Getting Started
-
-Download and install `variant` from the GitHub releases page:
-
-https://github.com/mumoshu/variant/releases
 
 Create a yaml file named `myfirstcmd` containing:
 
