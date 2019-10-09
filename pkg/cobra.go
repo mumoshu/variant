@@ -23,6 +23,12 @@ type InitError struct {
 	error
 }
 
+func NewInitError(err error) InitError {
+	return InitError{
+		error: err,
+	}
+}
+
 type CommandError struct {
 	error
 	TaskName TaskName

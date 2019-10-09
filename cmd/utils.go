@@ -21,8 +21,8 @@ import (
 	"os"
 )
 
-var InitCmd = &cobra.Command{
-	Use:   "init NAME",
+var UtilsCmd = &cobra.Command{
+	Use:   "utils NAME",
 	Short: "Create a Variant command",
 	Long: `Create a Variant command with the specified NAME
 

@@ -287,6 +287,8 @@ $ var test
 
 `VARIANT_RUN_TRIM_PREFIX`: Prefix to be removed from the `VARIANT_RUN`. For intance, `VARIANT_RUN="/myslashcmd --foo=bar" variant mycmd` is equivalent to `variant mycmd --foo=bar`.
 
+`VARIANT_GITHUB_COMMENT(_ON_[SUCCESS|FAILURE])`: (GitHub Actions v2 only) When this variables is set to a non-empty value, variant tries to obtain the "source" GitHub issue/pull request that triggered the run, and sends a issue/pr comment containing the result. Great for giving feedbacks to whom run the variant task from e.g. GitHub comment. 
+
 # Integrations and useful companion tools
 
 - Use [liujianping/job](https://github.com/liujianping/job) for timeouts, retries, scheduled runs, etc.

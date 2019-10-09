@@ -14,7 +14,13 @@ import (
 	"strings"
 )
 
-func Dev() {
+func MustRun() {
+	if opts, err := RunE(); err != nil {
+		HandleError(err, opts)
+	}
+}
+
+func RunE() (variant.Opts, error) {
 	var taskDef *variant.TaskDef
 	var args []string
 
@@ -34,10 +40,15 @@ func Dev() {
 		args = os.Args[1:]
 	}
 
+	opts := variant.Opts{
+		CommandPath: cmdPath,
+		Args:        args,
+		Log:         logrus.StandardLogger(),
+	}
+
 	additionalArgs, err := variant.ArgsFromEnvVars()
 	if err != nil {
-		logrus.Errorf("%v", err)
-		os.Exit(1)
+		return opts, variant.NewInitError(err)
 	}
 	args = append(args, additionalArgs...)
 
@@ -55,8 +66,7 @@ func Dev() {
 		taskConfigFromFile, err := variant.ReadTaskDefFromFile(varfile)
 
 		if err != nil {
-			logrus.Errorf("%+v", err)
-			panic(errors.Trace(err))
+			return opts, variant.NewInitError(err)
 		}
 		taskDef = taskConfigFromFile
 	} else {
@@ -65,17 +75,16 @@ func Dev() {
 
 	taskDef.Name = cmdName
 
-	Def(taskDef, variant.Opts{
-		CommandPath: cmdPath,
-		Args:        args,
-		Log:         logrus.StandardLogger(),
-		ExtraCmds: []*cobra.Command{
-			EnvCmd,
-			BuildCmd,
-			InitCmd,
-			VersionCmd(logrus.StandardLogger()),
-		},
-	})
+	opts.ExtraCmds = []*cobra.Command{
+		EnvCmd,
+		BuildCmd,
+		InitCmd,
+		UtilsCmd,
+		VersionCmd(logrus.StandardLogger()),
+	}
+
+	_, err = Run(taskDef, opts)
+	return opts, err
 }
 
 func YAML(yaml string) {
@@ -89,7 +98,7 @@ func YAML(yaml string) {
 
 	taskDef.Name = filepath.Base(cmdPath)
 
-	Def(taskDef, variant.Opts{
+	opts := variant.Opts{
 		CommandPath: cmdPath,
 		Args:        os.Args[1:],
 		Log:         logrus.StandardLogger(),
@@ -97,5 +106,37 @@ func YAML(yaml string) {
 			EnvCmd,
 			VersionCmd(logrus.StandardLogger()),
 		},
-	})
+	}
+
+	if _, err := Run(taskDef, opts); err != nil {
+		HandleError(err, opts)
+	}
+}
+
+func HandleError(err error, opts variant.Opts) {
+	args := opts.Args
+	log := opts.Log
+	switch cmdErr := err.(type) {
+	case variant.InitError:
+		log.Errorf("%v", err)
+		os.Exit(1)
+	case variant.CommandError:
+		if log.GetLevel() == logrus.DebugLevel {
+			log.Errorf("Stack trace: %+v", err)
+		}
+		errs := strings.Split(err.Error(), ": ")
+		msg := strings.Join(errs, "\n")
+		log.Errorf("Error: %s", msg)
+		if strings.Trim(cmdErr.Cause, " \n\t") != "" {
+			log.Errorf("Caused by: %s", cmdErr.Cause)
+		}
+	default:
+		// Variant command should produce the command help,
+		// because it is run without any args and the root command is not defined
+		if len(args) == 0 {
+			os.Exit(0)
+		}
+		log.Errorf("Unexpected type of error %T: %s", err, err)
+	}
+	os.Exit(1)
 }

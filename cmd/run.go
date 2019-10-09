@@ -38,13 +38,23 @@ func init() {
 	variant.Register(variant.NewIfStepLoader())
 }
 
-func Run(commandPath string, args []string, taskDef *variant.TaskDef, opts variant.Opts) (map[string]string, error) {
-	cobraApp, err := command(commandPath, taskDef, opts)
+func Run(taskDef *variant.TaskDef, opts variant.Opts) (map[string]string, error) {
+	if opts.Log == nil {
+		panic("log must be set")
+	}
+	if opts.CommandPath == "" {
+		panic("command path must be set")
+	}
+	if opts.Args == nil {
+		panic("args must be set")
+	}
+
+	cobraApp, err := command(opts.CommandPath, taskDef, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return cobraApp.Run(args)
+	return cobraApp.Run(opts.Args)
 }
 
 func command(commandPath string, taskDef *variant.TaskDef, opts variant.Opts) (*variant.CobraApp, error) {
