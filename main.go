@@ -74,8 +74,14 @@ func main() {
 		os.Stdout = stdout
 		os.Stderr = stderr
 
-		stdoutW.Close()
-		stderrW.Close()
+		runOpts.Log.Out = stderr
+
+		if err := stdoutW.Close(); err != nil {
+			panic(err)
+		}
+		if err := stderrW.Close(); err != nil {
+			panic(err)
+		}
 
 		<-stdoutCaptureStop
 		<-stderrCaptureStop

@@ -39,14 +39,14 @@ func sendGitHubComment(name, command, exitstatus, summary, details string) error
 
 	buf := bytes.Buffer{}
 	if err := tpl.Execute(&buf, data); err != nil {
-		return err
+		return fmt.Errorf("template: %v", err)
 	}
 
 	println("Trying to send a GitHub Issue/Pull request comment:")
 	println(buf.String())
 
 	if err := postGithubComment(buf.String()); err != nil {
-		return err
+		return fmt.Errorf("post github comment: %v", err)
 	}
 
 	return nil
