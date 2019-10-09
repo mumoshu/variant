@@ -66,6 +66,12 @@ Run:
 curl -sL https://raw.githubusercontent.com/variantdev/get/master/get | INSTALL_TO=/usr/local/bin sh
 ```
 
+To install a specific version, run with the `VERSION` shell variable:
+
+```
+curl -sL https://raw.githubusercontent.com/variantdev/get/master/get | INSTALL_TO=/usr/local/bin VERSION=v0.35.1 sh
+```
+
 # Getting Started
 
 Create a yaml file named `myfirstcmd` containing:
