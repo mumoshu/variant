@@ -60,7 +60,7 @@ is time-consuming.
 
 # Install
 
-Run:
+To install the latest version, run:
 
 ```
 curl -sL https://raw.githubusercontent.com/variantdev/get/master/get | INSTALL_TO=/usr/local/bin sh
