@@ -14,9 +14,9 @@ import (
 	"text/template"
 )
 
-var commentBody = "#### {{ .Name }}: `{{ .Command }}` completed.Status: {{ .ExitStatus }}\n" +
+var commentBody = "#### {{ .Name }}: `{{ .Command }}` completed with {{ .ExitStatus }}\n" +
 	"{{ if .Summary }}\n```\n{{ .Summary }}```\n{{ end -}}" +
-	"<details>\n" +
+	"<details>\n\n" +
 	"```\n" +
 	"{{.Details}}" +
 	"```\n" +
