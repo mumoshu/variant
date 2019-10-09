@@ -294,6 +294,7 @@ $ var test
 
 # Alternatives
 
+* [go-task/task](https://github.com/go-task/task)
 * [tj/robo](https://github.com/tj/robo)
 * [goeuro/myke](https://github.com/goeuro/myke)
 
