@@ -52,6 +52,8 @@ func RunE() (variant.Opts, error) {
 	}
 	args = append(args, additionalArgs...)
 
+	opts.Args = args
+
 	environ := envutil.ParseEnviron()
 
 	if environ["VARFILE"] != "" {
