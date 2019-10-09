@@ -142,3 +142,19 @@ func HandleError(err error, opts variant.Opts) {
 	}
 	os.Exit(1)
 }
+
+func GetStatus(err error, opts variant.Opts) int {
+	switch err.(type) {
+	case variant.InitError:
+		return 1
+	case variant.CommandError:
+		return 1
+	default:
+		// Variant command should produce the command help,
+		// because it is run without any args and the root command is not defined
+		if len(opts.Args) == 0 {
+			return 0
+		}
+	}
+	return 1
+}

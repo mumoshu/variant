@@ -14,7 +14,7 @@ import (
 	"text/template"
 )
 
-var commentBody = "#### $VARIANT_NAME: `$VARIANT_RUN` completed.Status: ${SUCCESS}" +
+var commentBody = "#### {{ .Name }}: `{{ .Command }}` completed.Status: {{ .ExitStatus }}\n" +
 	"{{ if .Summary }}\n```\n{{ .Summary }}```\n{{ end -}}" +
 	"<details>\n" +
 	"```\n" +
@@ -22,10 +22,13 @@ var commentBody = "#### $VARIANT_NAME: `$VARIANT_RUN` completed.Status: ${SUCCES
 	"```\n" +
 	"</details>\n"
 
-func sendGitHubComment(summary, details string) error {
+func sendGitHubComment(name, command, exitstatus, summary, details string) error {
 	data := map[string]string{
-		"Summary": summary,
-		"Details": details,
+		"Name":       name,
+		"Command":    command,
+		"ExitStatus": exitstatus,
+		"Summary":    summary,
+		"Details":    details,
 	}
 
 	tpl := template.New("comment")

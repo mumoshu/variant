@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/mumoshu/variant/cmd"
 	"os"
 )
@@ -82,16 +83,28 @@ func main() {
 		stdoutCapture := stdoutBuf.String()
 		allCapture := allBuf.String()
 
+		send := func() error {
+			name := os.Getenv("VARIANT_NAME")
+			if name == "" {
+				name = "variant"
+			}
+
+			c := os.Getenv("VARIANT_RUN")
+
+			status := cmd.GetStatus(runErr, runOpts)
+			return sendGitHubComment(name, c, fmt.Sprintf("%d", status), stdoutCapture, allCapture)
+		}
+
 		if runErr != nil {
 			if os.Getenv("VARIANT_GITHUB_COMMENT") != "" || os.Getenv("VARIANT_GITHUB_COMMENT_ON_FAILURE") != "" {
-				if err := sendGitHubComment(stdoutCapture, allCapture); err != nil {
+				if err := send(); err != nil {
 					cmd.HandleError(err, runOpts)
 				}
 			}
-
+			cmd.HandleError(runErr, runOpts)
 		} else {
 			if os.Getenv("VARIANT_GITHUB_COMMENT") != "" || os.Getenv("VARIANT_GITHUB_COMMENT_ON_SUCCESS") != "" {
-				if err := sendGitHubComment(stdoutCapture, allCapture); err != nil {
+				if err := send(); err != nil {
 					cmd.HandleError(err, runOpts)
 				}
 			}
