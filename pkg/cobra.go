@@ -29,6 +29,16 @@ func NewInitError(err error) InitError {
 	}
 }
 
+type InternalError struct {
+	error
+}
+
+func NewInternalError(err error) InternalError {
+	return InternalError{
+		error: err,
+	}
+}
+
 type CommandError struct {
 	error
 	TaskName TaskName

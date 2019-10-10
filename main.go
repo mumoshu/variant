@@ -89,6 +89,12 @@ func main() {
 		stdoutCapture := stdoutBuf.String()
 		allCapture := allBuf.String()
 
+		errMsg, status := cmd.HandleError(runErr, runOpts)
+
+		if errMsg != "" {
+			allCapture += errMsg + "\n"
+		}
+
 		send := func() error {
 			name := os.Getenv("VARIANT_NAME")
 			if name == "" {
@@ -104,14 +110,14 @@ func main() {
 		if runErr != nil {
 			if os.Getenv("VARIANT_GITHUB_COMMENT") != "" || os.Getenv("VARIANT_GITHUB_COMMENT_ON_FAILURE") != "" {
 				if err := send(); err != nil {
-					cmd.HandleError(err, runOpts)
+					cmd.HandleErrorAndExit(err, runOpts)
 				}
 			}
-			cmd.HandleError(runErr, runOpts)
+			cmd.LogAndExit(runOpts, errMsg, status)
 		} else {
 			if os.Getenv("VARIANT_GITHUB_COMMENT") != "" || os.Getenv("VARIANT_GITHUB_COMMENT_ON_SUCCESS") != "" {
 				if err := send(); err != nil {
-					cmd.HandleError(err, runOpts)
+					cmd.HandleErrorAndExit(err, runOpts)
 				}
 			}
 		}

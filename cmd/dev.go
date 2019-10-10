@@ -16,7 +16,7 @@ import (
 
 func MustRun() {
 	if opts, err := RunE(); err != nil {
-		HandleError(err, opts)
+		HandleErrorAndExit(err, opts)
 	}
 }
 
@@ -111,36 +111,53 @@ func YAML(yaml string) {
 	}
 
 	if _, err := Run(taskDef, opts); err != nil {
-		HandleError(err, opts)
+		HandleErrorAndExit(err, opts)
 	}
 }
 
-func HandleError(err error, opts variant.Opts) {
+func HandleErrorAndExit(err error, opts variant.Opts) {
+	msg, status := HandleError(err, opts)
+	LogAndExit(opts, msg, status)
+}
+
+func LogAndExit(opts variant.Opts, msg string, status int) {
+	if msg != "" {
+		opts.Log.Errorf("%s", msg)
+	}
+	os.Exit(status)
+}
+
+func HandleError(err error, opts variant.Opts) (string, int) {
+	if err == nil {
+		return "", 0
+	}
 	args := opts.Args
 	log := opts.Log
+	var msg string
 	switch cmdErr := err.(type) {
 	case variant.InitError:
-		log.Errorf("%v", err)
-		os.Exit(1)
+		msg = fmt.Sprintf("%v", err)
 	case variant.CommandError:
 		if log.GetLevel() == logrus.DebugLevel {
-			log.Errorf("Stack trace: %+v", err)
+			msg = fmt.Sprintf("Stack trace: %+v\n", err)
 		}
 		errs := strings.Split(err.Error(), ": ")
-		msg := strings.Join(errs, "\n")
-		log.Errorf("Error: %s", msg)
+		msg += strings.Join(errs, "\n")
+		msg += fmt.Sprintf("\nError: %s", msg)
 		if strings.Trim(cmdErr.Cause, " \n\t") != "" {
-			log.Errorf("Caused by: %s", cmdErr.Cause)
+			msg += fmt.Sprintf("\nCaused by: %s", cmdErr.Cause)
 		}
+	case variant.InternalError:
+		msg = fmt.Sprintf("%v", err)
 	default:
 		// Variant command should produce the command help,
 		// because it is run without any args and the root command is not defined
 		if len(args) == 0 {
-			os.Exit(0)
+			return "", 0
 		}
-		log.Errorf("Unexpected type of error %T: %s", err, err)
+		msg = fmt.Sprintf("Unexpected type of error %T: %s", err, err)
 	}
-	os.Exit(1)
+	return msg, 1
 }
 
 func GetStatus(err error, opts variant.Opts) int {

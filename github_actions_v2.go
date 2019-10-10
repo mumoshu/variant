@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	variant "github.com/mumoshu/variant/pkg"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -22,7 +23,12 @@ var commentBody = "#### {{ .Name }}: `{{ .Command }}` completed with {{ .ExitSta
 	"```\n" +
 	"</details>\n"
 
-func sendGitHubComment(name, command, exitstatus, summary, details string) error {
+func sendGitHubComment(name, command, exitstatus, summary, details string) (err error) {
+	defer func() {
+		if err != nil {
+			err = variant.NewInternalError(fmt.Errorf("unable to send a comment to GitHub Issue/PR: %v", err))
+		}
+	}()
 	data := map[string]string{
 		"Name":       name,
 		"Command":    command,
@@ -32,21 +38,21 @@ func sendGitHubComment(name, command, exitstatus, summary, details string) error
 	}
 
 	tpl := template.New("comment")
-	tpl, err := tpl.Parse(commentBody)
+	tpl, err = tpl.Parse(commentBody)
 	if err != nil {
 		return err
 	}
 
 	buf := bytes.Buffer{}
-	if err := tpl.Execute(&buf, data); err != nil {
+	if err = tpl.Execute(&buf, data); err != nil {
 		return fmt.Errorf("template: %v", err)
 	}
 
 	println("Trying to send a GitHub Issue/Pull request comment:")
 	println(buf.String())
 
-	if err := postGithubComment(buf.String()); err != nil {
-		return fmt.Errorf("post github comment: %v", err)
+	if err = postGithubComment(buf.String()); err != nil {
+		return err
 	}
 
 	return nil
