@@ -289,6 +289,10 @@ $ var test
 
 `VARIANT_GITHUB_COMMENT(_ON_[SUCCESS|FAILURE])`: (GitHub Actions v2 only) When this variables is set to a non-empty value, variant tries to obtain the "source" GitHub issue/pull request that triggered the run, and sends a issue/pr comment containing the result. Great for giving feedbacks to whom run the variant task from e.g. GitHub comment. 
 
+# FAQ
+
+Please see the collection of answered questions in our [GitHub issues labeled "question"](https://github.com/mumoshu/variant/issues?utf8=%E2%9C%93&q=label%3Aquestion+).
+
 # Integrations and useful companion tools
 
 - Use [liujianping/job](https://github.com/liujianping/job) for timeouts, retries, scheduled runs, etc.
