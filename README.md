@@ -279,11 +279,11 @@ $ var test
 #=> reads inputs from var.yaml + config/environments/prod.yaml
 ```
 
-## Environemnt Variables
+## Environment Variables
 
 `variant` takes a few envvars for configuration.
 
-`VARIANT_RUN`: Additional command-line arguments to be added to the actual args. For instance, `VARIANT_RUN="bar baz" variant foo --color=false` is equivalent to `variant foo --color=false foo bar`.
+`VARIANT_RUN`: Additional command-line arguments to be added to the actual args. For instance, `VARIANT_RUN="bar baz" variant foo --color=false` is equivalent to `variant foo --color=false bar baz`.
 
 `VARIANT_RUN_TRIM_PREFIX`: Prefix to be removed from the `VARIANT_RUN`. For intance, `VARIANT_RUN="/myslashcmd --foo=bar" variant mycmd` is equivalent to `variant mycmd --foo=bar`.
 
