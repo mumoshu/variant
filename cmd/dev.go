@@ -28,7 +28,8 @@ func RunE() (variant.Opts, error) {
 	var cmdPath string
 	var varfile string
 
-	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") && fileutil.Exists(os.Args[1]) {
+	// The comparison against "version" is necessary to workaround https://github.com/mumoshu/variant/issues/63
+	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") && fileutil.Exists(os.Args[1]) && os.Args[1] != "version" {
 		varfile = os.Args[1]
 		args = os.Args[2:]
 		cmdPath = varfile
