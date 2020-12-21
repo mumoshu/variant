@@ -2,13 +2,14 @@ package variant
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/juju/errors"
 	"github.com/mumoshu/variant/pkg/cli/env"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"os"
-	"strings"
 )
 
 type CobraApp struct {
@@ -151,7 +152,7 @@ func Init(commandPath string, rootTaskConfig *TaskDef, opts ...Opts) (*CobraApp,
 	rootCmd.PersistentFlags().StringVarP(&(p.LogColorPanic), "log-color-panic", "", "red", "Log message color: panic")
 	rootCmd.PersistentFlags().StringVarP(&(p.LogColorFatal), "log-color-fatal", "", "red", "Log message color: fatal")
 	rootCmd.PersistentFlags().StringVarP(&(p.LogColorError), "log-color-error", "", "red", "Log message color: error")
-	rootCmd.PersistentFlags().StringVarP(&(p.LogColorWarn), "log-color-warn", "", "red", "Log message color: warn")
+	rootCmd.PersistentFlags().StringVarP(&(p.LogColorWarn), "log-color-warn", "", "yellow", "Log message color: warn")
 	rootCmd.PersistentFlags().StringVarP(&(p.LogColorInfo), "log-color-info", "", "cyan", "Log message color: info")
 	rootCmd.PersistentFlags().StringVarP(&(p.LogColorDebug), "log-color-debug", "", "dark_gray", "Log message color: debug")
 	rootCmd.PersistentFlags().StringVarP(&(p.LogColorTrace), "log-color-trace", "", "dark_gray", "Log message color: trace")
