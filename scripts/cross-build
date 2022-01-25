@@ -6,7 +6,7 @@ name=variant
 
 for os in linux darwin;do
     # Add architecture support here
-    for arch in amd64;do
+    for arch in amd64 arm64;do
 	output_folder="${os}-${arch}"
 	rm -rf "$output_folder"
 	mkdir "$output_folder"
