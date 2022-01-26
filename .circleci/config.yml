@@ -2,7 +2,7 @@ version: 2
 jobs:
   test:
     docker:
-    - image: circleci/golang:1.12.4
+    - image: circleci/golang:1.17
     environment:
       GOPATH: /go
     steps:
@@ -26,7 +26,7 @@ jobs:
         - go
   release:
     docker:
-    - image: circleci/golang:1.12.4
+    - image: circleci/golang:1.17
     steps:
     - checkout
     # We can't use attach_workpace due to that CircleCI skips `test` when it is already run before tagging
